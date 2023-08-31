@@ -112,8 +112,8 @@ def download(ctx, **kwargs):
 @click.option("--session-id", type=click.STRING, required=True, help="session id")
 @click.option("--rank", type=click.STRING, required=False, help="0,1,2..", default="0")
 @click.option("--path", type=click.STRING, required=False, help="path")
-@click.option("--start-line", type=click.INT, required=False,  help="log start line", default=100)
-@click.option("--log-type", type=click.STRING, required=False, help="log type", default="stdout")
+@click.option("--tail", type=click.INT, required=False,  help="log tail line", default=100)
+@click.option("--log-type", type=click.Choice(["stdout,stderr"]), required=False, help="log type", default="stdout")
 @click.pass_context
 def get_log(ctx, **kwargs):
     client: EggrollClient = ctx.obj["client"]
@@ -121,7 +121,7 @@ def get_log(ctx, **kwargs):
         sessionId=kwargs.get("session_id"),
         rank=kwargs.get("rank"),
         path=kwargs.get("path"),
-        startLine=kwargs.get("start_line"),
+        startLine=kwargs.get("tail"),
         logType=kwargs.get("log_type")
     )
     prettify(response)
