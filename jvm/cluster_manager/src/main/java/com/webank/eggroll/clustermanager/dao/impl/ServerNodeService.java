@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.eggroll.core.pojo.ErEndpoint;
 import com.eggroll.core.pojo.ErServerNode;
+import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.mapper.ServerNodeMapper;
+import com.webank.eggroll.clustermanager.entity.NodeResource;
 import com.webank.eggroll.clustermanager.entity.ServerNode;
 import org.apache.commons.lang3.StringUtils;
 
@@ -15,9 +17,13 @@ import org.mybatis.guice.transactional.Transactional;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Singleton
 public class ServerNodeService extends EggRollBaseServiceImpl<ServerNodeMapper, ServerNode> {
+
+    @Inject
+    NodeResourceService nodeResourceService;
 
     public ServerNode getByEndPoint( ErEndpoint input) {
         ServerNode serverNode = new ServerNode();
@@ -72,6 +78,17 @@ public class ServerNodeService extends EggRollBaseServiceImpl<ServerNodeMapper, 
             result.add(serverNode.toErServerNode());
         }
         return result;
+    }
+
+    public List<ErServerNode> getServerNodesWithResource(ErServerNode input){
+        List<ErServerNode> serverNodes = getListByErServerNode(input);
+        for (ErServerNode serverNode : serverNodes) {
+            List<NodeResource> nodeResources = nodeResourceService.list(new QueryWrapper<NodeResource>().lambda().eq(NodeResource::getServerNodeId, serverNode.getId()));
+            if(nodeResources != null){
+                serverNode.setResources(nodeResources.stream().map(NodeResource::toErResource).collect(Collectors.toList()));
+            }
+        }
+        return serverNodes;
     }
 
 }

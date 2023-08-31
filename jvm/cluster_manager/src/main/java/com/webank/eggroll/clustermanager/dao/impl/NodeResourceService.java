@@ -19,6 +19,7 @@ import java.util.List;
 public class NodeResourceService extends EggRollBaseServiceImpl<NodeResourceMapper, NodeResource> {
 
     Logger log = LoggerFactory.getLogger(NodeResourceService.class);
+
     @Transactional
     public void registerResource(Long serverNodeId, List<ErResource> insertData, List<ErResource> updateData, List<ErResource> deleteData) {
         if (insertData != null && insertData.size() > 0) {
@@ -32,26 +33,21 @@ public class NodeResourceService extends EggRollBaseServiceImpl<NodeResourceMapp
         }
     }
 
-    public void doInsertNodeResource(Long serverNodeId,  List<ErResource> resources) {
+    public void doInsertNodeResource(Long serverNodeId, List<ErResource> resources) {
         log.info("insertNodeResource======== {} ,size {}", serverNodeId, resources.size());
-
-        List<NodeResource>  nodeResourceList = Lists.newArrayList();
+        List<NodeResource> nodeResourceList = Lists.newArrayList();
         for (ErResource erResource : resources) {
-
-                NodeResource nodeResource = new NodeResource();
-                nodeResource.setServerNodeId(serverNodeId);
-                nodeResource.setResourceType(erResource.getResourceType());
-                nodeResource.setTotal(erResource.getTotal());
-                nodeResource.setUsed(erResource.getUsed());
-                nodeResource.setStatus(erResource.getStatus());
-                nodeResourceList.add(nodeResource);
-
-
-            this.saveBatch(nodeResourceList);
+            NodeResource nodeResource = new NodeResource();
+            nodeResource.setServerNodeId(serverNodeId);
+            nodeResource.setResourceType(erResource.getResourceType());
+            nodeResource.setTotal(erResource.getTotal());
+            nodeResource.setUsed(erResource.getUsed());
+            nodeResource.setStatus(erResource.getStatus());
+            this.save(nodeResource);
         }
     }
 
-    public void doUpdateNodeResource(Long serverNodeId,  List<ErResource> resources) {
+    public void doUpdateNodeResource(Long serverNodeId, List<ErResource> resources) {
         for (ErResource erResource : resources) {
             UpdateWrapper<NodeResource> updateWrapper = new UpdateWrapper<>();
             updateWrapper.lambda().set(erResource.getTotal() >= 0, NodeResource::getTotal, erResource.getTotal())
