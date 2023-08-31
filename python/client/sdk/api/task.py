@@ -158,8 +158,10 @@ class Task(BaseEggrollAPI):
     ):
         download_job_response = self.download_job(session_id, ranks, content_type, compress_method, compress_level)
         if ranks is None:
-            ranks = range(len(download_job_response.container_content))
-        for rank, content in zip(ranks, download_job_response.container_content):
+            ranks = range(len(download_job_response.content))
+        if not download_job_response.content:
+            raise ValueError(f" session_id:{session_id} is not found")
+        for rank, content in download_job_response.content:
             path = rank_to_path(rank)
             with open(path, "wb") as f:
                 f.write(content.content)
@@ -178,7 +180,7 @@ class Task(BaseEggrollAPI):
                     ret = {"code": res.code, "message": f"info error"}
                     result_queue.put(ret)
         except Exception as e:
-            ret = {"code": "112", "message": f" grpc off "}
+            ret = {"code": "112", "message": f" grpc off:{e}"}
             result_queue.put(ret)
 
     def cancel_stream(self, session_id, stream, flag):
