@@ -132,5 +132,8 @@ public class Dict {
 
 
 
+    public static final  String SCHEDULE_KEY = "schedule_key";
+
+
 
 }

@@ -23,6 +23,7 @@ public class ApplicationStartedRunner {
     private static List<ApplicationStartedListener> getAllImplementations(Injector injector) {
         List<ApplicationStartedListener> implementations = new ArrayList<>();
         Reflections reflections = new Reflections("com.webank.eggroll");
+
         Set<Class<? extends ApplicationStartedListener>> subClasses = reflections.getSubTypesOf(ApplicationStartedListener.class);
         if (subClasses != null) {
             for (Class<? extends ApplicationStartedListener> subClass : subClasses) {

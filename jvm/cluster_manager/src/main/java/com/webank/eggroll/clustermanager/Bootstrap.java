@@ -17,6 +17,7 @@ import java.util.Properties;
 public class Bootstrap {
 
     static Logger logger = LoggerFactory.getLogger(Bootstrap.class);
+    static public Injector  injector;
 
     public static void main(String[] args) throws Exception {
 
@@ -29,7 +30,7 @@ public class Bootstrap {
         Properties environment = PropertiesUtil.getProperties(confPath);
         MetaInfo.init(environment);
 //        Injector injector = Guice.createInjector(new DemoModule());
-        Injector injector = Guice.createInjector(
+         injector = Guice.createInjector(
                 new ClusterModule());
         // Bootstrap the application by creating an instance of the server then
         // start the server to handle incoming requests.
