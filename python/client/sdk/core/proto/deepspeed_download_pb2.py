@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 from google.protobuf import duration_pb2 as google_dot_protobuf_dot_duration__pb2
 import meta_pb2 as meta__pb2
-from ...core.proto import containers_pb2 as containers__pb2
+import containers_pb2 as containers__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
