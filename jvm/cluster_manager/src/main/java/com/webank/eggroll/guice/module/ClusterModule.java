@@ -3,25 +3,78 @@ package com.webank.eggroll.guice.module;
 import com.baomidou.mybatisplus.core.toolkit.reflect.GenericTypeUtils;
 import com.eggroll.core.config.Config;
 import com.eggroll.core.config.MetaInfo;
+import com.eggroll.core.exceptions.ConfigErrorException;
+import com.google.common.collect.Lists;
 import com.google.inject.AbstractModule;
+import com.google.inject.Key;
+import com.google.inject.matcher.Matcher;
+import com.google.inject.matcher.Matchers;
 import com.google.inject.name.Names;
+import com.google.inject.spi.ProvisionListener;
+import com.webank.eggroll.clustermanager.schedule.Quartz;
+import com.webank.eggroll.clustermanager.schedule.Schedule;
+import com.webank.eggroll.clustermanager.schedule.ScheduleInfo;
+import com.webank.eggroll.clustermanager.schedule.ScheduleJob;
 import com.webank.eggroll.clustermanager.session.DefaultSessionManager;
 import com.webank.eggroll.clustermanager.session.SessionManager;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory;
 import org.mybatis.guice.MyBatisModule;
 import org.mybatis.guice.datasource.hikaricp.HikariCPProvider;
+import org.quartz.JobBuilder;
+import org.quartz.JobDetail;
+import org.quartz.SchedulerException;
+import org.quartz.SchedulerFactory;
+import org.quartz.impl.StdSchedulerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
-
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.*;
 
 
 public class ClusterModule extends AbstractModule {
 
 
     protected void configure() {
+
+        Matcher<Class> subpacket = Matchers.inSubpackage("com.webank");
+        ProvisionListener  listener = new ProvisionListener(){
+            @Override
+            public <T> void onProvision(ProvisionInvocation<T> provision) {
+               Key key =  provision.getBinding().getKey();
+                Class  rawType = key.getTypeLiteral().getRawType();
+                if(rawType!=null&&subpacket.matches(rawType)){
+                 //   key.getTypeLiteral().getRawType().
+                    Method[] methods = rawType.getMethods();
+                    Arrays.stream(methods).forEach(method -> {
+                        try {
+                            Schedule config = method.getDeclaredAnnotation(Schedule.class);
+                            if (config != null) {
+//                                String methodName = method.getName();
+//                                Class clazz = field.getType();
+                                ScheduleInfo  scheduleInfo= new ScheduleInfo();
+                                scheduleInfo.setKey(key);
+                                scheduleInfo.setMethod(method);
+                                scheduleInfo.setCron(config.cron());
+                                Quartz.sheduleInfoMap.put(rawType.getName(),scheduleInfo);
+
+                              //  Quartz.cronJobInfo.put(key,cronString);
+
+//                                JobDetail jobDetail = JobBuilder.newJob(ScheduleJob.class).usingJobData();
+
+                                }
+                        } catch (Exception e) {
+                           e.printStackTrace();
+                        }
+                    });
+
+                    System.err.println( key.getTypeLiteral().getRawType().getName());
+                }
+            }
+        };
         //PropertyUtil.loadFile(file, getClass())
 
+        this.bindListener(Matchers.any(),listener);
 
         Map<String,String> conf=new HashMap<>();
 
@@ -72,6 +125,16 @@ public class ClusterModule extends AbstractModule {
             }
         });
     }
+
+//    private void bindScheduler() {
+//        try {
+//            bind(SchedulerFactory.class).toInstance(new StdSchedulerFactory(getProperties("quartz.properties")));
+//            bind(GuiceJobFactory.class);
+//            bind(Quartz.class).asEagerSingleton();
+//        } catch (SchedulerException e) {
+//            LOGGER.warn(e.getMessage(), e);
+//        }
+//    }
 
 
 }
