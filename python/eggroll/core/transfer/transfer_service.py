@@ -153,10 +153,10 @@ class GrpcDsDownloadServicer(deepspeed_download_pb2_grpc.DsDownloadServiceServic
         data_dir = get_static_er_conf().get("eggroll.resourcemanager.nodemanager.containers.data.dir",None)
         return data_dir+"/"+session_id+"/"+rank
     def  get_container_models_dir(self,session_id,rank):
-        self.get_container_workspace(session_id,rank)+"/"+"models"
+        return self.get_container_workspace(session_id,rank)+"/"+"models"
 
     def  get_container_logs_dir(self,session_id,rank):
-        self.get_container_workspace(session_id,rank)+"/"+"logs"
+        return self.get_container_workspace(session_id,rank)+"/"+"logs"
     def  get_container_path(self,content_type,session_id,rank):
         # case ContentType.ALL => getContainerWorkspace(containerId)
         # case ContentType.MODELS => getContainerModelsDir(containerId)

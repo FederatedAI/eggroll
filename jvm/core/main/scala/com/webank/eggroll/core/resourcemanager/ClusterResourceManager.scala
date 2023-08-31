@@ -1,7 +1,7 @@
 package com.webank.eggroll.core.resourcemanager
 
 import com.webank.eggroll.core.client.NodeManagerClient
-import com.webank.eggroll.core.constant.SessionConfKeys.{EGGROLL_RESOURCE_DISPATCH_INTERVAL, EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL}
+import com.webank.eggroll.core.constant.SessionConfKeys.{EGGROLL_RESOURCE_COUNT_INTERVAL, EGGROLL_RESOURCE_DISPATCH_INTERVAL, EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL}
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.containers.JobProcessorTypes
 import com.webank.eggroll.core.datastructure.FifoBroker
@@ -24,10 +24,35 @@ import scala.util.control.Breaks.{break, breakable}
 
 object ClusterResourceManager extends Logging{
 
+//    var nodeMaxResourceMap: mutable.Map[Long,mutable.Map[String,Long]] = mutable.Map[Long,mutable.Map[String,Long]]()
+    var clusterMaxResourceMap:mutable.Map[String,Long] = mutable.Map[String,Long]()
 
     def  start():Unit={
       dispatchThread.start()
       lockCleanThread.start()
+      maxResourceCountThread.start()
+    }
+
+    def checkMaxResource(resourceType :String,count :Long): Boolean ={
+      var  max:Long =clusterMaxResourceMap.getOrElse(resourceType,0)
+      var result =if( count <= max) true else false
+      logInfo(s"check max resource in cluster ,request type ${resourceType} count ${count} max ${max} result ${result}")
+      result
+    }
+
+
+    def countMaxResource(serverNodes:Array[ErServerNode]): Unit ={
+
+      var newClusterMaxMap:mutable.Map[String,Long] = mutable.Map[String,Long]()
+      serverNodes.foreach(n=>{
+        n.resources.foreach(r=>{
+          var  gloablTotal :Long = newClusterMaxMap.getOrElse(r.resourceType,0)
+          var  total:Long = r.total+gloablTotal
+          newClusterMaxMap(r.resourceType)=total
+        })
+      })
+      this.clusterMaxResourceMap= newClusterMaxMap;
+//      logInfo(s"cluster total resource ${clusterMaxResourceMap}")
     }
 
     var   sessionLockMap = new  ConcurrentHashMap[String,ReentrantLock]()
@@ -135,6 +160,29 @@ object ClusterResourceManager extends Logging{
       logError("!!!!!!!!!!!!!!!!!!!resource dispatch thread quit!!!!!!!!!!!!!!!!")
 
     },"RESOURCE_DISPATCH_THREAD")
+
+
+  var  maxResourceCountThread =  new  Thread(()=> {
+    while (true) {
+      try{
+
+        var serverNodes = getServerNodeWithResource();
+        countMaxResource(serverNodes:Array[ErServerNode])
+        serverNodes.map(   node=>{
+          System.currentTimeMillis();
+          ResourceStateMachine.countAndUpdateNodeResource(node.id)}     )
+      }catch {
+        case  e:Throwable => {
+          logError("count resource error: "+e.getMessage)
+          e.printStackTrace()
+        }
+      }
+      Thread.sleep(EGGROLL_RESOURCE_COUNT_INTERVAL.get().toInt)
+    }
+  },"SYSTEM-RESOURCE-COUNT-THREAD")
+
+
+
 
 
   var  lockCleanThread =  new  Thread(()=> {
@@ -469,6 +517,8 @@ object ClusterResourceManager extends Logging{
     }
 
     def  submitResourceRequest(resourceRequest: ResourceApplication):Unit={
+
+
       applicationQueue.broker.put(resourceRequest)
     }
 
