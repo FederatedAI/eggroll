@@ -210,7 +210,6 @@ public class ClusterResourceManager extends ApplicationStartedRunner {
                                 case Dict.WAITING:
                                     Thread.sleep(MetaInfo.EGGROLL_RESOURCE_DISPATCH_INTERVAL);
                                     log.info("resource is not enough, waiting next loop");
-                                    flag = false;
                                     break;
                                 case Dict.THROW_ERROR:
                                     resourceApplication.getStatus().set(1);
@@ -274,7 +273,7 @@ public class ClusterResourceManager extends ApplicationStartedRunner {
         ErServerNode erServerNode = new ErServerNode();
         erServerNode.setStatus(ServerNodeStatus.HEALTHY.name());
         erServerNode.setNodeType(ServerNodeTypes.NODE_MANAGER.name());
-        return serverNodeService.getListByErServerNode(erServerNode);
+        return serverNodeService.getServerNodesWithResource(erServerNode);
     }
 
     private Boolean checkResourceEnough(List<ErServerNode> erServerNodes, ResourceApplication resourceApplication) {
