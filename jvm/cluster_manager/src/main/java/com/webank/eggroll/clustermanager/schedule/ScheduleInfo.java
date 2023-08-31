@@ -10,4 +10,10 @@ public class ScheduleInfo {
     String  cron;
     Method method;
     Key key;
+
+    public  String  toString(){
+        StringBuilder  sb = new StringBuilder();
+        sb.append(key.getTypeLiteral().getRawType()).append(":").append(method.getName()).append(" ").append(cron);
+        return sb.toString();
+    }
 }

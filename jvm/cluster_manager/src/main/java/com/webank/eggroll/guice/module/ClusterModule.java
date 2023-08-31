@@ -11,9 +11,9 @@ import com.google.inject.matcher.Matcher;
 import com.google.inject.matcher.Matchers;
 import com.google.inject.name.Names;
 import com.google.inject.spi.ProvisionListener;
-import com.webank.eggroll.clustermanager.schedule.GuiceJobFactory;
 import com.webank.eggroll.clustermanager.schedule.Quartz;
 import com.webank.eggroll.clustermanager.schedule.Schedule;
+import com.webank.eggroll.clustermanager.schedule.ScheduleInfo;
 import com.webank.eggroll.clustermanager.schedule.ScheduleJob;
 import com.webank.eggroll.clustermanager.session.DefaultSessionManager;
 import com.webank.eggroll.clustermanager.session.SessionManager;
@@ -43,7 +43,7 @@ public class ClusterModule extends AbstractModule {
             public <T> void onProvision(ProvisionInvocation<T> provision) {
                Key key =  provision.getBinding().getKey();
                 Class  rawType = key.getTypeLiteral().getRawType();
-                if(subpacket.matches(rawType)){
+                if(rawType!=null&&subpacket.matches(rawType)){
                  //   key.getTypeLiteral().getRawType().
                     Method[] methods = rawType.getMethods();
                     Arrays.stream(methods).forEach(method -> {
@@ -52,9 +52,13 @@ public class ClusterModule extends AbstractModule {
                             if (config != null) {
 //                                String methodName = method.getName();
 //                                Class clazz = field.getType();
+                                ScheduleInfo  scheduleInfo= new ScheduleInfo();
+                                scheduleInfo.setKey(key);
+                                scheduleInfo.setMethod(method);
+                                scheduleInfo.setCron(config.cron());
+                                Quartz.sheduleInfoMap.put(rawType.getName(),scheduleInfo);
 
-                                String cronString  = config.cron();
-                                Quartz.cronJobInfo.put(key,cronString);
+                              //  Quartz.cronJobInfo.put(key,cronString);
 
 //                                JobDetail jobDetail = JobBuilder.newJob(ScheduleJob.class).usingJobData();
 
