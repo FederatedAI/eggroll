@@ -3,8 +3,8 @@ package com.webank.eggroll.clustermanager.schedule;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
-import com.eggroll.core.postprocessor.ApplicationStartedListener;
-import com.webank.eggroll.clustermanager.processor.ApplicationStartedRunner;
+
+import com.eggroll.core.postprocessor.ApplicationStartedRunner;
 import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.triggers.CronTriggerImpl;
@@ -18,7 +18,7 @@ import static com.eggroll.core.config.Dict.SCHEDULE_KEY;
 
 
 @Singleton
-public class Quartz extends ApplicationStartedListener {
+public class Quartz extends ApplicationStartedRunner {
 
 	Logger logger = LoggerFactory.getLogger(Quartz.class);
 	private  Scheduler scheduler;
@@ -88,8 +88,10 @@ public class Quartz extends ApplicationStartedListener {
 //		scheduler.start();
 	}
 
+
+
 	@Override
-	public void onApplicationStarted(String[] args) throws Exception {
+	public void run(String[] args) throws Exception {
 		start();
 	}
 }
