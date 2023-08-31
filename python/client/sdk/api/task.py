@@ -37,7 +37,7 @@ class ContentType(enum.Enum):
 
 class Task(BaseEggrollAPI):
     def _get_client(self, host=None, port=None):
-        if not host and port:
+        if not (host and port):
             return BaseClient(self.host, self.port)
         else:
             return BaseClient(host, port)
@@ -236,11 +236,9 @@ class Task(BaseEggrollAPI):
             compress_method: str = "zip",
             compress_level: int = 1,
     ):
-        download_job_response = self.download_job(session_id, ranks, content_type, compress_method, compress_level)
-        if ranks is None:
-            ranks = range(len(download_job_response.container_content))
-        for rank, content in zip(ranks, download_job_response.container_content):
-            path = rank_to_path(rank)
+        download_job_response = self.download_job_v2(session_id, ranks, content_type, compress_method, compress_level)
+        for content in download_job_response.container_content:
+            path = rank_to_path(content.rank)
             with open(path, "wb") as f:
                 f.write(content.content)
 
