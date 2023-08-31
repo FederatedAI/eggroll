@@ -6,7 +6,8 @@ import typing
 from ..core.command_model import ErCommandRequest, ErCommandResponse
 from ..core.factory import GrpcChannelFactory
 from ..core.meta_model import ErEndpoint
-from ..core.proto import command_pb2_grpc,extend_pb2_grpc
+from ..core.proto import command_pb2_grpc, deepspeed_download_pb2_grpc
+from ..core.proto.deepspeed_download_pb2 import DsDownloadRequest, DsDownloadResponse
 from ..core.utils import time_now_ns
 
 T = typing.TypeVar("T")
@@ -38,6 +39,16 @@ class BaseClient:
         except Exception as e:
             traceback.print_exc()
             raise Exception(f"failed to call {command_uri} to {self._endpoint}: {e}")
+
+    def do_download(self, input: DsDownloadRequest) -> DsDownloadResponse:
+        try:
+            _channel = self._channel_factory.create_channel(self._endpoint)
+            _deepspeed_stub = deepspeed_download_pb2_grpc.DsDownloadServiceStub(_channel)
+            response = _deepspeed_stub.download(input)
+            return response
+        except Exception as e:
+            L.exception(f"Error calling to {self._endpoint}, download deepspeed , req:{input}")
+            raise e
 
 
     @property

@@ -62,6 +62,17 @@ object ProcessorTypes {
   val DEEPSPEED_DOWNLOAD = "deepspeed_download"
 }
 
+object  LogStreamStatus{
+
+  val  INIT_STATUS="init"
+  val  PREPARE_STATUS="prepare"
+  val  RUNNING_STATUS="running"
+  val  ERROR_STATUS="error"
+  val STOP_STATUS ="stop"
+
+}
+
+
 object ServerNodeTypes {
   val CLUSTER_MANAGER = "CLUSTER_MANAGER"
   val NODE_MANAGER = "NODE_MANAGER"
