@@ -17,6 +17,7 @@ import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.entity.ProcessorResource;
 import com.webank.eggroll.clustermanager.schedule.ClusterManagerTask;
+import com.webank.eggroll.clustermanager.schedule.Schedule;
 import javafx.util.Pair;
 import lombok.Data;
 import org.slf4j.Logger;
@@ -541,6 +542,10 @@ public class ClusterResourceManager extends ApplicationStartedRunner {
             log.info("unlock session {}", sessionId);
             lock.unlock();
         }
+    }
+    @Schedule(cron = "0/5 * * * * ?")
+    public void  testCron(){
+            System.err.println("test cron");
     }
 
     @Override

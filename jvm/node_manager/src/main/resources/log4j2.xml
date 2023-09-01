@@ -63,7 +63,7 @@
     </Appenders>
 
     <Loggers>
-        <AsyncRoot level="debug" includeLocation="true">
+        <AsyncRoot level="info" includeLocation="true">
             <AppenderRef ref="console" level="debug"/>
             <AppenderRef ref="info" level="info"/>
             <AppenderRef ref="error" level="error"/>
