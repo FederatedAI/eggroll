@@ -21,9 +21,15 @@ public class QueryJobResponse implements RpcMessage {
     @Override
     public byte[] serialize() {
         Deepspeed.QueryJobResponse.Builder builder = Deepspeed.QueryJobResponse.newBuilder();
-        builder.setSessionId(this.sessionId);
-        builder.setJobType(this.jobType);
-        builder.setStatus(this.status);
+        if (this.sessionId != null) {
+            builder.setSessionId(this.sessionId);
+        }
+        if (this.jobType != null) {
+            builder.setJobType(this.jobType);
+        }
+        if (this.status != null) {
+            builder.setStatus(this.status);
+        }
         if (this.processors != null) {
             for (ErProcessor processor : this.processors) {
                 builder.addProcessors(processor.toProto());
