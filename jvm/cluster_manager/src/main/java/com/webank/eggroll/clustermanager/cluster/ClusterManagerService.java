@@ -315,15 +315,7 @@ public class ClusterManagerService extends ApplicationStartedRunner {
         List<NodeResource> nodeResourceList = nodeResourceService.list(nodeResource);
         List<ErResource> existResources = new ArrayList<>();
         for (NodeResource resource : nodeResourceList) {
-            ErResource erResource = new ErResource();
-            try {
-                BeanUtils.copyProperties(erResource,resource);
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            } catch (InvocationTargetException e) {
-                e.printStackTrace();
-            }
-            existResources.add(erResource);
+            existResources.add(resource.toErResource());
         }
         List<ErResource> registedResources = data.getResources();
         List<ErResource> updateResources = new ArrayList<>();
@@ -333,14 +325,7 @@ public class ClusterManagerService extends ApplicationStartedRunner {
             boolean needUpdate = false;
             for (ErResource r : registedResources) {
                 if (r.getResourceType().equals(e.getResourceType())) {
-                    ErResource updatedResource = new ErResource();
-                    try {
-                        BeanUtils.copyProperties(updatedResource,r);
-                    } catch (IllegalAccessException ex) {
-                        ex.printStackTrace();
-                    } catch (InvocationTargetException ex) {
-                        ex.printStackTrace();
-                    }
+                    ErResource updatedResource = r;
                     updatedResource.setAllocated(-1L);
                     needUpdate = true;
                     updateResources.add(updatedResource);
