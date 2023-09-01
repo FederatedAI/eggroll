@@ -95,6 +95,7 @@ public class JobServiceHandler {
     public QueryJobResponse handleJobQuery(QueryJobRequest queryJobRequest){
         SessionMain sessionMain = sessionMainService.getById(queryJobRequest.getSessionId());
         QueryJobResponse queryJobResponse = new QueryJobResponse();
+        queryJobResponse.setSessionId(queryJobRequest.getSessionId());
         if(sessionMain != null){
             queryJobResponse.setStatus(sessionMain.getStatus());
         }
