@@ -19,6 +19,7 @@ import com.webank.eggroll.clustermanager.entity.ServerNode;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import com.webank.eggroll.clustermanager.job.JobServiceHandler;
 import com.webank.eggroll.clustermanager.schedule.ClusterManagerTask;
+import com.webank.eggroll.clustermanager.schedule.Schedule;
 import com.webank.eggroll.clustermanager.session.SessionManager;
 import com.webank.eggroll.clustermanager.statemachine.ProcessorStateMachine;
 import org.apache.commons.beanutils.BeanUtils;
@@ -35,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+
 
 
 @Singleton
@@ -82,7 +84,7 @@ public class ClusterManagerService extends ApplicationStartedRunner {
         }
         return result;
     }
-
+    @Schedule(cron= "0/10 * * * * ?")
     public void checkDbRunningProcessor() {
         try {
             long now = System.currentTimeMillis();
@@ -111,7 +113,6 @@ public class ClusterManagerService extends ApplicationStartedRunner {
                                     processorStateMachine.changeStatus(new Context(), processor, null, ProcessorStatus.ERROR.name());
                                 }
                             }
-
                         }
                     }
                 }
@@ -130,47 +131,22 @@ public class ClusterManagerService extends ApplicationStartedRunner {
         nodeManagerClient.killContainers(erSessionMeta);
     }
 
-    Thread redidualProcessorChecker = new Thread(() -> {
-        while (true) {
-            try {
-                residualHeartbeatMap.forEach((k, v) -> {
-                    try {
-                        killResidualProcessor(v);
-                        residualHeartbeatMap.remove(k);
-                    } catch (Throwable e) {
-                        e.printStackTrace();
-                        log.error("kill residual processor error: " + e.getMessage());
-                    }
-                });
-            } catch (Throwable e) {
-                e.printStackTrace();
-            }
-            try {
-                Thread.sleep(MetaInfo.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-    }, "REDIDUAL_PROCESS_CHECK_THREAD");
-
-    Thread nodeProcessChecker = new Thread(new Runnable() {
-        @Override
-        public void run() {
-            while (true) {
+    @Schedule(cron= "0/10 * * * * ?")
+    public void checkRedidualProcessor(){
+        try {
+            residualHeartbeatMap.forEach((k, v) -> {
                 try {
-                    checkDbRunningProcessor();
-                } catch (Exception e) {
-
-                    log.error("", e);
-                }
-                try {
-                    Thread.sleep(10000);
-                } catch (InterruptedException e) {
+                    killResidualProcessor(v);
+                    residualHeartbeatMap.remove(k);
+                } catch (Throwable e) {
                     e.printStackTrace();
+                    log.error("kill residual processor error: " + e.getMessage());
                 }
-            }
+            });
+        } catch (Throwable e) {
+            e.printStackTrace();
         }
-    }, "NODE_PROCESS_CHECK_THREAD");
+    }
 
     public void checkAndHandleDeepspeedOutTimeSession(ErSessionMeta session, List<ErProcessor> sessionProcessors) {
         long current = System.currentTimeMillis();
@@ -226,131 +202,70 @@ public class ClusterManagerService extends ApplicationStartedRunner {
         }
         log.debug("found all processor belongs to session " + session.getId() + " finished, update session status to `Finished`");
     }
+    @Schedule(cron= "0/5 * * * * ?")
+    public   void  sessionWatcherSchedule(){
+        try {
+            List<ErSessionMeta> sessions = sessionMainService.getSessionMainsByStatus(Arrays.asList(SessionStatus.ACTIVE.name(), SessionStatus.NEW.name()));
 
-    private final Thread sessionWatcher = new Thread(() -> {
-        while (true) {
-            try {
-                List<ErSessionMeta> sessions = sessionMainService.getSessionMainsByStatus(Arrays.asList(SessionStatus.ACTIVE.name(), SessionStatus.NEW.name()));
-
-                for (ErSessionMeta session : sessions) {
-                    try {
-                        List<ErProcessor> sessionProcessors = sessionMainService.getSession(session.getId()).getProcessors();
-                        String ACTIVE = SessionStatus.ACTIVE.name();
-                        String NEW = SessionStatus.NEW.name();
-
-                        switch (session.getName()) {
-                            case "DeepSpeed":
-                                log.debug("watch deepspeed session: " + session.getId() + " " + session.getStatus());
-                                if (SessionStatus.ACTIVE.name().equals(session.getStatus())) {
-                                    checkAndHandleDeepspeedActiveSession(session, sessionProcessors);
-                                } else if (SessionStatus.NEW.name().equals(session.getStatus())) {
-                                    checkAndHandleDeepspeedOutTimeSession(session, sessionProcessors);
-                                }
-                                break;
-                            default:
-                                if (SessionStatus.ACTIVE.name().equals(session.getStatus())) {
-                                    checkAndHandleEggpairActiveSession(session, sessionProcessors);
-                                } else if (SessionStatus.NEW.name().equals(session.getStatus())) {
-                                    checkAndHandleEggpairOutTimeSession(session, sessionProcessors);
-                                }
-                                break;
-                        }
-                    } catch (Throwable e) {
-                        log.error("session watcher handle session " + session.getId() + " error " + e.getMessage());
-                        e.printStackTrace();
-                    }
-                }
-
-                Thread.sleep(MetaInfo.EGGROLL_SESSION_STATUS_CHECK_INTERVAL_MS);
-            } catch (Throwable e) {
-                log.error("session watcher handle error ", e);
+            for (ErSessionMeta session : sessions) {
                 try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException ex) {
-                    ex.printStackTrace();
+                    List<ErProcessor> sessionProcessors = sessionMainService.getSession(session.getId()).getProcessors();
+                    String ACTIVE = SessionStatus.ACTIVE.name();
+                    String NEW = SessionStatus.NEW.name();
+
+                    switch (session.getName()) {
+                        case "DeepSpeed":
+                            log.debug("watch deepspeed session: " + session.getId() + " " + session.getStatus());
+                            if (SessionStatus.ACTIVE.name().equals(session.getStatus())) {
+                                checkAndHandleDeepspeedActiveSession(session, sessionProcessors);
+                            } else if (SessionStatus.NEW.name().equals(session.getStatus())) {
+                                checkAndHandleDeepspeedOutTimeSession(session, sessionProcessors);
+                            }
+                            break;
+                        default:
+                            if (SessionStatus.ACTIVE.name().equals(session.getStatus())) {
+                                checkAndHandleEggpairActiveSession(session, sessionProcessors);
+                            } else if (SessionStatus.NEW.name().equals(session.getStatus())) {
+                                checkAndHandleEggpairOutTimeSession(session, sessionProcessors);
+                            }
+                            break;
+                    }
+                } catch (Throwable e) {
+                    log.error("session watcher handle session " + session.getId() + " error " + e.getMessage());
+                    e.printStackTrace();
                 }
-
             }
+        } catch (Throwable e) {
+            log.error("session watcher handle error ", e);
         }
-    }, "SESSION_WATCHER_THREAD");
+    }
 
-    private final Thread nodeHeartbeatChecker = new Thread(() -> {
+    @Schedule(cron="0/5 * * * * ?")
+    public void  checkNodeHeartbeat(){
+        logger.info("check node heart beat begin");
         long expire = MetaInfo.CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT *
                 MetaInfo.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL;
+        try {
+            long now = System.currentTimeMillis();
+            ErServerNode erServerNode = new ErServerNode();
+            erServerNode.setStatus(ServerNodeStatus.HEALTHY.name());
+            List<ErServerNode> nodes = serverNodeService.getListByErServerNode(erServerNode);
 
-        while (true) {
-            try {
-                long now = System.currentTimeMillis();
-                ErServerNode erServerNode = new ErServerNode();
-                erServerNode.setStatus(ServerNodeStatus.HEALTHY.name());
-                List<ErServerNode> nodes = serverNodeService.getListByErServerNode(erServerNode);
-
-                for (ErServerNode node : nodes) {
-                    long interval = now - (node.getLastHeartBeat() != null ?
-                            node.getLastHeartBeat().getTime() : now);
-                    if (interval > expire) {
-                        log.info("server node " + node + " change status to LOSS");
-                        node.setStatus(ServerNodeStatus.LOSS.name());
-                        updateNode(node, false, false);
-                    }
+            for (ErServerNode node : nodes) {
+                long interval = now - (node.getLastHeartBeat() != null ?
+                        node.getLastHeartBeat().getTime() : now);
+                if (interval > expire) {
+                    log.info("server node " + node + " change status to LOSS");
+                    node.setStatus(ServerNodeStatus.LOSS.name());
+                    updateNode(node, false, false);
                 }
-            } catch (Throwable e) {
-                log.error("handle node heart beat error: ", e);
             }
-
-            try {
-                Thread.sleep(expire + 1000);
-            } catch (InterruptedException e) {
-                log.error("node heartbeat checker thread interrupted: ", e);
-                Thread.currentThread().interrupt();
-            }
+        } catch (Throwable e) {
+            log.error("handle node heart beat error: ", e);
         }
-    }, "NODE_HEART_BEAT_CHECK_THREAD");
+    }
 
-//    private void killJob(String sessionId, boolean isTimeout) {
-//        log.info("killing job " + sessionId);
-//        try {
-//            clusterResourceManager.lockSession(sessionId);
-//            clusterResourceManager.getKillJobMap().put(sessionId, System.currentTimeMillis());
-//            if (sessionMainService.getById(sessionId) == null) {
-//                return;
-//            }
-//            ErSessionMeta sessionMeta = sessionMainService.getSession(sessionId);
-//            if (StringUtils.equalsAny(sessionMeta.getStatus(), SessionStatus.KILLED.name(), SessionStatus.CLOSED.name(), SessionStatus.ERROR.name())) {
-//                return;
-//            }
-//            Map<Long, List<ErProcessor>> serverIdErProcessorsMap = sessionMeta.getProcessors()
-//                    .stream().collect(Collectors.groupingBy(ErProcessor::getServerNodeId));
-//
-//            Map<ErServerNode,List<ErProcessor>> nodeAndProcessors = new HashMap<>();
-//            serverIdErProcessorsMap.forEach((nodeId, processors) -> {
-//                ServerNode serverNode = serverNodeService.getById(nodeId);
-//                if(serverNode!=null){
-//                    nodeAndProcessors.put(serverNode.toErServerNode(),processors);
-//                }
-//            });
-//            nodeAndProcessors.forEach((node, processors)->{
-//                KillContainersRequest killContainersRequest = new KillContainersRequest();
-//                killContainersRequest.setSessionId(sessionId);
-//                List<Long> processorIdList = new ArrayList<>();
-//                for (ErProcessor processor : processors) {
-//                    processorIdList.add(processor.getId());
-//                }
-//                try {
-//                    killContainersRequest.setContainers(processorIdList);
-//                    new NodeManagerClient(node.getEndpoint()).killJobContainers(killContainersRequest);
-//                } catch (Exception e) {
-//                    log.error("killContainers error : ", e);
-//                }
-//            });
-//            smDao.updateSessionMain(sessionMeta.copy(status = SessionStatus.ERROR), defaultSessionCallback);
-//        } finally {
-//            ClusterResourceManager.unlockSession(sessionId);
-//        }
-//    }
-
-
-    public ErNodeHeartbeat nodeHeartbeat(Context context, ErNodeHeartbeat nodeHeartbeat) {
+    public ErNodeHeartbeat nodeHeartbeat(Context  context ,ErNodeHeartbeat nodeHeartbeat) {
         ErServerNode serverNode = nodeHeartbeat.getNode();
 
         synchronized (serverNode.getId().toString().intern()) {
@@ -400,7 +315,15 @@ public class ClusterManagerService extends ApplicationStartedRunner {
         List<NodeResource> nodeResourceList = nodeResourceService.list(nodeResource);
         List<ErResource> existResources = new ArrayList<>();
         for (NodeResource resource : nodeResourceList) {
-            existResources.add(resource.toErResource());
+            ErResource erResource = new ErResource();
+            try {
+                BeanUtils.copyProperties(erResource,resource);
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
+            }
+            existResources.add(erResource);
         }
         List<ErResource> registedResources = data.getResources();
         List<ErResource> updateResources = new ArrayList<>();
@@ -410,9 +333,17 @@ public class ClusterManagerService extends ApplicationStartedRunner {
             boolean needUpdate = false;
             for (ErResource r : registedResources) {
                 if (r.getResourceType().equals(e.getResourceType())) {
-                    r.setAllocated(-1L);
+                    ErResource updatedResource = new ErResource();
+                    try {
+                        BeanUtils.copyProperties(updatedResource,r);
+                    } catch (IllegalAccessException ex) {
+                        ex.printStackTrace();
+                    } catch (InvocationTargetException ex) {
+                        ex.printStackTrace();
+                    }
+                    updatedResource.setAllocated(-1L);
                     needUpdate = true;
-                    updateResources.add(r);
+                    updateResources.add(updatedResource);
                 }
             }
             if (!needUpdate) {
@@ -436,12 +367,9 @@ public class ClusterManagerService extends ApplicationStartedRunner {
         return registerResource(serverNode);
     }
 
+
     @Override
     public void run(String[] args) throws Exception {
-        ClusterManagerTask.runTask(sessionWatcher);
-        ClusterManagerTask.runTask(nodeHeartbeatChecker);
-        ClusterManagerTask.runTask(nodeProcessChecker);
-        ClusterManagerTask.runTask(redidualProcessorChecker);
-        log.info("{} run() end !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", this.getClass().getSimpleName());
+
     }
 }

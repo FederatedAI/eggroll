@@ -13,6 +13,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>org.quartz-scheduler</groupId>
+            <artifactId>quartz</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>com.webank.eggroll</groupId>
             <artifactId>new_core</artifactId>
             <version>${eggroll.version}</version>
