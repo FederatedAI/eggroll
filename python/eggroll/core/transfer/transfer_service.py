@@ -222,8 +222,10 @@ class GrpcDsDownloadServicer(deepspeed_download_pb2_grpc.DsDownloadServiceServic
             raise  e
         download_data = deepspeed_download_pb2.DsDownloadResponse(session_id=request.session_id, container_content=result)
         serialize_string = download_data.SerializeToString()
-        data_bytes = bytes(serialize_string)
-        chunker(data_bytes,1024)
+        # data_bytes = bytes(serialize_string)
+        splitSize=1024*1024
+        L.info(f"download data total size  {len(serialize_string)} split size {splitSize}")
+        return chunker(serialize_string,splitSize)
 
 
 
@@ -391,7 +393,9 @@ def zip2bytes(startdir,compression=ZIP_DEFLATED,compresslevel=1, **kwargs) -> by
 
 def chunker(iterable, size):
     for i in range(0, len(iterable), size):
-        yield iterable[i:i + size]
+        # yield  iterable[i:i + size]
+        yield  deepspeed_download_pb2.DsDownloadSplitResponse(data=iterable[i:i + size])
+
 
 if __name__ == '__main__':
    # f = zipfile.ZipFile('/Users/kaideng/work/test2/mytest.zip','w',zipfile.ZIP_DEFLATED)
@@ -399,11 +403,11 @@ if __name__ == '__main__':
 
 
 
-    # for chunk in chunker(a, 100):
-    #    print(chunk)
+    for chunk in chunker("my name is kaideng", 3):
+       print(chunk)
 
-   a =  bytes()
-   print(a+bytes('world', 'utf-8'))
+   # a =  bytes()
+   # print(a+bytes('world', 'utf-8'))
 
     # startdir = "/data/projects/fate/eggroll/deepspeed/1"
     # print(zip2bytes(startdir))
