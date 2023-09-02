@@ -113,7 +113,7 @@ def download(ctx, **kwargs):
 @click.option("--rank", type=click.STRING, required=False, help="0,1,2..", default="0")
 @click.option("--path", type=click.STRING, required=False, help="path")
 @click.option("--tail", type=click.INT, required=False,  help="log tail line", default=100)
-@click.option("--log-type", type=click.Choice(["stdout,stderr"]), required=False, help="log type", default="stdout")
+@click.option("--log-type", type=click.Choice(["stdout", "stderr"]), required=False, help="log type", default="stdout")
 @click.pass_context
 def get_log(ctx, **kwargs):
     client: EggrollClient = ctx.obj["client"]
