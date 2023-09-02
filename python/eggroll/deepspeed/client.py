@@ -69,9 +69,11 @@ class BaseClient:
             _deepspeed_stub = deepspeed_download_pb2_grpc.DsDownloadServiceStub(_channel)
             temp = bytes()
             for response in _deepspeed_stub.download_by_split(input):
-                print("receive data")
-                temp+response.data
-            return DsDownloadResponse.ParseFromString(temp)
+                temp+=response.data
+            print("recive bytes ", len(temp))
+            response = DsDownloadResponse()
+            response.ParseFromString(temp)
+            return response
 
         except Exception as e:
             L.exception(f"Error calling to {self._endpoint}, download deepspeed , req:{input}")
