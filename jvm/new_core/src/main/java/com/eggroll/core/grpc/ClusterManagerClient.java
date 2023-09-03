@@ -1,10 +1,7 @@
 package com.eggroll.core.grpc;
 
 
-import com.eggroll.core.pojo.ErEndpoint;
-import com.eggroll.core.pojo.ErNodeHeartbeat;
-import com.eggroll.core.pojo.ErProcessor;
-import com.eggroll.core.pojo.ErSessionMeta;
+import com.eggroll.core.pojo.*;
 
 import static com.eggroll.core.grpc.CommandUri.*;
 
@@ -64,7 +61,14 @@ public class ClusterManagerClient {
         byte[] responseData = cc.call(endpoint, nodeHeartbeat, node.serialize());
         ErNodeHeartbeat response = new ErNodeHeartbeat();
         response.deserialize(responseData);
-
         return response;
     }
+
+    public PrepareJobDownloadResponse   prepareJobDownload(PrepareJobDownloadRequest  prepareJobDownloadRequest){
+        byte[] responseData = cc.call(endpoint, prepareJobDownload, prepareJobDownloadRequest.serialize());
+        PrepareJobDownloadResponse response = new PrepareJobDownloadResponse();
+        response.deserialize(responseData);
+        return response;
+    }
+
 }
