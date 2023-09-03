@@ -28,7 +28,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 @Singleton
-public class GrpcServer extends ApplicationStartedRunner {
+public class GrpcServer implements ApplicationStartedRunner {
 
 
 
@@ -36,7 +36,6 @@ public class GrpcServer extends ApplicationStartedRunner {
 
     @Inject
     public GrpcServer(){
-        this.setSequenceId(Integer.MAX_VALUE);
     }
 
     @Inject
@@ -130,6 +129,11 @@ public class GrpcServer extends ApplicationStartedRunner {
        return nettyServerBuilder.build();
     }
 
+
+    @Override
+    public int getRunnerSequenceId() {
+        return Integer.MAX_VALUE;
+    }
 
     @Override
     public void run(String[] args) throws Exception{

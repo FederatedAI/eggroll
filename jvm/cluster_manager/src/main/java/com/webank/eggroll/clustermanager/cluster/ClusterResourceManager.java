@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 
 @Data
 @Singleton
-public class ClusterResourceManager extends ApplicationStartedRunner {
+public class ClusterResourceManager implements ApplicationStartedRunner {
 
     Logger log = LoggerFactory.getLogger(ClusterResourceManager.class);
 
