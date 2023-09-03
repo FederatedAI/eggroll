@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
 
 
 @Singleton
-public class ClusterManagerService extends ApplicationStartedRunner {
+public class ClusterManagerService implements ApplicationStartedRunner {
 
     Logger logger = LoggerFactory.getLogger(ClusterManagerService.class);
 
@@ -128,11 +128,14 @@ public class ClusterManagerService extends ApplicationStartedRunner {
 
     public void killResidualProcessor(ErProcessor processor) {
         log.info("prepare to kill redidual processor {}", JsonUtil.object2Json(processor));
-        ErServerNode serverNode = serverNodeService.getById(processor.getId()).toErServerNode();
-        ErSessionMeta erSessionMeta = sessionMainService.getSession(processor.getSessionId());
-        erSessionMeta.getOptions().put(MetaInfo.SERVER_NODE_ID, processor.getServerNodeId().toString());
-        NodeManagerClient nodeManagerClient = new NodeManagerClient(serverNode.getEndpoint());
-        nodeManagerClient.killContainers(erSessionMeta);
+        ServerNode serverNodeInDb = serverNodeService.getById(processor.getServerNodeId());
+        if(serverNodeInDb!=null) {
+            ErServerNode serverNode = serverNodeInDb.toErServerNode();
+            ErSessionMeta erSessionMeta = sessionMainService.getSession(processor.getSessionId());
+            erSessionMeta.getOptions().put(MetaInfo.SERVER_NODE_ID, processor.getServerNodeId().toString());
+            NodeManagerClient nodeManagerClient = new NodeManagerClient(serverNode.getEndpoint());
+            nodeManagerClient.killContainers(erSessionMeta);
+        }
     }
 
     @Schedule(cron= "0/10 * * * * ?")

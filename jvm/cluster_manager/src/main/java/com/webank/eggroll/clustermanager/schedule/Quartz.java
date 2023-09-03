@@ -18,7 +18,7 @@ import static com.eggroll.core.config.Dict.SCHEDULE_KEY;
 
 
 @Singleton
-public class Quartz extends ApplicationStartedRunner {
+public class Quartz implements ApplicationStartedRunner {
 
 	Logger logger = LoggerFactory.getLogger(Quartz.class);
 	private  Scheduler scheduler;
