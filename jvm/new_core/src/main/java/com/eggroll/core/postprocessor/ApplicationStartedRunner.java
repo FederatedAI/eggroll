@@ -1,10 +1,11 @@
 package com.eggroll.core.postprocessor;
 
 
-import lombok.Data;
+public interface ApplicationStartedRunner {
 
-@Data
-public abstract class ApplicationStartedRunner {
-    private Integer sequenceId = 0;
-    public abstract void run(String[] args) throws Exception;
+    default int getRunnerSequenceId(){
+        return 0;
+    }
+
+    void run(String[] args) throws Exception;
 }

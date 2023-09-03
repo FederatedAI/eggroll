@@ -24,7 +24,7 @@ import java.lang.reflect.InvocationTargetException;
 
 
 @Singleton
-public class DefaultProcessorManager extends ApplicationStartedRunner implements ProcessorManager {
+public class DefaultProcessorManager   implements ProcessorManager,ApplicationStartedRunner {
     Logger logger = LoggerFactory.getLogger(DefaultProcessorManager.class);
 
     private ClusterManagerClient client;
