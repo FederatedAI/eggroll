@@ -29,16 +29,11 @@ import java.util.concurrent.TimeUnit;
 
 @Singleton
 public class GrpcServer extends ApplicationStartedRunner {
-
-
-
     Logger logger = LoggerFactory.getLogger(GrpcServer.class);
-
     @Inject
     public GrpcServer(){
         this.setSequenceId(Integer.MAX_VALUE);
     }
-
     @Inject
     CommandServiceProvider  commandServiceProvider;
 
@@ -133,7 +128,7 @@ public class GrpcServer extends ApplicationStartedRunner {
 
     @Override
     public void run(String[] args) throws Exception{
-        this.commandServiceProvider.register(this.commandServiceProvider);
+
         Server  server =  createServer("0.0.0.0",MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT, Lists.newArrayList(commandServiceProvider),Lists.newArrayList(), Maps.newHashMap());
         server.start();
     }

@@ -25,6 +25,10 @@ public class ProcessorStateMachine extends  AbstractStateMachine<ErProcessor> {
     ProcessorStateNewStopHandler   processorStateNewStopHandler;
     @Inject
     ProcessorCreateHandler   processorCreateHandler;
+    @Inject
+    ProcessorStateInvalidHandler  processorStateInvalidHandler;
+    @Inject
+    ProcessorStateIgnoreHandler  processorStateIgnoreHandler;
 
     @Override
     String buildStateChangeLine(Context context, ErProcessor erProcessor, String preStateParam, String desStateParam) {
@@ -65,6 +69,10 @@ public class ProcessorStateMachine extends  AbstractStateMachine<ErProcessor> {
         this.registeStateHander("NEW_KILLED",processorStateNewStopHandler);
         this.registeStateHander("NEW_ERROR",processorStateNewStopHandler);
 
+        this.registeStateHander("KILLED_RUNNING",processorStateInvalidHandler);
+        this.registeStateHander("STOPPED_RUNNING",processorStateInvalidHandler);
+        this.registeStateHander("ERROR_RUNNING",processorStateInvalidHandler);
+        this.registeStateHander("RUNNING_RUNNING",processorStateIgnoreHandler);
     }
 
 }

@@ -3,6 +3,8 @@ package com.webank.eggroll.clustermanager.statemachine;
 
 import com.eggroll.core.context.Context;
 import org.mybatis.guice.transactional.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -13,11 +15,9 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class AbstractStateMachine<T> {
 
-//    Logger logger = LoggerFactory.getLogger(AbstractStateMachine.class);
-
+    Logger logger = LoggerFactory.getLogger(AbstractStateMachine.class);
     ConcurrentHashMap<String,ReentrantLock>  lockMap = new ConcurrentHashMap<>();
     ConcurrentHashMap<String,StateHandler<T>>  statueChangeHandlerMap = new ConcurrentHashMap<>();
-
     ThreadPoolExecutor   asynThreadPool =   new ThreadPoolExecutor(5,5,1, TimeUnit.SECONDS,new LinkedBlockingDeque<>(10));
 
     public AbstractStateMachine(){
@@ -84,7 +84,9 @@ public abstract class AbstractStateMachine<T> {
 //        t = prepare(t);
         StateHandler<T> handler =  statueChangeHandlerMap.get(statusLine);
         if(handler==null){
-            throw new RuntimeException("statusLine's handler not found ");
+            logger.error("wrong status line {} {}",statusLine,statueChangeHandlerMap);
+            throw new RuntimeException("statusLine "+statusLine+
+                    " handler not found ");
         }
         String  lockKey =  getLockKey(t);
         try{

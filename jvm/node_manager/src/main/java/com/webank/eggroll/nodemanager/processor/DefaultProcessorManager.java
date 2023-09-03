@@ -1,6 +1,7 @@
 package com.webank.eggroll.nodemanager.processor;
 
 import com.eggroll.core.config.Dict;
+import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.constant.ProcessorStatus;
 import com.eggroll.core.containers.meta.KillContainersResponse;
 import com.eggroll.core.containers.meta.StartContainersResponse;
@@ -8,6 +9,7 @@ import com.eggroll.core.containers.meta.StopContainersResponse;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.grpc.ClusterManagerClient;
 import com.eggroll.core.pojo.*;
+import com.eggroll.core.postprocessor.ApplicationStartedRunner;
 import com.eggroll.core.utils.JsonUtil;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -22,10 +24,9 @@ import java.lang.reflect.InvocationTargetException;
 
 
 @Singleton
-public class DefaultProcessorManager implements ProcessorManager{
-
-
+public class DefaultProcessorManager extends ApplicationStartedRunner implements ProcessorManager {
     Logger logger = LoggerFactory.getLogger(DefaultProcessorManager.class);
+
     private ClusterManagerClient client;
 
     @Inject
@@ -97,4 +98,8 @@ public class DefaultProcessorManager implements ProcessorManager{
     }
 
 
+    @Override
+    public void run(String[] args) throws Exception {
+        client =  new ClusterManagerClient(new ErEndpoint(MetaInfo.CONFKEY_CLUSTER_MANAGER_HOST,MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT));
+    }
 }

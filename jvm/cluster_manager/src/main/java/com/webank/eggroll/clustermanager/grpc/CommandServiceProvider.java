@@ -5,6 +5,8 @@ import com.eggroll.core.exceptions.EggRollBaseException;
 import com.eggroll.core.exceptions.ErrorMessageUtil;
 import com.eggroll.core.exceptions.ExceptionInfo;
 import com.eggroll.core.flow.FlowLogUtil;
+import com.eggroll.core.grpc.AbstractCommandServiceProvider;
+import com.eggroll.core.grpc.Dispatcher;
 import com.eggroll.core.grpc.URI;
 import com.eggroll.core.invoke.InvokeInfo;
 import com.eggroll.core.pojo.*;
@@ -30,7 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import static com.eggroll.core.grpc.CommandUri.*;
 
 @Singleton
-public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImplBase{
+public class CommandServiceProvider extends AbstractCommandServiceProvider {
 
     Logger logger = LoggerFactory.getLogger(CommandServiceProvider.class);
 
@@ -47,53 +49,12 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
     @Inject
     JobServiceHandler jobServiceHandler;
 
-
-    public void call(Command.CommandRequest request,
-                     StreamObserver<Command.CommandResponse> responseObserver) {
-        String uri = request.getUri();
-        byte[] resultBytes = dispatch(uri, request.getArgsList().get(0).toByteArray());
-
-        Command.CommandResponse.Builder responseBuilder = Command.CommandResponse.newBuilder();
-        responseBuilder.setId(request.getId());
-        responseBuilder.addResults(ByteString.copyFrom(resultBytes));
-        responseObserver.onNext(responseBuilder.build());
-        responseObserver.onCompleted();
+    @Inject
+    public void setDispatcher(Dispatcher dispatcher) {
+        this.dispatcher = dispatcher;
+        this.dispatcher.register(this);
     }
 
-    ConcurrentHashMap<String, InvokeInfo> uriMap = new ConcurrentHashMap();
-
-    public byte[] dispatch(String uri, byte[] data) {
-        Context context  =new Context();
-        context.setActionType(uri);
-        try {
-            InvokeInfo invokeInfo = uriMap.get(uri);
-//            logger.info("request {} invoke {}", uri, invokeInfo);
-            if (invokeInfo == null) {
-                throw new RuntimeException("invalid request : " + uri);
-            }
-            try {
-                RpcMessage rpcMessage = (RpcMessage) invokeInfo.getParamClass().newInstance();
-                rpcMessage.deserialize(data);
-                context.setRequest(rpcMessage);
-                RpcMessage response = (RpcMessage) invokeInfo.getMethod().invoke(invokeInfo.getObject(), context, rpcMessage);
-                return response.serialize();
-            } catch (Exception e) {
-//                e.printStackTrace();
-//                throw new RuntimeException(e);
-                ExceptionInfo exceptionInfo = ErrorMessageUtil.handleExceptionExceptionInfo(context, e);
-                context.setReturnCode(exceptionInfo.getCode());
-                context.setReturnMsg(exceptionInfo.getMessage());
-                if(e instanceof  EggRollBaseException){
-                    throw (EggRollBaseException)e;
-                }else{
-                    throw new RuntimeException(e);
-                }
-            }
-        }finally {
-            FlowLogUtil.printFlowLog(context);
-        }
-
-    }
     @URI(value= nodeHeartbeat)
     public  ErNodeHeartbeat nodeHeartbeat(Context context ,ErNodeHeartbeat  erNodeHeartbeat){
         context.setNodeId(erNodeHeartbeat.getNode().getId().toString());
@@ -203,48 +164,6 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
     @URI(value = stopJob)
     public StopJobResponse stopJob(Context context ,StopJobRequest request) throws InterruptedException {
         return jobServiceHandler.handleJobStop(request);
-    }
-
-
-    @Inject
-    public void afterPropertiesSet(){
-        register(this);
-    }
-
-    private void doRegister(String uri, Object service, Method method, Class paramClass) {
-        InvokeInfo invokeInfo = new InvokeInfo(uri, service, method, paramClass);
-        logger.info("register uri {}", invokeInfo);
-        this.uriMap.put(uri, invokeInfo);
-    }
-
-    public  void register(Object service) {
-        Method[] methods;
-
-        if (service instanceof Class) {
-            methods = ((Class) service).getMethods();
-        } else {
-            methods = service.getClass().getMethods();
-        }
-        for (Method method : methods) {
-
-            URI uri = method.getDeclaredAnnotation(URI.class);
-
-            if (uri != null) {
-                Class[] types = method.getParameterTypes();
-                if (types.length > 0) {
-                    Class paramClass = types[1];
-
-                    if (RpcMessage.class.isAssignableFrom(paramClass)) {
-                        doRegister(uri.value(), service, method, paramClass);
-                    } else {
-//                       System.err.println("false "+paramClass);
-                    }
-                }
-
-            }
-
-        }
-
     }
 
 
