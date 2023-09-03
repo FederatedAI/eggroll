@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package com.webank.eggroll.core.meta;
+
+import "google/protobuf/duration.proto";
+import "meta.proto";
+import "containers.proto";
+
+service DsDownloadService {
+  rpc download (DsDownloadRequest) returns (DsDownloadResponse) {}
+  rpc download_by_split(DsDownloadRequest) returns (stream DsDownloadSplitResponse) {}
+}
+
+message PrepareDownloadRequest {
+  string session_id = 1;
+  repeated int32 ranks = 2;
+  string compress_method = 3;
+  int32 compress_level = 4;
+  ContentType content_type = 5;
+}
+
+message PrepareDownloadResponse {
+  string session_id = 1;
+  string content = 2;
+}
+
+
+message DsDownloadRequest {
+  string session_id = 1;
+  repeated int32 ranks = 2;
+  string compress_method = 3;
+  int32 compress_level = 4;
+  ContentType content_type = 5;	
+}
+
+message DsDownloadResponse {
+  string session_id = 1;
+  repeated ContainerContent container_content = 2;
+}
+message DsDownloadSplitResponse{
+  bytes data=1;
+}
