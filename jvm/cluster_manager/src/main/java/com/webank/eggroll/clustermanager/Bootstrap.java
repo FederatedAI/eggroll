@@ -38,6 +38,10 @@ public class Bootstrap {
 ////        logger.info("{}",nodeMapper.selectById(1));
         GrpcServer grpcServer = injector.getInstance(GrpcServer.class);
         ApplicationStartedRunnerUtils.run(injector, args);
+
+
+
+
         synchronized (injector) {
             try {
                 injector.wait();

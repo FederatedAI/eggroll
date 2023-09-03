@@ -6,8 +6,6 @@ import com.webank.eggroll.core.command.Command;
 import com.webank.eggroll.core.command.CommandServiceGrpc;
 
 public class CommandClient {
-
-
     public  byte[] call(ErEndpoint  erEndpoint,String uri, byte[] request){
         CommandServiceGrpc.CommandServiceBlockingStub stub = CommandServiceGrpc.newBlockingStub(GrpcConnectionFactory.createManagedChannel(erEndpoint,true));
         Command.CommandRequest.Builder  requestBuilder = Command.CommandRequest.newBuilder();

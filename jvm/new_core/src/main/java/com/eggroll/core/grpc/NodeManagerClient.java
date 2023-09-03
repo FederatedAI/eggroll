@@ -91,7 +91,7 @@ public class NodeManagerClient {
   }
 
   public ErProcessor checkNodeProcess( ErProcessor processor){
-    byte[] responseData = commandClient.call(nodeManagerEndpoint, eggpairHeartbeat,processor.serialize());
+    byte[] responseData = commandClient.call(nodeManagerEndpoint, checkNodeProcess,processor.serialize());
     ErProcessor response = new ErProcessor();
     response.deserialize(responseData);
     return response;

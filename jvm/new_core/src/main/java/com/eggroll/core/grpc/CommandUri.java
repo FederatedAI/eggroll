@@ -20,16 +20,16 @@ public class CommandUri {
     public static final String killSession = "v1/cluster-manager/session/killSession";
     public static final String killAllSessions = "v1/cluster-manager/session/killAllSessions";
 
-    public static final String startContainers = "v1/node_manager/processor/startContainers";
-    public static final String stopContainers = "v1/node_manager/processor/stopContainers";
-    public static final String killContainers = "v1/node_manager/processor/killContainers";
-    public static final String eggpairHeartbeat = "v1/node_manager/processor/heartbeat";
+    public static final String startContainers = "v1/node-manager/processor/startContainers";
+    public static final String stopContainers = "v1/node-manager/processor/stopContainers";
+    public static final String killContainers = "v1/node-manager/processor/killContainers";
+    public static final String eggpairHeartbeat = "v1/node-manager/processor/heartbeat";
 
-    public static final String checkNodeProcess = "v1/node_manager/resouce/checkNodeProcess";
+    public static final String checkNodeProcess = "v1/node-manager/resouce/checkNodeProcess";
 
-    public static final String startJobContainers = "v1/node_manager/container/startJobContainers";
-    public static final String stopJobContainers = "v1/node_manager/container/stopJobContainers";
-    public static final String killJobContainers = "v1/node_manager/container/killJobContainers";
+    public static final String startJobContainers = "v1/node-manager/container/startJobContainers";
+    public static final String stopJobContainers = "v1/node-manager/container/stopJobContainers";
+    public static final String killJobContainers = "v1/node-manager/container/killJobContainers";
 
     public static final String submitJob = "v1/cluster-manager/job/submitJob";
     public static final String queryJobStatus = "v1/cluster-manager/job/queryJobStatus";

@@ -1,6 +1,7 @@
 package com.webank.eggroll.nodemanager;
 
 import com.eggroll.core.config.MetaInfo;
+import com.eggroll.core.utils.ApplicationStartedRunnerUtils;
 import com.eggroll.core.utils.CommandArgsUtils;
 import com.eggroll.core.utils.PropertiesUtil;
 import com.google.inject.Guice;
@@ -30,9 +31,15 @@ public class Bootstrap {
         NodeResourceManager nodeResource = injector.getInstance(NodeResourceManager.class);
         CommandServiceProvider  commandServiceProvider= injector.getInstance(CommandServiceProvider.class);
 
+        try {
+            ApplicationStartedRunnerUtils.run(injector, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
 
         try {
-            commandServiceProvider.register(commandServiceProvider);
+           // commandServiceProvider.register(commandServiceProvider);
             logger.info("============ register grpc server ===============");
 
             nodeResource.start();

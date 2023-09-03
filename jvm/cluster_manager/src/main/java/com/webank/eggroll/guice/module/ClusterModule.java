@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.reflect.GenericTypeUtils;
 import com.eggroll.core.config.Config;
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.exceptions.ConfigErrorException;
+import com.eggroll.core.grpc.Dispatcher;
 import com.google.common.collect.Lists;
 import com.google.inject.AbstractModule;
 import com.google.inject.Key;
@@ -26,6 +27,8 @@ import org.quartz.JobDetail;
 import org.quartz.SchedulerException;
 import org.quartz.SchedulerFactory;
 import org.quartz.impl.StdSchedulerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -34,7 +37,7 @@ import java.util.*;
 
 public class ClusterModule extends AbstractModule {
 
-
+    Logger logger = LoggerFactory.getLogger(ClusterModule.class);
     protected void configure() {
 
         Matcher<Class> subpacket = Matchers.inSubpackage("com.webank");
@@ -56,11 +59,7 @@ public class ClusterModule extends AbstractModule {
                                 scheduleInfo.setKey(key);
                                 scheduleInfo.setMethod(method);
                                 scheduleInfo.setCron(config.cron());
-                                Quartz.sheduleInfoMap.put(rawType.getName(),scheduleInfo);
-
-                              //  Quartz.cronJobInfo.put(key,cronString);
-
-//                                JobDetail jobDetail = JobBuilder.newJob(ScheduleJob.class).usingJobData();
+                                Quartz.sheduleInfoMap.put(rawType.getName()+"_"+method.getName(),scheduleInfo);
 
                                 }
                         } catch (Exception e) {
@@ -107,8 +106,7 @@ public class ClusterModule extends AbstractModule {
         conf.put("mybatis.environment.id","cluster-manager-mybatis");
 
         Names.bindProperties(binder(), conf);
-
-
+        //bind(Dispatcher.class).to(Dispatcher.class);
         bind(SessionManager.class).to(DefaultSessionManager.class);
         this.install(new MyBatisModule() {
             @Override

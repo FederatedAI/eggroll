@@ -74,6 +74,10 @@ public class ClusterManagerService extends ApplicationStartedRunner {
     Map<Long, ErNodeHeartbeat> nodeHeartbeatMap = new ConcurrentHashMap<>();
     Map<Long, ErProcessor> residualHeartbeatMap = new ConcurrentHashMap<>();
 
+    public void addResidualHeartbeat(ErProcessor erProcessor){
+        residualHeartbeatMap.put(erProcessor.getId(),erProcessor);
+    }
+
     public ErProcessor checkNodeProcess(ErEndpoint nodeManagerEndpoint, ErProcessor processor) {
         ErProcessor result = null;
         try {
@@ -172,7 +176,7 @@ public class ClusterManagerService extends ApplicationStartedRunner {
         long liveTime = MetaInfo.EGGROLL_SESSION_MAX_LIVE_MS;
         if (session.getCreateTime().getTime() < now - liveTime) {
             log.error("session " + session.getId() + " is timeout, live time is " + liveTime + ", max live time in config is " + MetaInfo.EGGROLL_SESSION_MAX_LIVE_MS);
-            sessionManager.killSession(null, session);
+            sessionManager.killSession(new Context(), session);
         } else {
             List<ErProcessor> invalidProcessor = sessionProcessors.stream().filter(p -> StringUtils.equalsAny(p.getStatus(),
                     ProcessorStatus.ERROR.name(), ProcessorStatus.KILLED.name(), ProcessorStatus.STOPPED.name())).collect(Collectors.toList());
