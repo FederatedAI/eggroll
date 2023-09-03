@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
 
 
 @Singleton
-public class ClusterManagerService extends ApplicationStartedRunner {
+public class ClusterManagerService implements ApplicationStartedRunner {
 
     Logger logger = LoggerFactory.getLogger(ClusterManagerService.class);
 
