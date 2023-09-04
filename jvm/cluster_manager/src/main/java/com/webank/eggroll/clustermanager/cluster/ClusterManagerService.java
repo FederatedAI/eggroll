@@ -100,6 +100,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
 
             grouped.forEach((serverNodeId, processorList) -> {
                 ServerNode serverNode = serverNodeService.getById(serverNodeId);
+                if(serverNode!=null){
                 NodeManagerClient nodeManagerClient = new NodeManagerClient(new ErEndpoint(serverNode.getHost(), serverNode.getPort()));
                 for (ErProcessor processor : processorList) {
                     ErProcessor result = nodeManagerClient.checkNodeProcess(processor);
@@ -119,6 +120,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
                             }
                         }
                     }
+                }
                 }
             });
         } catch (Exception e) {
