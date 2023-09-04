@@ -154,7 +154,11 @@ class Task(BaseEggrollAPI):
         return download_job_response
 
     def download_job_v2(
-            self, session_id, ranks: Optional[List[int]] = None, content_type: int = 0, compress_method: str = "zip",
+            self,
+            session_id,
+            ranks: Optional[List[int]] = None,
+            content_type: int = 0,
+            compress_method: str = "zip",
             compress_level: int = 1,
     ):
         if compress_level < 0 or compress_level > 9:
@@ -172,21 +176,20 @@ class Task(BaseEggrollAPI):
             content_type=content_type,
         )
         prepare_download_job_response = self._get_client().do_sync_request(
-            download_job_request, output_type=deepspeed_download_pb2.PrepareDownloadResponse,
-            command_uri=JobCommands.PREPARE_DOWNLOAD_JOB
+            download_job_request, output_type=deepspeed_download_pb2.PrepareDownloadResponse, command_uri=JobCommands.PREPARE_DOWNLOAD_JOB
         )
         download_session_id = prepare_download_job_response.session_id
-        download_meta: dict = json.loads(prepare_download_job_response.content)
+        download_meta:dict = json.loads(prepare_download_job_response.content)
         zipped_container_content = []
         pool = ThreadPool()
         lock = threading.Lock()
         try:
             def inner_handle_download(address):
                 element_data = download_meta[address]
-                ranks = list(map(lambda d: d[2], element_data))
+                ranks = list(map(lambda d: d[2],element_data))
                 indexes = list(map(lambda d: d[4], element_data))
-                ipport = address.split(":")
-                eggpair_client = self._get_client(ipport[0], int(ipport[1]))
+                ip_port = address.split(":")
+                eggpair_client = self._get_client(ip_port[0], int(ip_port[1]))
                 request = deepspeed_download_pb2.DsDownloadRequest(
                     compress_level=compress_level,
                     compress_method=compress_method,
@@ -194,8 +197,8 @@ class Task(BaseEggrollAPI):
                     content_type=content_type,
                     session_id=session_id
                 )
-                response = eggpair_client.do_download(request)
-                if response != None:
+                response = eggpair_client.do_download_stream(request)
+                if response is not None:
                     temp_ziped = list(zip(indexes, response.container_content))
                     try:
                         lock.acquire()
