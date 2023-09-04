@@ -31,10 +31,12 @@ class DsDownloadResponse(_message.Message):
     def __init__(self, session_id: Optional[str] = ..., container_content: Optional[Iterable[Union[_containers_pb2.ContainerContent, Mapping]]] = ...) -> None: ...
 
 class DsDownloadSplitResponse(_message.Message):
-    __slots__ = ["data"]
+    __slots__ = ["data", "rank"]
     DATA_FIELD_NUMBER: ClassVar[int]
+    RANK_FIELD_NUMBER: ClassVar[int]
     data: bytes
-    def __init__(self, data: Optional[bytes] = ...) -> None: ...
+    rank: int
+    def __init__(self, data: Optional[bytes] = ..., rank: Optional[int] = ...) -> None: ...
 
 class PrepareDownloadRequest(_message.Message):
     __slots__ = ["compress_level", "compress_method", "content_type", "ranks", "session_id"]
