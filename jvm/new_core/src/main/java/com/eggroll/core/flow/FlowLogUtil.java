@@ -2,6 +2,8 @@ package com.eggroll.core.flow;
 
 
 import com.eggroll.core.context.Context;
+import com.eggroll.core.utils.JsonUtil;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,7 +15,7 @@ public class FlowLogUtil {
             logger.info(context.toString());
         }catch (Throwable ignore){
         }
-
     }
+
 
 }
