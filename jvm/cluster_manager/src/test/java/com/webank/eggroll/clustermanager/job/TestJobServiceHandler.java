@@ -10,7 +10,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import static com.eggroll.core.grpc.CommandUri.submitJob;
+import static com.eggroll.core.grpc.CommandUri.*;
 
 public class TestJobServiceHandler {
 
@@ -20,16 +20,15 @@ public class TestJobServiceHandler {
     JobServiceHandler jobServiceHandler;
 
     public byte[] sendGrpc(ErEndpoint endpoint , String uri ,RpcMessage message){
-        byte[] response = new CommandClient().call(endpoint, uri, message.serialize());
-        return response;
+        return new CommandClient().call(endpoint, uri, message.serialize());
     }
 
     @Test
     public void testSubmitJob() throws InterruptedException {
         SubmitJobRequest request = new SubmitJobRequest();
         request.setJobType(JobProcessorTypes.DeepSpeed.name());
-        request.setSessionId("testSubmit_"+ System.currentTimeMillis());
-        request.setWorldSize(10);
+        request.setSessionId("testx_1693463937323");
+        request.setWorldSize(2);
         request.setName("TestSubmit");
         request.setCommandArguments(new ArrayList<>());
         request.setEnvironmentVariables(new HashMap<>());
@@ -45,7 +44,46 @@ public class TestJobServiceHandler {
         SubmitJobResponse response = new SubmitJobResponse();
         response.deserialize(bytes);
         System.out.println(response);
-//        SubmitJobResponse submitJobResponse = jobServiceHandler.handleSubmit(request);
-//        System.err.println("=============== => " + JsonUtil.object2Json(submitJobResponse));
+    }
+
+    @Test
+    public void testQueryJobStatus() throws InterruptedException {
+        QueryJobStatusRequest request = new QueryJobStatusRequest();
+        request.setSessionId("testx_1693463937323");
+        byte[] bytes = sendGrpc(endpoint, queryJobStatus, request);
+        QueryJobStatusResponse response = new QueryJobStatusResponse();
+        response.deserialize(bytes);
+        System.out.println(response);
+    }
+
+    @Test
+    public void testQueryJob() throws InterruptedException {
+        QueryJobRequest request = new QueryJobRequest();
+        request.setSessionId("testx_1693463937323");
+        byte[] bytes = sendGrpc(endpoint, queryJob, request);
+        QueryJobResponse response = new QueryJobResponse();
+        response.deserialize(bytes);
+        System.out.println(response);
+    }
+
+    @Test
+    public void testStopJob() throws InterruptedException {
+        StopJobRequest request = new StopJobRequest();
+        request.setSessionId("testx_1693463937323");
+        byte[] bytes = sendGrpc(endpoint, queryJob, request);
+        StopJobResponse response = new StopJobResponse();
+        response.deserialize(bytes);
+        System.out.println(response);
+    }
+
+
+    @Test
+    public void testKillJob() throws InterruptedException {
+        KillJobRequest request = new KillJobRequest();
+        request.setSessionId("testx_1693536983025");
+        byte[] bytes = sendGrpc(endpoint, queryJob, request);
+        KillJobRequest response = new KillJobRequest();
+        response.deserialize(bytes);
+        System.out.println(response);
     }
 }
