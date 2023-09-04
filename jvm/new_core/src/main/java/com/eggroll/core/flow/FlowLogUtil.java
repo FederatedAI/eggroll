@@ -14,6 +14,7 @@ public class FlowLogUtil {
         try {
             logger.info(context.toString());
         }catch (Throwable ignore){
+            ignore.printStackTrace();
         }
     }
 

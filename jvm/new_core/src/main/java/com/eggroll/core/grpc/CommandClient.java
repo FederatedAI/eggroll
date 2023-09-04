@@ -9,9 +9,11 @@ import com.webank.eggroll.core.command.Command;
 import com.webank.eggroll.core.command.CommandServiceGrpc;
 
 public class CommandClient {
-    public  byte[] call(  ErEndpoint  erEndpoint, String uri, byte[] request){
+    public  byte[] call( Context  oriContext , ErEndpoint  erEndpoint, String uri, byte[] request){
         Context   context =  new Context();
         context.setUri(uri);
+        if(oriContext!=null)
+            context.setSeq(oriContext.getSeq());
         context.setActionType(ActionType.CLIENT.name());
         context.setEndpoint(erEndpoint);
         try {

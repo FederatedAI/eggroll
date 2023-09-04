@@ -4,6 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.eggroll.core.pojo.ErEndpoint;
 import com.eggroll.core.pojo.ErServerNode;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.mapper.ServerNodeMapper;
@@ -12,15 +16,51 @@ import com.webank.eggroll.clustermanager.entity.ServerNode;
 import org.apache.commons.lang3.StringUtils;
 
 import org.mybatis.guice.transactional.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Singleton
 public class ServerNodeService extends EggRollBaseServiceImpl<ServerNodeMapper, ServerNode> {
+    Logger logger = LoggerFactory.getLogger(ServerNodeService.class);
+    LoadingCache<Long,ErServerNode> cache ;
+    ServerNodeService(){
+        cache=  CacheBuilder.newBuilder()
+                .maximumSize(1000)
+                .expireAfterWrite(300, TimeUnit.SECONDS)
+                .build(new CacheLoader<Long,ErServerNode>(){
+                    @Override
+                    public ErServerNode load(Long serverNodeId) throws Exception {
+                        logger.info("node server miss cache, try to load from db , id {}",serverNodeId);
+                        ServerNode  serverNode = getById(serverNodeId);
+                        if(serverNode!=null){
+                            return  serverNode.toErServerNode();
+                        }else{
+                            return null;
+                        }
+                    }
+                });
+    }
+    public ErServerNode getByIdFromCache(Long serverNodeId){
+        ErServerNode  result= null;
+        try {
+            result = this.cache.get(serverNodeId);
+        } catch (Exception e) {
+
+        }
+        if(result==null)
+            logger.info("server node cache {}",cache.asMap());
+        return  result;
+    }
+
 
     @Inject
     NodeResourceService nodeResourceService;
@@ -35,6 +75,7 @@ public class ServerNodeService extends EggRollBaseServiceImpl<ServerNodeMapper, 
 
     @Transactional
     public ServerNode createByErNode(ErServerNode input) {
+        logger.info("create new node {}",input);
         ServerNode serverNode = new ServerNode();
         serverNode.setServerNodeId(input.getId() > 0 ? input.getId() : null);
         serverNode.setName(input.getName());
