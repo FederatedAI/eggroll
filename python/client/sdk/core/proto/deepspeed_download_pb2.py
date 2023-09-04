@@ -22,9 +22,9 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x18\x64\x65\x65pspeed_download.proto\x12\x1c\x63om.webank.eggroll.core.meta\x1a\x1egoogle/protobuf/duration.proto\x1a\nmeta.proto\x1a\x10\x63ontainers.proto\"\xad\x01\n\x16PrepareDownloadRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\r\n\x05ranks\x18\x02 \x03(\x05\x12\x17\n\x0f\x63ompress_method\x18\x03 \x01(\t\x12\x16\n\x0e\x63ompress_level\x18\x04 \x01(\x05\x12?\n\x0c\x63ontent_type\x18\x05 \x01(\x0e\x32).com.webank.eggroll.core.meta.ContentType\">\n\x17PrepareDownloadResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x0f\n\x07\x63ontent\x18\x02 \x01(\t\"\xa8\x01\n\x11\x44sDownloadRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\r\n\x05ranks\x18\x02 \x03(\x05\x12\x17\n\x0f\x63ompress_method\x18\x03 \x01(\t\x12\x16\n\x0e\x63ompress_level\x18\x04 \x01(\x05\x12?\n\x0c\x63ontent_type\x18\x05 \x01(\x0e\x32).com.webank.eggroll.core.meta.ContentType\"s\n\x12\x44sDownloadResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12I\n\x11\x63ontainer_content\x18\x02 \x03(\x0b\x32..com.webank.eggroll.core.meta.ContainerContent2\x84\x01\n\x11\x44sDownloadService\x12o\n\x08\x64ownload\x12/.com.webank.eggroll.core.meta.DsDownloadRequest\x1a\x30.com.webank.eggroll.core.meta.DsDownloadResponse\"\x00\x62\x06proto3'
+  serialized_pb=b'\n\x18\x64\x65\x65pspeed_download.proto\x12\x1c\x63om.webank.eggroll.core.meta\x1a\x1egoogle/protobuf/duration.proto\x1a\nmeta.proto\x1a\x10\x63ontainers.proto\"\xad\x01\n\x16PrepareDownloadRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\r\n\x05ranks\x18\x02 \x03(\x05\x12\x17\n\x0f\x63ompress_method\x18\x03 \x01(\t\x12\x16\n\x0e\x63ompress_level\x18\x04 \x01(\x05\x12?\n\x0c\x63ontent_type\x18\x05 \x01(\x0e\x32).com.webank.eggroll.core.meta.ContentType\">\n\x17PrepareDownloadResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x0f\n\x07\x63ontent\x18\x02 \x01(\t\"\xa8\x01\n\x11\x44sDownloadRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\r\n\x05ranks\x18\x02 \x03(\x05\x12\x17\n\x0f\x63ompress_method\x18\x03 \x01(\t\x12\x16\n\x0e\x63ompress_level\x18\x04 \x01(\x05\x12?\n\x0c\x63ontent_type\x18\x05 \x01(\x0e\x32).com.webank.eggroll.core.meta.ContentType\"s\n\x12\x44sDownloadResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12I\n\x11\x63ontainer_content\x18\x02 \x03(\x0b\x32..com.webank.eggroll.core.meta.ContainerContent\"\'\n\x17\x44sDownloadSplitResponse\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x32\x85\x02\n\x11\x44sDownloadService\x12o\n\x08\x64ownload\x12/.com.webank.eggroll.core.meta.DsDownloadRequest\x1a\x30.com.webank.eggroll.core.meta.DsDownloadResponse\"\x00\x12\x7f\n\x11\x64ownload_by_split\x12/.com.webank.eggroll.core.meta.DsDownloadRequest\x1a\x35.com.webank.eggroll.core.meta.DsDownloadSplitResponse\"\x00\x30\x01\x62\x06proto3'
   ,
-  dependencies=[google_dot_protobuf_dot_duration__pb2.DESCRIPTOR, meta__pb2.DESCRIPTOR, containers__pb2.DESCRIPTOR,])
+  dependencies=[google_dot_protobuf_dot_duration__pb2.DESCRIPTOR,meta__pb2.DESCRIPTOR,containers__pb2.DESCRIPTOR,])
 
 
 
@@ -226,6 +226,38 @@ _DSDOWNLOADRESPONSE = _descriptor.Descriptor(
   serialized_end=646,
 )
 
+
+_DSDOWNLOADSPLITRESPONSE = _descriptor.Descriptor(
+  name='DsDownloadSplitResponse',
+  full_name='com.webank.eggroll.core.meta.DsDownloadSplitResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='data', full_name='com.webank.eggroll.core.meta.DsDownloadSplitResponse.data', index=0,
+      number=1, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"",
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=648,
+  serialized_end=687,
+)
+
 _PREPAREDOWNLOADREQUEST.fields_by_name['content_type'].enum_type = containers__pb2._CONTENTTYPE
 _DSDOWNLOADREQUEST.fields_by_name['content_type'].enum_type = containers__pb2._CONTENTTYPE
 _DSDOWNLOADRESPONSE.fields_by_name['container_content'].message_type = containers__pb2._CONTAINERCONTENT
@@ -233,6 +265,7 @@ DESCRIPTOR.message_types_by_name['PrepareDownloadRequest'] = _PREPAREDOWNLOADREQ
 DESCRIPTOR.message_types_by_name['PrepareDownloadResponse'] = _PREPAREDOWNLOADRESPONSE
 DESCRIPTOR.message_types_by_name['DsDownloadRequest'] = _DSDOWNLOADREQUEST
 DESCRIPTOR.message_types_by_name['DsDownloadResponse'] = _DSDOWNLOADRESPONSE
+DESCRIPTOR.message_types_by_name['DsDownloadSplitResponse'] = _DSDOWNLOADSPLITRESPONSE
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 PrepareDownloadRequest = _reflection.GeneratedProtocolMessageType('PrepareDownloadRequest', (_message.Message,), {
@@ -263,6 +296,13 @@ DsDownloadResponse = _reflection.GeneratedProtocolMessageType('DsDownloadRespons
   })
 _sym_db.RegisterMessage(DsDownloadResponse)
 
+DsDownloadSplitResponse = _reflection.GeneratedProtocolMessageType('DsDownloadSplitResponse', (_message.Message,), {
+  'DESCRIPTOR' : _DSDOWNLOADSPLITRESPONSE,
+  '__module__' : 'deepspeed_download_pb2'
+  # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.meta.DsDownloadSplitResponse)
+  })
+_sym_db.RegisterMessage(DsDownloadSplitResponse)
+
 
 
 _DSDOWNLOADSERVICE = _descriptor.ServiceDescriptor(
@@ -272,8 +312,8 @@ _DSDOWNLOADSERVICE = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=649,
-  serialized_end=781,
+  serialized_start=690,
+  serialized_end=951,
   methods=[
   _descriptor.MethodDescriptor(
     name='download',
@@ -282,6 +322,16 @@ _DSDOWNLOADSERVICE = _descriptor.ServiceDescriptor(
     containing_service=None,
     input_type=_DSDOWNLOADREQUEST,
     output_type=_DSDOWNLOADRESPONSE,
+    serialized_options=None,
+    create_key=_descriptor._internal_create_key,
+  ),
+  _descriptor.MethodDescriptor(
+    name='download_by_split',
+    full_name='com.webank.eggroll.core.meta.DsDownloadService.download_by_split',
+    index=1,
+    containing_service=None,
+    input_type=_DSDOWNLOADREQUEST,
+    output_type=_DSDOWNLOADSPLITRESPONSE,
     serialized_options=None,
     create_key=_descriptor._internal_create_key,
   ),
