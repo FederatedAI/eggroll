@@ -63,17 +63,23 @@ class BaseClient:
             L.exception(f"Error calling to {self._endpoint}, download deepspeed , req:{input}")
             raise e
 
-    def do_download_stream(self, input: DsDownloadRequest) -> DsDownloadResponse:
+    def do_download_stream(self, input: DsDownloadRequest) :
         try:
             _channel = self._channel_factory.create_channel(self._endpoint)
             _deepspeed_stub = deepspeed_download_pb2_grpc.DsDownloadServiceStub(_channel)
-            temp = bytes()
+            size = 0
+            rank_map = {}
             for response in _deepspeed_stub.download_by_split(input):
-                temp+=response.data
-            print("recive bytes ", len(temp))
-            response = DsDownloadResponse()
-            response.ParseFromString(temp)
-            return response
+                size +=len(response.data)
+                if response.rank in rank_map:
+                    rank_map[response.rank]+=response.data
+                else:
+                    rank_map[response.rank]=response.data
+
+
+            print("recive bytes ", size)
+
+            return rank_map
 
         except Exception as e:
             L.exception(f"Error calling to {self._endpoint}, download deepspeed , req:{input}")
