@@ -15,14 +15,14 @@ from eggroll.core.proto import containers_pb2, deepspeed_pb2, deepspeed_download
     extend_pb2_grpc, extend_pb2
 from eggroll.core.proto.command_pb2 import CommandRequest
 from eggroll.core.proto.deepspeed_download_pb2 import DsDownloadResponse
-# from ..client import BaseClient
-# from .commands import JobCommands
-# from ..store.client import destroy
-# from ...core.command.commands import SessionCommands
-from eggroll.deepspeed.client import BaseClient
-from eggroll.deepspeed.submit.commands import JobCommands
-from eggroll.deepspeed.store.client import destroy
-from eggroll.core.command.commands import SessionCommands
+from ..client import BaseClient
+from .commands import JobCommands
+from ..store.client import destroy
+from ...core.command.commands import SessionCommands
+# from eggroll.deepspeed.client import BaseClient
+# from eggroll.deepspeed.submit.commands import JobCommands
+# from eggroll.deepspeed.store.client import destroy
+# from eggroll.core.command.commands import SessionCommands
 class ContentType(enum.Enum):
     ALL = 0
     MODELS = 1
