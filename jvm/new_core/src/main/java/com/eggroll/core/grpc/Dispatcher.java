@@ -1,5 +1,6 @@
 package com.eggroll.core.grpc;
 
+import com.eggroll.core.constant.ActionType;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.exceptions.EggRollBaseException;
 import com.eggroll.core.exceptions.ErrorMessageUtil;
@@ -33,7 +34,12 @@ public class Dispatcher {
 
     public byte[] dispatch(String uri, byte[] data) {
         Context context  =new Context();
-        context.setActionType(uri);
+        Object  sourceIp = ContextPrepareInterceptor.sourceIp.get();
+        if(sourceIp!=null){
+            context.setSourceIp(sourceIp.toString());
+        }
+        context.setActionType(ActionType.SERVER.name());
+        context.setUri(uri);
         try {
             InvokeInfo invokeInfo = uriMap.get(uri);
 

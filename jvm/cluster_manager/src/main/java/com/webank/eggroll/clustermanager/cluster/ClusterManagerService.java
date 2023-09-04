@@ -78,11 +78,11 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         residualHeartbeatMap.put(erProcessor.getId(),erProcessor);
     }
 
-    public ErProcessor checkNodeProcess(ErEndpoint nodeManagerEndpoint, ErProcessor processor) {
+    public ErProcessor checkNodeProcess(Context context,ErEndpoint nodeManagerEndpoint, ErProcessor processor) {
         ErProcessor result = null;
         try {
             NodeManagerClient nodeManagerClient = new NodeManagerClient(nodeManagerEndpoint);
-            result = nodeManagerClient.checkNodeProcess(processor);
+            result = nodeManagerClient.checkNodeProcess(context,processor);
         } catch (Exception e) {
             log.error("checkNodeProcess error :", e);
         }
@@ -97,12 +97,13 @@ public class ClusterManagerService implements ApplicationStartedRunner {
             List<ErProcessor> erProcessors = sessionProcessorService.doQueryProcessor(erProcessor);
 
             Map<Long, List<ErProcessor>> grouped = erProcessors.stream().collect(Collectors.groupingBy(ErProcessor::getServerNodeId));
-
+            Context  context = new Context();
             grouped.forEach((serverNodeId, processorList) -> {
-                ServerNode serverNode = serverNodeService.getById(serverNodeId);
-                NodeManagerClient nodeManagerClient = new NodeManagerClient(new ErEndpoint(serverNode.getHost(), serverNode.getPort()));
+                ErServerNode serverNode = serverNodeService.getByIdFromCache(serverNodeId);
+                if(serverNode!=null){
+                NodeManagerClient nodeManagerClient = new NodeManagerClient(serverNode.getEndpoint());
                 for (ErProcessor processor : processorList) {
-                    ErProcessor result = nodeManagerClient.checkNodeProcess(processor);
+                    ErProcessor result = nodeManagerClient.checkNodeProcess(context,processor);
                     if (result == null || ProcessorStatus.KILLED.name().equals(result.getStatus())) {
                         try {
                             Thread.sleep(10000);
@@ -112,7 +113,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
                         SessionProcessor processorInDb = sessionProcessorService.getById(processor.getId());
                         if (processorInDb != null) {
                             if (ProcessorStatus.RUNNING.name().equals(processorInDb.getStatus())) {
-                                ErProcessor checkNodeProcessResult = nodeManagerClient.checkNodeProcess(processor);
+                                ErProcessor checkNodeProcessResult = nodeManagerClient.checkNodeProcess(context,processor);
                                 if (checkNodeProcessResult == null || ProcessorStatus.KILLED.name().equals(checkNodeProcessResult.getStatus())) {
                                     processorStateMachine.changeStatus(new Context(), processor, null, ProcessorStatus.ERROR.name());
                                 }
@@ -120,30 +121,31 @@ public class ClusterManagerService implements ApplicationStartedRunner {
                         }
                     }
                 }
+                }
             });
         } catch (Exception e) {
             log.error("checkDbRunningProcessor error :", e);
         }
     }
 
-    public void killResidualProcessor(ErProcessor processor) {
+    public void killResidualProcessor(Context context,ErProcessor processor) {
         log.info("prepare to kill redidual processor {}", JsonUtil.object2Json(processor));
-        ServerNode serverNodeInDb = serverNodeService.getById(processor.getServerNodeId());
+        ErServerNode serverNodeInDb = serverNodeService.getByIdFromCache(processor.getServerNodeId());
         if(serverNodeInDb!=null) {
-            ErServerNode serverNode = serverNodeInDb.toErServerNode();
             ErSessionMeta erSessionMeta = sessionMainService.getSession(processor.getSessionId());
             erSessionMeta.getOptions().put(MetaInfo.SERVER_NODE_ID, processor.getServerNodeId().toString());
-            NodeManagerClient nodeManagerClient = new NodeManagerClient(serverNode.getEndpoint());
-            nodeManagerClient.killContainers(erSessionMeta);
+            NodeManagerClient nodeManagerClient = new NodeManagerClient(serverNodeInDb.getEndpoint());
+            nodeManagerClient.killContainers(context,erSessionMeta);
         }
     }
 
     @Schedule(cron= "0/10 * * * * ?")
     public void checkRedidualProcessor(){
         try {
+            Context  context = new Context();
             residualHeartbeatMap.forEach((k, v) -> {
                 try {
-                    killResidualProcessor(v);
+                    killResidualProcessor(context,v);
                     residualHeartbeatMap.remove(k);
                 } catch (Throwable e) {
                     e.printStackTrace();
@@ -155,13 +157,13 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         }
     }
 
-    public void checkAndHandleDeepspeedOutTimeSession(ErSessionMeta session, List<ErProcessor> sessionProcessors) {
+    public void checkAndHandleDeepspeedOutTimeSession(Context context,ErSessionMeta session, List<ErProcessor> sessionProcessors) {
         long current = System.currentTimeMillis();
         Integer maxInterval = MetaInfo.EGGROLL_SESSION_START_TIMEOUT_MS * 2;
         long interval = current - session.getCreateTime().getTime();
         log.debug("watch deepspeed new session: {} {}  {}", session.getId(), interval, maxInterval);
         if (interval > maxInterval) {
-            jobServiceHandler.killJob(session.getId());
+            jobServiceHandler.killJob(context,session.getId());
         }
     }
 
@@ -193,13 +195,13 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         }
     }
 
-    public void checkAndHandleDeepspeedActiveSession(ErSessionMeta session, List<ErProcessor> sessionProcessors) {
+    public void checkAndHandleDeepspeedActiveSession(Context  context,ErSessionMeta session, List<ErProcessor> sessionProcessors) {
         log.info("checkAndHandleDeepspeedActiveSession " + session.getId() + " " + JsonUtil.object2Json(sessionProcessors));
 
         if (sessionProcessors.stream().anyMatch(p -> ProcessorStatus.ERROR.name().equals(p.getStatus()))) {
             log.info("session watcher kill session " + session);
             try {
-                jobServiceHandler.killJob(session.getId());
+                jobServiceHandler.killJob(context,session.getId());
             } catch (ErSessionException e) {
                 log.error("failed to kill session " + session.getId(), e);
             }
@@ -212,6 +214,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
     @Schedule(cron= "0/5 * * * * ?")
     public   void  sessionWatcherSchedule(){
         try {
+
             List<ErSessionMeta> sessions = sessionMainService.getSessionMainsByStatus(Arrays.asList(SessionStatus.ACTIVE.name(), SessionStatus.NEW.name()));
 
             for (ErSessionMeta session : sessions) {
@@ -224,9 +227,9 @@ public class ClusterManagerService implements ApplicationStartedRunner {
                         case "DeepSpeed":
                             log.debug("watch deepspeed session: " + session.getId() + " " + session.getStatus());
                             if (SessionStatus.ACTIVE.name().equals(session.getStatus())) {
-                                checkAndHandleDeepspeedActiveSession(session, sessionProcessors);
+                                checkAndHandleDeepspeedActiveSession(new Context(),session, sessionProcessors);
                             } else if (SessionStatus.NEW.name().equals(session.getStatus())) {
-                                checkAndHandleDeepspeedOutTimeSession(session, sessionProcessors);
+                                checkAndHandleDeepspeedOutTimeSession(new Context(),session, sessionProcessors);
                             }
                             break;
                         default:
@@ -293,7 +296,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
                     updateNode(serverNode, false, true);
                 } else {
                     //nodemanger重启过
-                    ServerNode existsServerNode = serverNodeService.getById(serverNode.getId());
+                    ErServerNode existsServerNode = serverNodeService.getByIdFromCache(serverNode.getId());
                     if (existsServerNode == null) {
                         serverNode = createNewNode(serverNode);
                     } else {
