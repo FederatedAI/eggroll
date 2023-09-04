@@ -14,7 +14,7 @@ public class ApplicationStartedRunnerUtils {
 
     public static void run(Injector injector, String[] args) throws Exception {
         List<ApplicationStartedRunner> listenerList = getAllImplementations(injector);
-        List<ApplicationStartedRunner> sortedList = listenerList.stream().sorted(Comparator.comparingInt(n->n.getRunnerSequenceId())).collect(Collectors.toList());
+        List<ApplicationStartedRunner> sortedList = listenerList.stream().sorted(Comparator.comparingInt(ApplicationStartedRunner::getRunnerSequenceId)).collect(Collectors.toList());
         for (ApplicationStartedRunner applicationStartedRunner : sortedList) {
             applicationStartedRunner.run(args);
         }
