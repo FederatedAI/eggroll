@@ -34,6 +34,10 @@ public class Dispatcher {
 
     public byte[] dispatch(String uri, byte[] data) {
         Context context  =new Context();
+        Object  sourceIp = ContextPrepareInterceptor.sourceIp.get();
+        if(sourceIp!=null){
+            context.setSourceIp(sourceIp.toString());
+        }
         context.setActionType(ActionType.SERVER.name());
         context.setUri(uri);
         try {

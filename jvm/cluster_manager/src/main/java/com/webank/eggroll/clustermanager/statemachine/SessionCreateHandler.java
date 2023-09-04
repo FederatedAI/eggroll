@@ -89,7 +89,7 @@ public class SessionCreateHandler  extends AbstractSessionStateHandler{
                 sendSession.setProcessors(processors);
                 NodeManagerClient nodeManagerClient = new  NodeManagerClient(node.getEndpoint());
                 //sendSession.getOptions().put("eggroll.resourcemanager.server.node.id",Long.toString(node.getId()));
-                nodeManagerClient.startContainers(sendSession);
+                nodeManagerClient.startContainers(context,sendSession);
 
         });
 

@@ -1,5 +1,6 @@
 package com.webank.eggroll.clustermanager.grpc;
 
+import com.eggroll.core.config.Dict;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.exceptions.EggRollBaseException;
 import com.eggroll.core.exceptions.ErrorMessageUtil;
@@ -58,11 +59,13 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     @URI(value= nodeHeartbeat)
     public  ErNodeHeartbeat nodeHeartbeat(Context context ,ErNodeHeartbeat  erNodeHeartbeat){
         context.setNodeId(erNodeHeartbeat.getNode().getId().toString());
+        context.putLogData(Dict.STATUS,erNodeHeartbeat.getNode().getStatus());
        return  clusterManagerService.nodeHeartbeat(context,erNodeHeartbeat);
     }
 
     @URI(value = getServerNode)
     public ErServerNode getServerNodeServiceName(Context context ,ErServerNode erServerNode) {
+
         List<ErServerNode> nodeList = serverNodeService.getListByErServerNode(erServerNode);
         return nodeList.size() > 0 ? nodeList.get(0) : null;
     }
@@ -119,6 +122,7 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     public ErProcessor heartbeat(Context context ,ErProcessor erProcessor) {
         context.setSessionId(erProcessor.getSessionId());
         context.setProcessorId(erProcessor.getId().toString());
+        context.putLogData(Dict.STATUS,erProcessor.getStatus());
         return defaultProcessorManager.heartbeat(context, erProcessor);
     }
 
@@ -158,12 +162,12 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
 
     @URI(value = killJob)
     public KillJobResponse killJob(Context context ,KillJobRequest request) throws InterruptedException {
-        return jobServiceHandler.handleJobKill(request);
+        return jobServiceHandler.handleJobKill(context,request);
     }
 
     @URI(value = stopJob)
     public StopJobResponse stopJob(Context context ,StopJobRequest request) throws InterruptedException {
-        return jobServiceHandler.handleJobStop(request);
+        return jobServiceHandler.handleJobStop(context,request);
     }
 
 

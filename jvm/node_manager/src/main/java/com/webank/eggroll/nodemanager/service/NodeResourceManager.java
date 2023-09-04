@@ -2,6 +2,7 @@ package com.webank.eggroll.nodemanager.service;
 
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.config.MetaInfo;
+import com.eggroll.core.context.Context;
 import com.eggroll.core.grpc.ClusterManagerClient;
 import com.eggroll.core.pojo.ErEndpoint;
 import com.eggroll.core.pojo.ErNodeHeartbeat;
@@ -234,7 +235,7 @@ public class NodeResourceManager {
                                     erNodeHeartbeat.getNode().getEndpoint().getPort(),
                                     erNodeHeartbeat.getNode().getId()
                             );
-                            ErNodeHeartbeat nodeHeartBeat = client.nodeHeartbeat(erNodeHeartbeat);
+                            ErNodeHeartbeat nodeHeartBeat = client.nodeHeartbeat(new Context(),erNodeHeartbeat);
                             logger.info("recive nodeHearBeat info from cluster-manager: nodeHost:{}, nodePort:{}, nodeId: {}",
                                     nodeHeartBeat.getNode().getEndpoint().getHost(),
                                     nodeHeartBeat.getNode().getEndpoint().getPort(),

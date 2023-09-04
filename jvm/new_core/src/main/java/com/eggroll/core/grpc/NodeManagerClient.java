@@ -20,6 +20,7 @@ package com.eggroll.core.grpc;
 
 import com.eggroll.core.containers.meta.KillContainersResponse;
 import com.eggroll.core.containers.meta.StartContainersResponse;
+import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,45 +54,45 @@ public class NodeManagerClient {
 //    return response;
 //  }
 
-  public ErSessionMeta  startContainers(ErSessionMeta sessionMeta) {
-    byte[] responseData = commandClient.call(nodeManagerEndpoint, startContainers,sessionMeta.serialize());
+  public ErSessionMeta  startContainers(Context context, ErSessionMeta sessionMeta) {
+    byte[] responseData = commandClient.call(context,nodeManagerEndpoint, startContainers,sessionMeta.serialize());
     ErSessionMeta response = new ErSessionMeta();
     response.deserialize(responseData);
     return response;
   }
 
-  public ErSessionMeta  stopContainers(ErSessionMeta sessionMeta) {
-    byte[] responseData = commandClient.call(nodeManagerEndpoint, stopContainers,sessionMeta.serialize());
+  public ErSessionMeta  stopContainers(Context context,ErSessionMeta sessionMeta) {
+    byte[] responseData = commandClient.call(context,nodeManagerEndpoint, stopContainers,sessionMeta.serialize());
     ErSessionMeta response = new ErSessionMeta();
     response.deserialize(responseData);
     return response;
   }
 
 
-  public StartContainersResponse startJobContainers(StartContainersRequest startContainersRequest) {
-    byte[] responseData = commandClient.call(nodeManagerEndpoint, startJobContainers,startContainersRequest.serialize());
+  public StartContainersResponse startJobContainers(Context context,StartContainersRequest startContainersRequest) {
+    byte[] responseData = commandClient.call(context,nodeManagerEndpoint, startJobContainers,startContainersRequest.serialize());
     StartContainersResponse response = new StartContainersResponse();
     response.deserialize(responseData);
     return response;
   }
 
 
-  public ErSessionMeta  killContainers(ErSessionMeta sessionMeta) {
-    byte[] responseData = commandClient.call(nodeManagerEndpoint, killContainers,sessionMeta.serialize());
+  public ErSessionMeta  killContainers(Context context,ErSessionMeta sessionMeta) {
+    byte[] responseData = commandClient.call(context,nodeManagerEndpoint, killContainers,sessionMeta.serialize());
     ErSessionMeta response = new ErSessionMeta();
     response.deserialize(responseData);
     return response;
   }
 
-  public KillContainersResponse killJobContainers(KillContainersRequest killContainersRequest){
-    byte[] responseData = commandClient.call(nodeManagerEndpoint, killContainers, killContainersRequest.serialize());
+  public KillContainersResponse killJobContainers(Context context,KillContainersRequest killContainersRequest){
+    byte[] responseData = commandClient.call(context,nodeManagerEndpoint, killContainers, killContainersRequest.serialize());
     KillContainersResponse response = new KillContainersResponse();
     response.deserialize(responseData);
     return response;
   }
 
-  public ErProcessor checkNodeProcess( ErProcessor processor){
-    byte[] responseData = commandClient.call(nodeManagerEndpoint, checkNodeProcess,processor.serialize());
+  public ErProcessor checkNodeProcess( Context context,ErProcessor processor){
+    byte[] responseData = commandClient.call(context,nodeManagerEndpoint, checkNodeProcess,processor.serialize());
     ErProcessor response = new ErProcessor();
     response.deserialize(responseData);
     return response;

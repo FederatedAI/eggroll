@@ -1,6 +1,7 @@
 package com.webank.eggroll.clustermanager.job;
 
 
+import com.eggroll.core.context.Context;
 import com.eggroll.core.grpc.CommandClient;
 import com.eggroll.core.pojo.*;
 import com.eggroll.core.utils.NetUtils;
@@ -20,7 +21,7 @@ public class TestJobServiceHandler {
     JobServiceHandler jobServiceHandler;
 
     public byte[] sendGrpc(ErEndpoint endpoint , String uri ,RpcMessage message){
-        byte[] response = new CommandClient().call(endpoint, uri, message.serialize());
+        byte[] response = new CommandClient().call(new Context(),endpoint, uri, message.serialize());
         return response;
     }
 
