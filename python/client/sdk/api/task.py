@@ -179,10 +179,9 @@ class Task(BaseEggrollAPI):
             download_job_request, output_type=deepspeed_download_pb2.PrepareDownloadResponse, command_uri=JobCommands.PREPARE_DOWNLOAD_JOB
         )
         download_session_id = prepare_download_job_response.session_id
-        download_meta:dict = json.loads(prepare_download_job_response.content)
-        zipped_container_content = []
+        download_meta: dict = json.loads(prepare_download_job_response.content)
+        zipped_container_content_map = {}
         pool = ThreadPool()
-        lock = threading.Lock()
         try:
             def inner_handle_download(address):
                 element_data = download_meta[address]
@@ -198,28 +197,25 @@ class Task(BaseEggrollAPI):
                     session_id=session_id
                 )
                 response = eggpair_client.do_download_stream(request)
-                if response is not None:
-                    temp_ziped = list(zip(indexes, response.container_content))
-                    try:
-                        lock.acquire()
-                        zipped_container_content.extend(temp_ziped)
-                    finally:
-                        lock.release()
-
-                else:
-                    raise RuntimeError(f"download return None from {address}")
-
+                zipped_container_content_map.update(response)
             pool.map(inner_handle_download, download_meta)
             pool.close()
             pool.join()
-
-            zipped_container_content.sort(key=lambda x: x[0])
-            final_content = list(map(lambda d: d[1], zipped_container_content))
-
-            return deepspeed_pb2.DownloadJobResponse(session_id=session_id, container_content=final_content)
+            return zipped_container_content_map
         finally:
-            self.close_session(session_id=download_session_id)
-            print("over")
+            try:
+                self.close_session(session_id=download_session_id)
+                print("over")
+            except Exception as e:
+                self.kill_session(session_id=download_session_id)
+
+    def kill_session(self, session_id):
+        if session_id is not None:
+            session = meta_pb2.SessionMeta(id=session_id)
+            download_job_response = self._get_client().do_sync_request(
+                session, output_type=meta_pb2.SessionMeta, command_uri=SessionCommands.KILL_SESSION
+            )
+        print("close")
 
     def close_session(self, session_id):
         if session_id is not None:
@@ -242,12 +238,10 @@ class Task(BaseEggrollAPI):
         if not query_status.status:
             raise ValueError(f'not found session_id:{session_id}')
         download_job_response = self.download_job_v2(session_id, ranks, content_type, compress_method, compress_level)
-        if ranks is None:
-            ranks = range(len(download_job_response.container_content))
-        for rank, content in zip(ranks, download_job_response.container_content):
-            path = rank_to_path(rank)
+        for key, value in download_job_response.items():
+            path = rank_to_path(key)
             with open(path, "wb") as f:
-                f.write(content.content)
+                f.write(value)
 
     @staticmethod
     def writer(stream, session_id, result_queue):
