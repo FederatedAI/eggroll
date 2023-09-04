@@ -211,7 +211,6 @@ class Task(BaseEggrollAPI):
             pool.join()
 
             zipped_container_content.sort(key=lambda x: x[0])
-            print(zipped_container_content)
             final_content = list(map(lambda d: d[1], zipped_container_content))
 
             return deepspeed_pb2.DownloadJobResponse(session_id=session_id, container_content=final_content)
@@ -240,8 +239,10 @@ class Task(BaseEggrollAPI):
         if not query_status.status:
             raise ValueError(f'not found session_id:{session_id}')
         download_job_response = self.download_job_v2(session_id, ranks, content_type, compress_method, compress_level)
-        for content in download_job_response.container_content:
-            path = rank_to_path(content.rank)
+        if ranks is None:
+            ranks = range(len(download_job_response.container_content))
+        for rank, content in zip(ranks, download_job_response.container_content):
+            path = rank_to_path(rank)
             with open(path, "wb") as f:
                 f.write(content.content)
 
