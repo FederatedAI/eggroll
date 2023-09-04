@@ -56,7 +56,7 @@ public class DefaultProcessorManager   implements ProcessorManager,ApplicationSt
     @Override
     public ErProcessor heartbeat(Context context, ErProcessor processor) {
         logger.info("[heartbeat]=====processor: {}", JsonUtil.object2Json(processor));
-        return client.hearbeat(processor);
+        return client.hearbeat(context ,processor);
     }
 
     @Override

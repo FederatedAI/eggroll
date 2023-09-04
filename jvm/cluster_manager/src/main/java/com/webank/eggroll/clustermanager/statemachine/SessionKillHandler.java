@@ -28,7 +28,7 @@ public class SessionKillHandler extends  AbstractSessionStateHandler{
         serverNodes.parallelStream().forEach(serverNode -> {
             try{
                 NodeManagerClient nodeManagerClient = new NodeManagerClient(serverNode.getEndpoint());
-                nodeManagerClient.stopContainers(data);
+                nodeManagerClient.stopContainers(context,data);
             }catch (Exception e){
                 logger.error("send stop command error",e);
             }

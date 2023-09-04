@@ -1,6 +1,8 @@
 package com.webank.eggroll.clustermanager.grpc;
 
 import com.eggroll.core.config.MetaInfo;
+import com.eggroll.core.grpc.ContextPrepareInterceptor;
+import com.eggroll.core.grpc.ServiceExceptionHandler;
 import com.eggroll.core.postprocessor.ApplicationStartedRunner;
 import com.eggroll.core.utils.FileSystemUtils;
 import com.google.common.collect.Lists;
@@ -10,6 +12,7 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import io.grpc.BindableService;
 import io.grpc.Server;
+import io.grpc.ServerInterceptors;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts;
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
@@ -55,8 +58,9 @@ public class GrpcServer implements ApplicationStartedRunner {
 
         NettyServerBuilder nettyServerBuilder = NettyServerBuilder.forAddress(addr);
 
-        grpcServices.forEach(s -> nettyServerBuilder.addService(s));
-        bindServices.forEach(s -> nettyServerBuilder.addService(s));
+
+        grpcServices.forEach(s -> nettyServerBuilder.addService(ServerInterceptors.intercept(s, new ServiceExceptionHandler(), new ContextPrepareInterceptor())));
+        bindServices.forEach(s -> nettyServerBuilder.addService(ServerInterceptors.intercept(s, new ServiceExceptionHandler(), new ContextPrepareInterceptor())));
 
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
             @Override

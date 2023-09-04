@@ -6,6 +6,7 @@ import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.constant.ProcessorStatus;
 import com.eggroll.core.constant.ResourceStatus;
 import com.eggroll.core.constant.SessionStatus;
+import com.eggroll.core.context.Context;
 import com.eggroll.core.exceptions.ErSessionException;
 import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.*;
@@ -40,7 +41,7 @@ public class JobServiceHandler {
     @Inject
     ServerNodeService serverNodeService;
 
-    public void killJob(String sessionId) {
+    public void killJob(Context context , String sessionId) {
         log.info("killing job {}", sessionId);
         try {
             clusterResourceManager.lockSession(sessionId);
@@ -64,7 +65,7 @@ public class JobServiceHandler {
                 }
                 try {
                     killContainersRequest.setContainers(processorIdList);
-                    new NodeManagerClient(erServerNode.getEndpoint()).killJobContainers(killContainersRequest);
+                    new NodeManagerClient(erServerNode.getEndpoint()).killJobContainers(context,killContainersRequest);
                 } catch (Exception e) {
                     log.error("killContainers error : ", e);
                 }
@@ -107,17 +108,17 @@ public class JobServiceHandler {
     }
 
 
-    public KillJobResponse handleJobKill(KillJobRequest killJobRequest) {
+    public KillJobResponse handleJobKill(Context  context,KillJobRequest killJobRequest) {
         String sessionId = killJobRequest.getSessionId();
-        killJob(sessionId);
+        killJob(context,sessionId);
         KillJobResponse response = new KillJobResponse();
         response.setSessionId(sessionId);
         return response;
     }
 
-    public StopJobResponse handleJobStop(StopJobRequest stopJobRequest) {
+    public StopJobResponse handleJobStop(Context context,StopJobRequest stopJobRequest) {
         String sessionId = stopJobRequest.getSessionId();
-        killJob(sessionId);
+        killJob(context,sessionId);
         StopJobResponse response = new StopJobResponse();
         response.setSessionId(sessionId);
         return response;
@@ -235,7 +236,7 @@ public class JobServiceHandler {
                     }
                     startDeepspeedContainerRequest.setDeepspeedConfigs(deepspeedConfigs);
                     startDeepspeedContainerRequest.setOptions(submitJobRequest.getOptions());
-                    nodeManagerClient.startJobContainers(StartDeepspeedContainerRequest.toStartContainersRequest(startDeepspeedContainerRequest));
+                    nodeManagerClient.startJobContainers(new Context(),StartDeepspeedContainerRequest.toStartContainersRequest(startDeepspeedContainerRequest));
                 });
 
 
@@ -266,7 +267,7 @@ public class JobServiceHandler {
                 throw new ErSessionException("kill session " + sessionId + " request was found");
             }
         } catch (Exception e) {
-            killJob(sessionId);
+            killJob(new Context(),sessionId);
             throw e;
         } finally {
             clusterResourceManager.unlockSession(sessionId);
@@ -305,7 +306,7 @@ public class JobServiceHandler {
 
             if (activeCount < expectedWorldSize) {
                 try {
-                    killJob(sessionId);
+                    killJob(new Context(),sessionId);
                 } catch (Exception e) {
                     log.error("failed to kill job " + sessionId, e);
                 }

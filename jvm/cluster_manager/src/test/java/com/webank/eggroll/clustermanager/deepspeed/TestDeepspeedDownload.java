@@ -1,6 +1,7 @@
 package com.webank.eggroll.clustermanager.deepspeed;
 
 import com.eggroll.core.config.Dict;
+import com.eggroll.core.context.Context;
 import com.eggroll.core.grpc.ClusterManagerClient;
 import com.eggroll.core.grpc.GrpcConnectionFactory;
 import com.eggroll.core.pojo.ErEndpoint;
@@ -46,7 +47,7 @@ public class TestDeepspeedDownload {
         ClusterManagerClient clusterManagerClient = new ClusterManagerClient(endpoint);
         PrepareJobDownloadRequest prepareJobDownloadRequest = new PrepareJobDownloadRequest();
         prepareJobDownloadRequest.setSessionId("deepspeed_session_20230705-175508-766715");
-        PrepareJobDownloadResponse prepareJobDownloadResponse = clusterManagerClient.prepareJobDownload(prepareJobDownloadRequest);
+        PrepareJobDownloadResponse prepareJobDownloadResponse = clusterManagerClient.prepareJobDownload(new Context(),prepareJobDownloadRequest);
         String  content = prepareJobDownloadResponse.getContent();
 
         System.err.println("content ========="+content);
@@ -123,7 +124,7 @@ public class TestDeepspeedDownload {
         getOrCreateSessionMeta.setActiveProcCount(1);
         getOrCreateSessionMeta.setTotalProcCount(4);
         ClusterManagerClient clusterManagerClient = new ClusterManagerClient(endpoint);
-        ErSessionMeta result = clusterManagerClient.getSession(getOrCreateSessionMeta);
+        ErSessionMeta result = clusterManagerClient.getSession(new Context(),getOrCreateSessionMeta);
         logger.info("====================>result.id = {} , result.status = {}" ,result.getId(),result.getStatus());
     }
 
@@ -137,7 +138,7 @@ public class TestDeepspeedDownload {
         getOrCreateSessionMeta.setActiveProcCount(1);
         getOrCreateSessionMeta.setTotalProcCount(4);
         ClusterManagerClient clusterManagerClient = new ClusterManagerClient(endpoint);
-        ErSessionMeta result = clusterManagerClient.killSession(getOrCreateSessionMeta);
+        ErSessionMeta result = clusterManagerClient.killSession(new Context(),getOrCreateSessionMeta);
         logger.info("====================>result.id = {} , result.status = {}" ,result.getId(),result.getStatus());
     }
 
@@ -151,7 +152,7 @@ public class TestDeepspeedDownload {
         getOrCreateSessionMeta.setActiveProcCount(1);
         getOrCreateSessionMeta.setTotalProcCount(4);
         ClusterManagerClient clusterManagerClient = new ClusterManagerClient(endpoint);
-        ErSessionMeta result = clusterManagerClient.killAllSession(getOrCreateSessionMeta);
+        ErSessionMeta result = clusterManagerClient.killAllSession(new Context(),getOrCreateSessionMeta);
         logger.info("====================>result.id = {} , result.status = {}" ,result.getId(),result.getStatus());
     }
 
