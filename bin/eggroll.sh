@@ -70,6 +70,11 @@ main() {
 
 action() {
 	case "$action" in
+	  debug)
+	  stop
+	  debug
+	  status
+	  ;;
 		start)
 			start
 			status
@@ -159,6 +164,31 @@ start() {
 		mklogsdir
 		export EGGROLL_LOG_FILE=${module}
 		cmd="java -server ${jvm_options} -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -Dspring.config.location=file:${EGGROLL_HOME}/conf/eggroll.properties -cp ${EGGROLL_HOME}/lib/*: ${main_class}  -p $port -s ${processor_tag}"
+
+		echo $cmd
+		if [ $start_mode = 0 ];then
+			exec $cmd >> ${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.out 2>>${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.err
+		else
+			exec $cmd >> ${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.out 2>>${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.err &
+		fi
+
+		getpid
+		if [[ $? -eq 0 ]]; then
+			echo "service start sucessfully. pid=${pid}"
+		else
+			echo "service start failed"
+		fi
+	else
+		echo "service already started. pid=${pid}"
+	fi
+}
+
+debug() {
+	getpid
+	if [[ $? -eq 1 ]]; then
+		mklogsdir
+		export EGGROLL_LOG_FILE=${module}
+		cmd="java -server -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=7007   ${jvm_options} -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -Dspring.config.location=file:${EGGROLL_HOME}/conf/eggroll.properties -cp ${EGGROLL_HOME}/lib/*: ${main_class}  -p $port -s ${processor_tag}"
 
 		echo $cmd
 		if [ $start_mode = 0 ];then
