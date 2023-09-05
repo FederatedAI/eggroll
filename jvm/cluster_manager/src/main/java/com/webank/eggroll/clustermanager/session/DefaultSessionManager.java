@@ -83,7 +83,9 @@ public class DefaultSessionManager implements SessionManager {
             }
             if (cur.isOverState() || SessionStatus.ACTIVE.name().equals(cur.getStatus()))
                 return true;
-            if (SessionStatus.NEW.name().equals(cur.getStatus()) && (cur.getActiveProcCount() < cur.getTotalProcCount())) {
+            if (SessionStatus.NEW.name().equals(cur.getStatus()) &&
+                    cur.getActiveProcCount()!=null&&cur.getTotalProcCount() !=null &&
+                    (cur.getActiveProcCount() < cur.getTotalProcCount())) {
                 try {
                     Thread.sleep(100);
                 } catch (InterruptedException e) {
