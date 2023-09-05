@@ -19,12 +19,23 @@ class DsDownloadServiceStub(object):
                 request_serializer=deepspeed__download__pb2.DsDownloadRequest.SerializeToString,
                 response_deserializer=deepspeed__download__pb2.DsDownloadResponse.FromString,
                 )
+        self.download_by_split = channel.unary_stream(
+                '/com.webank.eggroll.core.meta.DsDownloadService/download_by_split',
+                request_serializer=deepspeed__download__pb2.DsDownloadRequest.SerializeToString,
+                response_deserializer=deepspeed__download__pb2.DsDownloadSplitResponse.FromString,
+                )
 
 
 class DsDownloadServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def download(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def download_by_split(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -37,6 +48,11 @@ def add_DsDownloadServiceServicer_to_server(servicer, server):
                     servicer.download,
                     request_deserializer=deepspeed__download__pb2.DsDownloadRequest.FromString,
                     response_serializer=deepspeed__download__pb2.DsDownloadResponse.SerializeToString,
+            ),
+            'download_by_split': grpc.unary_stream_rpc_method_handler(
+                    servicer.download_by_split,
+                    request_deserializer=deepspeed__download__pb2.DsDownloadRequest.FromString,
+                    response_serializer=deepspeed__download__pb2.DsDownloadSplitResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -62,5 +78,22 @@ class DsDownloadService(object):
         return grpc.experimental.unary_unary(request, target, '/com.webank.eggroll.core.meta.DsDownloadService/download',
             deepspeed__download__pb2.DsDownloadRequest.SerializeToString,
             deepspeed__download__pb2.DsDownloadResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def download_by_split(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(request, target, '/com.webank.eggroll.core.meta.DsDownloadService/download_by_split',
+            deepspeed__download__pb2.DsDownloadRequest.SerializeToString,
+            deepspeed__download__pb2.DsDownloadSplitResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
