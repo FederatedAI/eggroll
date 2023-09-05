@@ -59,7 +59,7 @@ public class ProcessorStateMachine extends  AbstractStateMachine<ErProcessor> {
     @Inject
     public void afterPropertiesSet() throws Exception {
         this.registeStateHander( "_NEW",processorCreateHandler);
-        this.registeStateHander( "NEW_RUNNING",processorCreateHandler);
+        this.registeStateHander( "NEW_RUNNING",processorStateRunningHandler);
         this.registeStateHander("RUNNING_FINISHED",processorStatusRunningStopHandler);
         this.registeStateHander("RUNNING_STOPPED",processorStatusRunningStopHandler);
         this.registeStateHander("RUNNING_KILLED",processorStatusRunningStopHandler);
