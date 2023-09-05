@@ -29,6 +29,7 @@ from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint
 from eggroll.core.proto import transfer_pb2_grpc, transfer_pb2, deepspeed_download_pb2_grpc ,deepspeed_download_pb2
+from eggroll.core.proto.command_pb2 import CommandRequest
 from eggroll.core.proto.containers_pb2 import ContentType, ContainerContent
 
 from eggroll.core.utils import _exception_logger, get_static_er_conf
@@ -184,7 +185,6 @@ class GrpcDsDownloadServicer(deepspeed_download_pb2_grpc.DsDownloadServiceServic
                 path = self.get_container_path(request.content_type,request.session_id,str(rank))
                 L.info(f"prepare to download path {path}")
                 content = zip2bytes(startdir=path)
-
                 compress_content = ContainerContent(rank=rank,content=content)
                 # message ContainerContent
                 # {
@@ -197,6 +197,36 @@ class GrpcDsDownloadServicer(deepspeed_download_pb2_grpc.DsDownloadServiceServic
             L.exception(f"download error request  {request}")
             raise  e
         return deepspeed_download_pb2.DsDownloadResponse(session_id=request.session_id,container_content=result)
+
+    @_exception_logger
+    def download_by_split(self, request, context):
+        L.info(f"receive download_by_split request  {request}")
+        result = []
+        try:
+            for  rank in  request.ranks:
+                L.info(f"prepare to download container_id {rank}")
+                path = self.get_container_path(request.content_type,request.session_id,str(rank))
+                L.info(f"prepare to download path {path}")
+                content = zip2bytes(startdir=path)
+
+                # compress_content = ContainerContent(rank=rank,content=content)
+                # message ContainerContent
+                # {
+                #     int64 container_id = 1;
+                #     bytes content = 2;
+                #     string compress_method = 3;
+                # }
+                # result.append(compress_content)
+                result.append((rank,content))
+        except Exception as e:
+            L.exception(f"download error request  {request}")
+            raise  e
+        # download_data = deepspeed_download_pb2.DsDownloadResponse(session_id=request.session_id, container_content=result)
+        # serialize_string = download_data.SerializeToString()
+        # data_bytes = bytes(serialize_string)
+        # L.info(f"=====data total size  {len(serialize_string)}")
+        return chunker2(result,1024*1024*1024)
+
 
 
 
@@ -361,7 +391,31 @@ def zip2bytes(startdir,compression=ZIP_DEFLATED,compresslevel=1, **kwargs) -> by
     buffer.seek(0)
     return buffer.read()
 
+def chunker(iterable, size):
+
+    for i in range(0, len(iterable), size):
+        L.info("use chunker!!!!!!!!!!!!!!")
+        yield  deepspeed_download_pb2.DsDownloadSplitResponse(data=iterable[i:i + size])
+
+
+def chunker2(iterable, size):
+    for j in iterable:
+        for i in range(0, len(j[1]), size):
+            L.info("use chunker!!!!!!!!!!!!!!")
+            yield deepspeed_download_pb2.DsDownloadSplitResponse(data=j[1][i:i + size], rank=j[0])
+
+
 if __name__ == '__main__':
    # f = zipfile.ZipFile('/Users/kaideng/work/test2/mytest.zip','w',zipfile.ZIP_DEFLATED)
-    startdir = "/data/projects/fate/eggroll/deepspeed/1"
-    print(zip2bytes(startdir))
+    a = [[1,2,3,4,5,6,7,8,9,10,11],[12,13,14,15]]
+
+
+
+    for chunk in chunker2(a, 2):
+       print(chunk)
+
+   # a =  bytes()
+   # print(a+bytes('world', 'utf-8'))
+
+    # startdir = "/data/projects/fate/eggroll/deepspeed/1"
+    # print(zip2bytes(startdir))
