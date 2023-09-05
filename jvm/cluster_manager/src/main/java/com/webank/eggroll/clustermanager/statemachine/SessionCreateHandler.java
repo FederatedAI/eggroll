@@ -30,7 +30,7 @@ public class SessionCreateHandler  extends AbstractSessionStateHandler{
         serverNode.setStatus(ServerNodeStatus.HEALTHY.name());
         serverNode.setNodeType(ServerNodeTypes.NODE_MANAGER.name());
         List<ErServerNode>  serverNodes = serverNodeService.getListByErServerNode(serverNode);
-//        System.err.println("xxxxxxxxxxx"+serverNodes);
+       System.err.println("xxxxxxxxxxx"+serverNodes);
         logger.info("session create , health node {}",serverNodes);
         context.putData(Dict.SERVER_NODES,serverNodes);
         return data;
@@ -53,8 +53,9 @@ public class SessionCreateHandler  extends AbstractSessionStateHandler{
             eggsPerNode =  Integer.parseInt(erSessionMeta.getOptions().get("eggroll.session.processors.per.node"));
         }
 
-
-
+        logger.info("server node list {}",serverNodeList);
+        logger.info("session meta {}",erSessionMeta);
+        logger.info("eggsPerNode {}",eggsPerNode);
         for(ErServerNode  erServerNode:serverNodeList) {
             for(int i=0;i<eggsPerNode;i++){
                 ErProcessor  processor= new ErProcessor();
@@ -65,6 +66,7 @@ public class SessionCreateHandler  extends AbstractSessionStateHandler{
                 processor.setCommandEndpoint(new ErEndpoint(erServerNode.getEndpoint().getHost(),0));
                 processors.add(processor);
             }
+            System.err.println("xxxxxxxxprocessor"+processors);
             erSessionMeta.setProcessors(processors);
         };
         doInserSession(context,erSessionMeta);
@@ -78,6 +80,7 @@ public class SessionCreateHandler  extends AbstractSessionStateHandler{
     public void asynPostHandle(Context context, ErSessionMeta data, String preStateParam, String desStateParam) {
         logger.info("create session  asyn post handle begin");
        List<ErServerNode> serverNodes = (List<ErServerNode>)context.getData(Dict.SERVER_NODES);
+
         serverNodes.parallelStream().forEach(node->{
             ErSessionMeta  sendSession =new ErSessionMeta();
 
