@@ -208,23 +208,11 @@ class GrpcDsDownloadServicer(deepspeed_download_pb2_grpc.DsDownloadServiceServic
                 path = self.get_container_path(request.content_type,request.session_id,str(rank))
                 L.info(f"prepare to download path {path}")
                 content = zip2bytes(startdir=path)
-
-                # compress_content = ContainerContent(rank=rank,content=content)
-                # message ContainerContent
-                # {
-                #     int64 container_id = 1;
-                #     bytes content = 2;
-                #     string compress_method = 3;
-                # }
-                # result.append(compress_content)
                 result.append((rank,content))
         except Exception as e:
             L.exception(f"download error request  {request}")
             raise  e
-        # download_data = deepspeed_download_pb2.DsDownloadResponse(session_id=request.session_id, container_content=result)
-        # serialize_string = download_data.SerializeToString()
-        # data_bytes = bytes(serialize_string)
-        # L.info(f"=====data total size  {len(serialize_string)}")
+
         return chunker2(result,1024*1024*1024)
 
 
@@ -394,35 +382,13 @@ def zip2bytes(startdir,compression=ZIP_DEFLATED,compresslevel=1, **kwargs) -> by
 def chunker(iterable, size):
 
     for i in range(0, len(iterable), size):
-        L.info("use chunker!!!!!!!!!!!!!!")
         yield  deepspeed_download_pb2.DsDownloadSplitResponse(data=iterable[i:i + size])
 
 
 def chunker2(iterable, size):
     for j in iterable:
         for i in range(0, len(j[1]), size):
-            L.info("use chunker!!!!!!!!!!!!!!")
             yield deepspeed_download_pb2.DsDownloadSplitResponse(data=j[1][i:i + size], rank=j[0])
 
-def chunker3(iterable, size):
-    for j in iterable:
-        for i in range(0, len(j), size):
-            L.info("use chunker!!!!!!!!!!!!!!")
-            yield j[i:i + size]
 
 
-
-if __name__ == '__main__':
-   # f = zipfile.ZipFile('/Users/kaideng/work/test2/mytest.zip','w',zipfile.ZIP_DEFLATED)
-    a = [[1,2,3,4,5,6,7,8,9,10,11],[12,13,14,15]]
-
-
-
-    for chunk in chunker3(a, 10):
-       print(chunk)
-
-   # a =  bytes()
-   # print(a+bytes('world', 'utf-8'))
-
-    # startdir = "/data/projects/fate/eggroll/deepspeed/1"
-    # print(zip2bytes(startdir))
