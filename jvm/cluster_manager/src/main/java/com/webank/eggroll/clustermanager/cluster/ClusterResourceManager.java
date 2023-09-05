@@ -18,8 +18,9 @@ import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.entity.ProcessorResource;
 import com.webank.eggroll.clustermanager.schedule.ClusterManagerTask;
 import com.webank.eggroll.clustermanager.schedule.Schedule;
-import javafx.util.Pair;
+
 import lombok.Data;
+import org.apache.commons.lang3.tuple.MutablePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -234,12 +235,12 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                                 remainMostFirstDispatch(serverNodes, resourceApplication);
                                 break;
                         }
-                        List<Pair<ErProcessor, ErServerNode>> dispatchedProcessors = resourceApplication.getResourceDispatch();
+                        List<MutablePair<ErProcessor, ErServerNode>> dispatchedProcessors = resourceApplication.getResourceDispatch();
                         ErSessionMeta erSessionMeta = new ErSessionMeta();
                         erSessionMeta.setId(resourceApplication.getSessionId());
                         erSessionMeta.setName(resourceApplication.getSessionName());
                         List<ErProcessor> processorList = new ArrayList<>();
-                        for (Pair<ErProcessor, ErServerNode> dispatchedProcessor : dispatchedProcessors) {
+                        for (MutablePair<ErProcessor, ErServerNode> dispatchedProcessor : dispatchedProcessors) {
                             processorList.add(dispatchedProcessor.getKey());
                         }
                         erSessionMeta.setProcessors(processorList);
@@ -257,7 +258,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                     Map<Long, List<ErServerNode>> serverNodeMap = serverNodes.stream().collect(Collectors.groupingBy(ErServerNode::getId));
                     resourceApplication.getResourceDispatch().clear();
                     for (ErProcessor processor : registeredSessionMeta.getProcessors()) {
-                        resourceApplication.getResourceDispatch().add(new Pair<>(processor, serverNodeMap.get(processor.getServerNodeId()).get(0)));
+                        resourceApplication.getResourceDispatch().add(new MutablePair<>(processor, serverNodeMap.get(processor.getServerNodeId()).get(0)));
                     }
                     resourceApplication.countDown();
                     applicationQueue.getBroker().remove();
@@ -355,9 +356,9 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
     public ResourceApplication remainMostFirstDispatch(List<ErServerNode> serverNodes, ResourceApplication resourceApplication) {
         List<ErProcessor> requiredProcessors = resourceApplication.getProcessors();
         List<ErServerNode> sortedNodes = serverNodes.stream().sorted(Comparator.comparingLong(node -> getFirstUnAllocatedResource(node, resourceApplication))).collect(Collectors.toList());
-        List<Pair<ErServerNode,ErResource>> nodeResourceTupes = new ArrayList<>();
+        List<MutablePair<ErServerNode,ErResource>> nodeResourceTupes = new ArrayList<>();
         for (ErServerNode sortedNode : sortedNodes) {
-            nodeResourceTupes.add(new Pair<>(sortedNode,sortedNode.getResources().get(0)));
+            nodeResourceTupes.add(new MutablePair<>(sortedNode,sortedNode.getResources().get(0)));
         }
         Map<ErServerNode, Long> sortMap = new HashMap<>();
         for (ErServerNode node : sortedNodes) {
@@ -402,7 +403,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
 
         nodeToProcessors.forEach((node, processors) -> {
             for (ErProcessor processor : processors) {
-                resourceApplication.getResourceDispatch().add(new Pair<>(processor, node));
+                resourceApplication.getResourceDispatch().add(new MutablePair<>(processor, node));
             }
         });
 
@@ -466,7 +467,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
 
         nodeToProcessors.forEach((node, processors) -> {
             for (ErProcessor processor : processors) {
-                resourceApplication.getResourceDispatch().add(new Pair<>(processor, node));
+                resourceApplication.getResourceDispatch().add(new MutablePair<>(processor, node));
             }
         });
         return resourceApplication;
@@ -502,7 +503,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
 
         nodeToProcessors.forEach((node, processors) -> {
             for (ErProcessor processor : processors) {
-                resourceApplication.getResourceDispatch().add(new Pair<>(processor, node));
+                resourceApplication.getResourceDispatch().add(new MutablePair<>(processor, node));
             }
         });
 

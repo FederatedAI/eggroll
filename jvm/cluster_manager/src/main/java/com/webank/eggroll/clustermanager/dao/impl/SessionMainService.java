@@ -13,6 +13,7 @@ import com.webank.eggroll.clustermanager.entity.SessionMain;
 import com.webank.eggroll.clustermanager.entity.SessionOption;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import com.webank.eggroll.clustermanager.entity.SessionRanks;
+import org.apache.commons.lang3.tuple.MutableTriple;
 import org.mybatis.guice.transactional.Transactional;
 
 
@@ -109,14 +110,14 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
     }
 
     @Transactional
-    public void registerRanks(List<Tuple<Long, ErServerNode, DeepspeedContainerConfig>> configs,String sesssionId){
-        for (Tuple<Long, ErServerNode, DeepspeedContainerConfig> config : configs) {
+    public void registerRanks(List<MutableTriple<Long, ErServerNode, DeepspeedContainerConfig>> configs, String sesssionId){
+        for (MutableTriple<Long, ErServerNode, DeepspeedContainerConfig> config : configs) {
             SessionRanks sessionRanks = new SessionRanks();
             sessionRanks.setSessionId(sesssionId);
-            sessionRanks.setContainerId(config.getFirst());
-            sessionRanks.setServerNodeId(config.getSecond().getId());
-            sessionRanks.setGlobalRank(config.getThird().getRank());
-            sessionRanks.setLocalRank(config.getThird().getLocalRank());
+            sessionRanks.setContainerId(config.getLeft());
+            sessionRanks.setServerNodeId(config.getMiddle().getId());
+            sessionRanks.setGlobalRank(config.getRight().getRank());
+            sessionRanks.setLocalRank(config.getRight().getLocalRank());
             sessionRanksService.save(sessionRanks);
         }
     }
