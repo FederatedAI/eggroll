@@ -404,6 +404,13 @@ def chunker2(iterable, size):
             L.info("use chunker!!!!!!!!!!!!!!")
             yield deepspeed_download_pb2.DsDownloadSplitResponse(data=j[1][i:i + size], rank=j[0])
 
+def chunker3(iterable, size):
+    for j in iterable:
+        for i in range(0, len(j), size):
+            L.info("use chunker!!!!!!!!!!!!!!")
+            yield j[i:i + size]
+
+
 
 if __name__ == '__main__':
    # f = zipfile.ZipFile('/Users/kaideng/work/test2/mytest.zip','w',zipfile.ZIP_DEFLATED)
@@ -411,7 +418,7 @@ if __name__ == '__main__':
 
 
 
-    for chunk in chunker2(a, 2):
+    for chunk in chunker3(a, 10):
        print(chunk)
 
    # a =  bytes()
