@@ -17,8 +17,10 @@ import com.webank.eggroll.clustermanager.cluster.ClusterResourceManager;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.entity.SessionMain;
-import javafx.util.Pair;
+
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.MutablePair;
+import org.apache.commons.lang3.tuple.MutableTriple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -154,7 +156,7 @@ public class JobServiceHandler {
         log.info("submitting resource request: " + resourceApplication + ", " + resourceApplication.hashCode());
 
         clusterResourceManager.submitResourceRequest(resourceApplication);
-        List<Pair<ErProcessor, ErServerNode>> dispatchedProcessorList = resourceApplication.getResult();
+        List<MutablePair<ErProcessor, ErServerNode>> dispatchedProcessorList = resourceApplication.getResult();
         log.info("submitted resource request: " + resourceApplication + ", " + resourceApplication.hashCode());
         log.info("dispatchedProcessor: " + JsonUtil.object2Json(dispatchedProcessorList));
 
@@ -163,33 +165,33 @@ public class JobServiceHandler {
             clusterResourceManager.lockSession(sessionId);
             if (!clusterResourceManager.getKillJobMap().containsKey(sessionId)) {
                 ErSessionMeta registeredSessionMeta = sessionMainService.getSession(submitJobRequest.getSessionId());
-                List<Tuple<ErProcessor, ErServerNode, ErProcessor>> pariList = new ArrayList<>();
+                List<MutableTriple<ErProcessor, ErServerNode, ErProcessor>> pariList = new ArrayList<>();
                 //scala .zip
                 for (int i = 0; i < dispatchedProcessorList.size(); i++) {
-                    Pair<ErProcessor, ErServerNode> erProcessorErServerNodePair = dispatchedProcessorList.get(i);
+                    MutablePair<ErProcessor, ErServerNode> erProcessorErServerNodePair = dispatchedProcessorList.get(i);
                     ErProcessor registeredProcessor = registeredSessionMeta.getProcessors().get(i);
-                    pariList.add(new Tuple<>(erProcessorErServerNodePair.getKey(), erProcessorErServerNodePair.getValue(), registeredProcessor));
+                    pariList.add(new MutableTriple<>(erProcessorErServerNodePair.getKey(), erProcessorErServerNodePair.getValue(), registeredProcessor));
                 }
 
-                List<Tuple<Long, ErServerNode, DeepspeedContainerConfig>> configs = new ArrayList<>();
+                List<MutableTriple<Long, ErServerNode, DeepspeedContainerConfig>> configs = new ArrayList<>();
                 AtomicInteger globalRank = new AtomicInteger(0);
                 AtomicInteger crossSize = new AtomicInteger(0);
                 AtomicInteger crossRank = new AtomicInteger(0);
 
 
-                Map<ErServerNode, List<Tuple<ErProcessor, ErServerNode, ErProcessor>>> collect = pariList.stream()
-                        .collect(Collectors.groupingBy(Tuple::getSecond));
+                Map<ErServerNode, List<MutableTriple<ErProcessor, ErServerNode, ErProcessor>>> collect = pariList.stream()
+                        .collect(Collectors.groupingBy(MutableTriple::getMiddle));
                 collect.forEach((node, processorAndNodeArray) -> {
                     crossSize.getAndIncrement();
                     int localSize = processorAndNodeArray.size();
                     List<Integer> cudaVisibleDevices = new ArrayList<>();
                     processorAndNodeArray.forEach(pair -> {
-                        String[] devicesForProcessor = pair.getFirst().getOptions().getOrDefault("cudaVisibleDevices", "-1").split(",");
+                        String[] devicesForProcessor = pair.getLeft().getOptions().getOrDefault("cudaVisibleDevices", "-1").split(",");
                         for (String devicesStr : devicesForProcessor) {
                             int device = Integer.parseInt(devicesStr);
                             cudaVisibleDevices.add(device);
                             if (device < 0) {
-                                throw new IllegalArgumentException("cudaVisibleDevices is not set or invalid: " + JsonUtil.object2Json(pair.getFirst().getOptions().get("cudaVisibleDevices")));
+                                throw new IllegalArgumentException("cudaVisibleDevices is not set or invalid: " + JsonUtil.object2Json(pair.getLeft().getOptions().get("cudaVisibleDevices")));
                             }
                         }
                     });
@@ -199,7 +201,7 @@ public class JobServiceHandler {
                     }
 
                     int localRank = 0;
-                    for (Tuple<ErProcessor, ErServerNode, ErProcessor> pair : processorAndNodeArray) {
+                    for (MutableTriple<ErProcessor, ErServerNode, ErProcessor> pair : processorAndNodeArray) {
                         DeepspeedContainerConfig deepspeedContainerConfig = new DeepspeedContainerConfig();
                         deepspeedContainerConfig.setCudaVisibleDevices(cudaVisibleDevices);
                         deepspeedContainerConfig.setWorldSize(worldSize);
@@ -209,9 +211,9 @@ public class JobServiceHandler {
                         deepspeedContainerConfig.setLocalRank(localRank);
                         deepspeedContainerConfig.setRank(globalRank.get());
                         deepspeedContainerConfig.setStorePrefix(sessionId);
-                        configs.add(new Tuple<>(
-                                pair.getFirst().getId(),
-                                pair.getSecond(),
+                        configs.add(new MutableTriple<>(
+                                pair.getLeft().getId(),
+                                pair.getMiddle(),
                                 deepspeedContainerConfig
                         ));
                         localRank++;
@@ -221,7 +223,7 @@ public class JobServiceHandler {
                 });
                 sessionMainService.registerRanks(configs, sessionId);
 
-                configs.stream().collect(Collectors.groupingBy(Tuple::getSecond)).forEach((node, nodeAndConfigs) -> {
+                configs.stream().collect(Collectors.groupingBy(MutableTriple::getMiddle)).forEach((node, nodeAndConfigs) -> {
                     NodeManagerClient nodeManagerClient = new NodeManagerClient(node.getEndpoint());
                     StartDeepspeedContainerRequest startDeepspeedContainerRequest = new StartDeepspeedContainerRequest();
                     startDeepspeedContainerRequest.setSessionId(sessionId);
@@ -231,8 +233,8 @@ public class JobServiceHandler {
                     startDeepspeedContainerRequest.setFiles(submitJobRequest.getFiles());
                     startDeepspeedContainerRequest.setZippedFiles(submitJobRequest.getZippedFiles());
                     Map<Long, DeepspeedContainerConfig> deepspeedConfigs = new HashMap<>();
-                    for (Tuple<Long, ErServerNode, DeepspeedContainerConfig> nodeAndConfig : nodeAndConfigs) {
-                        deepspeedConfigs.put(nodeAndConfig.getFirst(), nodeAndConfig.getThird());
+                    for (MutableTriple<Long, ErServerNode, DeepspeedContainerConfig> nodeAndConfig : nodeAndConfigs) {
+                        deepspeedConfigs.put(nodeAndConfig.getLeft(), nodeAndConfig.getRight());
                     }
                     startDeepspeedContainerRequest.setDeepspeedConfigs(deepspeedConfigs);
                     startDeepspeedContainerRequest.setOptions(submitJobRequest.getOptions());
