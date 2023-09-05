@@ -252,7 +252,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
 
     @Schedule(cron="0/5 * * * * ?")
     public void  checkNodeHeartbeat(){
-        logger.info("check node heart beat begin");
+
         long expire = MetaInfo.CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT *
                 MetaInfo.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL;
         try {

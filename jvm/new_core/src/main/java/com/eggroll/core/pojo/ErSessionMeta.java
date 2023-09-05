@@ -37,6 +37,8 @@ public class ErSessionMeta implements RpcMessage {
         }
         builder.setTag(this.tag);
         builder.addAllProcessors(this.processors.stream().map(ErProcessor::toProto).collect(Collectors.toList()));
+        if(options.size()>0)
+            builder.putAllOptions(this.options);
         return builder.build();
     }
 
@@ -58,6 +60,7 @@ public class ErSessionMeta implements RpcMessage {
             this.status = sessionMeta.getStatus();
             this.name = sessionMeta.getName();
             this.id = sessionMeta.getId();
+            this.options = sessionMeta.getOptionsMap();
         } catch (Exception e) {
            // log.error("deserialize error : ", e);
         }
