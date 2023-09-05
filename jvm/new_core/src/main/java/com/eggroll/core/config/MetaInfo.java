@@ -64,7 +64,7 @@ public class MetaInfo {
 
 
     @Config(confKey = "eggroll.resourcemanager.bootstrap.egg_pair.exepath")
-    public static String CONFKEY_RESOURCE_MANAGER_BOOTSTRAP_EGG_PAIR_EXE_PATH = "";
+    public static String CONFKEY_RESOURCE_MANAGER_BOOTSTRAP_EGG_PAIR_EXE_PATH = "bin/roll_pair/egg_pair_bootstrap.sh";
     @Config(confKey = "eggroll.resourcemanager.bootstrap.egg_pair.venv")
     public static String CONFKEY_RESOURCE_MANAGER_BOOTSTRAP_EGG_PAIR_VENV = "";
     @Config(confKey = "eggroll.resourcemanager.bootstrap.egg_pair.pythonpath")
@@ -265,7 +265,7 @@ public class MetaInfo {
     @Config(confKey = "grpc.client.keepalive.timeout", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static int PROPERTY_GRPC_CLIENT_KEEPALIVE_TIMEOUT_SEC = 3600;
     @Config(confKey = "grpc.client.keepalive.without.calls.enabled", pattern = Dict.BOOLEAN_PATTERN)
-    public static boolean PROPERTY_GRPC_CLIENT_KEEPALIVE_WITHOUT_CALLS_ENABLED = true;
+    public static Boolean PROPERTY_GRPC_CLIENT_KEEPALIVE_WITHOUT_CALLS_ENABLED = true;
     @Config(confKey = "grpc.client.max.connection.idle", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static int PROPERTY_GRPC_CLIENT_MAX_CONNECTION_IDLE_SEC = 86400;
     @Config(confKey = "grpc.client.per.rpc.buffer.limit", pattern = Dict.POSITIVE_INTEGER_PATTERN)
@@ -297,6 +297,11 @@ public class MetaInfo {
     public static Integer EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL = 3600000;
     @Config(confKey="eggroll.mybatis.mapper.package")
     public static String  EGGROLL_MYBATIS_MAPPER_PACKAGE="com.webank.eggroll.clustermanager.dao.mapper";
+    @Config(confKey="eggroll.flowlog.print.send.request")
+    public static Boolean EGGROLL_FLOWLOG_PRINT_SEND_REQUEST=false;
+
+
+
 
     public static boolean checkPattern(String pattern, String value) {
         Pattern p = Pattern.compile(pattern);

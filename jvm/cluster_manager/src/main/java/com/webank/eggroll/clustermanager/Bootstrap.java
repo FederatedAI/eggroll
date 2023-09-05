@@ -12,6 +12,7 @@ import org.apache.commons.cli.CommandLine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.Properties;
 
 public class Bootstrap {
@@ -20,13 +21,14 @@ public class Bootstrap {
     static public Injector  injector;
 
     public static void main(String[] args) throws Exception {
-
-
+        System.setProperty("module","cluster-manager");
         CommandLine cmd = CommandArgsUtils.parseArgs(args);
-
         //this.sessionId = cmd.getOptionValue('s')
         String confPath = cmd.getOptionValue('c', "./conf/eggroll.properties");
         logger.info("load config file {}", confPath);
+        File file = new File(confPath);
+        String absolutePath = file.getAbsolutePath();
+        MetaInfo.STATIC_CONF_PATH = absolutePath;
         Properties environment = PropertiesUtil.getProperties(confPath);
         MetaInfo.init(environment);
 //        Injector injector = Guice.createInjector(new DemoModule());

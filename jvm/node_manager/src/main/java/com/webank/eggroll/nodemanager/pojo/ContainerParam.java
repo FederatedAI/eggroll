@@ -2,6 +2,7 @@ package com.webank.eggroll.nodemanager.pojo;
 
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.config.MetaInfo;
+import com.eggroll.core.constant.ProcessorType;
 import com.eggroll.core.pojo.RuntimeErConf;
 import com.webank.eggroll.core.meta.Meta;
 import com.webank.eggroll.nodemanager.meta.NodeManagerMeta;
@@ -30,18 +31,20 @@ public class ContainerParam {
     public ContainerParam(RuntimeErConf conf,String moduleName, Long processorId) {
 
         // exePath
-        if (moduleName != null && !moduleName.isEmpty()) {
-            switch (moduleName){
-                case Dict.EGG_PAIR:
-                    exePath = MetaInfo.CONFKEY_RESOURCE_MANAGER_BOOTSTRAP_EGG_PAIR_EXE_PATH;
-                    break;
-                case Dict.EGG_FRAME:
-                    exePath = MetaInfo.CONFKEY_RESOURCE_MANAGER_BOOTSTRAP_EGG_FRAME_EXE_PATH;
-                    break;
-                default:
-                    break;
-            }
-        }
+//        if (moduleName != null && !moduleName.isEmpty()) {
+//            switch (moduleName){
+//                case ProcessorType.EGG_PAIR.name():
+//                    exePath = MetaInfo.CONFKEY_RESOURCE_MANAGER_BOOTSTRAP_EGG_PAIR_EXE_PATH;
+//                    break;
+//                case Dict.EGG_FRAME:
+//                    exePath = MetaInfo.CONFKEY_RESOURCE_MANAGER_BOOTSTRAP_EGG_FRAME_EXE_PATH;
+//                    break;
+//                default:
+//                    break;
+//            }
+//        }
+
+        exePath = MetaInfo.CONFKEY_RESOURCE_MANAGER_BOOTSTRAP_EGG_PAIR_EXE_PATH;
         isWindows = System.getProperty("os.name").toLowerCase().indexOf("windows") >= 0;
         bootStrapShell = isWindows ? "C:\\Windows\\System32\\cmd.exe" : "/bin/bash";
         exeCmd = isWindows ? "start /b python" : bootStrapShell;

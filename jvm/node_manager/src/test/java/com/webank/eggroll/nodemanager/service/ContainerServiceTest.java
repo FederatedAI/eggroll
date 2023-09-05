@@ -3,6 +3,7 @@ package com.webank.eggroll.nodemanager.service;
 
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.config.MetaInfo;
+import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.*;
 import com.eggroll.core.utils.PropertiesUtil;
 import com.google.inject.Guice;
@@ -37,21 +38,21 @@ public class ContainerServiceTest {
     @Test
     public void testStartContainer() {
         ErSessionMeta sessionMeta = getParam();
-        containerService.operateContainers(sessionMeta, Dict.NODE_CMD_START);
+        containerService.operateContainers(new Context(),sessionMeta, Dict.NODE_CMD_START);
     }
 
     @Test
     public void testStopContainer() {
         ErSessionMeta sessionMeta = getParam();
-        containerService.operateContainers(sessionMeta, Dict.NODE_CMD_START);
-        containerService.operateContainers(sessionMeta,Dict.NODE_CMD_STOP);
+        containerService.operateContainers(new Context(),sessionMeta, Dict.NODE_CMD_START);
+        containerService.operateContainers(new Context(),sessionMeta,Dict.NODE_CMD_STOP);
     }
 
     @Test
     public void testKillContainer() {
         ErSessionMeta sessionMeta = getParam();
-        containerService.operateContainers(sessionMeta, Dict.NODE_CMD_START);
-        containerService.operateContainers(sessionMeta,Dict.NODE_CMD_KILL);
+        containerService.operateContainers(new Context(),sessionMeta, Dict.NODE_CMD_START);
+        containerService.operateContainers(new Context(),sessionMeta,Dict.NODE_CMD_KILL);
     }
 
 

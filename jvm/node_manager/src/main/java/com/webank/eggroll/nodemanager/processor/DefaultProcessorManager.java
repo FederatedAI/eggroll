@@ -37,20 +37,22 @@ public class DefaultProcessorManager   implements ProcessorManager,ApplicationSt
 
     @Override
     public ErSessionMeta startContainers(Context context, ErSessionMeta sessionMeta) {
+        logger.info("xxxxxxx {}",context);
         logger.info("[startContainers]=====sessionMeta: {}", JsonUtil.object2Json(sessionMeta));
-        return containerService.operateContainers(sessionMeta, Dict.NODE_CMD_START);
+        return containerService.operateContainers(context ,sessionMeta, Dict.NODE_CMD_START);
     }
 
     @Override
     public ErSessionMeta stopContainers(Context context, ErSessionMeta sessionMeta) {
         logger.info("[stopContainers]=====sessionMeta: {}", JsonUtil.object2Json(sessionMeta));
-        return containerService.operateContainers(sessionMeta,Dict.NODE_CMD_STOP);
+        return containerService.operateContainers(context,sessionMeta,Dict.NODE_CMD_STOP);
     }
 
     @Override
     public ErSessionMeta killContainers(Context context, ErSessionMeta sessionMeta) {
         logger.info("[killContainers]=====sessionMeta: {}", JsonUtil.object2Json(sessionMeta));
-        return containerService.operateContainers(sessionMeta,Dict.NODE_CMD_KILL);
+
+        return containerService.operateContainers(context,sessionMeta,Dict.NODE_CMD_KILL);
     }
 
     @Override

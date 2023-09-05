@@ -1,6 +1,7 @@
 package com.webank.eggroll.nodemanager.service;
 
 import com.eggroll.core.config.Dict;
+import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErSessionMeta;
 import com.eggroll.core.pojo.RuntimeErConf;
@@ -22,7 +23,8 @@ public class ContainerService {
 
     Logger logger = LoggerFactory.getLogger(ContainerService.class);
 
-    public ErSessionMeta operateContainers(ErSessionMeta sessionMeta, String opType) {
+    public ErSessionMeta operateContainers(Context context, ErSessionMeta sessionMeta, String opType) {
+        context.setSessionId(sessionMeta.getId());
         List<ErProcessor> processors = sessionMeta.getProcessors();
         RuntimeErConf runtimeErConf = new RuntimeErConf(sessionMeta);
         Long myServerNodeId = NodeManagerMeta.serverNodeId;

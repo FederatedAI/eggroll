@@ -14,6 +14,7 @@ import org.apache.commons.cli.CommandLine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.Properties;
 
 public class Bootstrap {
@@ -23,6 +24,9 @@ public class Bootstrap {
         CommandLine cmd = CommandArgsUtils.parseArgs(args);
         String confPath = cmd.getOptionValue('c', "./conf/eggroll.properties");
         Properties environment = PropertiesUtil.getProperties(confPath);
+        File file = new File(confPath);
+        String absolutePath = file.getAbsolutePath();
+        MetaInfo.STATIC_CONF_PATH = absolutePath;
         MetaInfo.init(environment);
         Injector injector = Guice.createInjector(new NodeModule());
         GrpcServer  grpcServer = injector.getInstance(GrpcServer.class);

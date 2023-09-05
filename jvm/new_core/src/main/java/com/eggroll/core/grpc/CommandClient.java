@@ -1,5 +1,6 @@
 package com.eggroll.core.grpc;
 
+import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.constant.ActionType;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.flow.FlowLogUtil;
@@ -27,7 +28,8 @@ public class CommandClient {
             throw e;
         }
         finally {
-            FlowLogUtil.printFlowLog(context);
+            if(MetaInfo.EGGROLL_FLOWLOG_PRINT_SEND_REQUEST)
+                 FlowLogUtil.printFlowLog(context);
         }
     }
 
