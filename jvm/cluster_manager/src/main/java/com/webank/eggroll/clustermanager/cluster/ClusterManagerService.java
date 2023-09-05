@@ -1,5 +1,6 @@
 package com.webank.eggroll.clustermanager.cluster;
 
+import com.eggroll.core.config.Dict;
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.constant.ProcessorStatus;
 import com.eggroll.core.constant.ServerNodeStatus;
@@ -133,7 +134,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         ErServerNode serverNodeInDb = serverNodeService.getByIdFromCache(processor.getServerNodeId());
         if(serverNodeInDb!=null) {
             ErSessionMeta erSessionMeta = sessionMainService.getSession(processor.getSessionId());
-            erSessionMeta.getOptions().put(MetaInfo.SERVER_NODE_ID, processor.getServerNodeId().toString());
+            erSessionMeta.getOptions().put(Dict.SERVER_NODE_ID, processor.getServerNodeId().toString());
             NodeManagerClient nodeManagerClient = new NodeManagerClient(serverNodeInDb.getEndpoint());
             nodeManagerClient.killContainers(context,erSessionMeta);
         }
