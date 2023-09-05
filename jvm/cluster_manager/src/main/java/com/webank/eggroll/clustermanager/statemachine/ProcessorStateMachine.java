@@ -46,6 +46,7 @@ public class ProcessorStateMachine extends  AbstractStateMachine<ErProcessor> {
             }
         }
         line= preStateParam+"_"+desStateParam;
+        context.putLogData("processor_status",line);
         return  line;
     }
 
