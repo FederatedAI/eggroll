@@ -24,9 +24,7 @@ public class Bootstrap {
         String confPath = cmd.getOptionValue('c', "./conf/eggroll.properties");
         Properties environment = PropertiesUtil.getProperties(confPath);
         MetaInfo.init(environment);
-
         Injector injector = Guice.createInjector(new NodeModule());
-
         GrpcServer  grpcServer = injector.getInstance(GrpcServer.class);
         NodeResourceManager nodeResource = injector.getInstance(NodeResourceManager.class);
         CommandServiceProvider  commandServiceProvider= injector.getInstance(CommandServiceProvider.class);
@@ -34,7 +32,9 @@ public class Bootstrap {
         try {
             ApplicationStartedRunnerUtils.run(injector, args);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("init error",e);
+            //throw new RuntimeException(e);
+
         }
 
 

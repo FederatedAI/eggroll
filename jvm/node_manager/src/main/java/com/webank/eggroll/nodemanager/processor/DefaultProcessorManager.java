@@ -100,6 +100,8 @@ public class DefaultProcessorManager   implements ProcessorManager,ApplicationSt
 
     @Override
     public void run(String[] args) throws Exception {
+        logger.info("xxxxxxxxxxxxxxxxxxxxx");
         client =  new ClusterManagerClient(new ErEndpoint(MetaInfo.CONFKEY_CLUSTER_MANAGER_HOST,MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT));
+        logger.info("oooooooooooooooooooo");
     }
 }
