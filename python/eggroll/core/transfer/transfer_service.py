@@ -11,12 +11,14 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
-
+import io
+import os
 import queue
+import zipfile
 from threading import Thread, Lock, Event
 from time import sleep
 from typing import Iterable
+from zipfile import ZIP_DEFLATED, ZIP_STORED
 
 import grpc
 from grpc._cython import cygrpc
@@ -26,8 +28,11 @@ from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint
-from eggroll.core.proto import transfer_pb2_grpc, transfer_pb2
-from eggroll.core.utils import _exception_logger
+from eggroll.core.proto import transfer_pb2_grpc, transfer_pb2, deepspeed_download_pb2_grpc ,deepspeed_download_pb2
+from eggroll.core.proto.command_pb2 import CommandRequest
+from eggroll.core.proto.containers_pb2 import ContentType, ContainerContent
+
+from eggroll.core.utils import _exception_logger, get_static_er_conf
 from eggroll.utils.log_utils import get_logger
 
 L = get_logger()
@@ -141,6 +146,77 @@ class TransferService(object):
                 #todo:1: remove print here
                 print(e)
 
+class GrpcDsDownloadServicer(deepspeed_download_pb2_grpc.DsDownloadServiceServicer):
+
+
+    def  get_container_workspace(self,session_id,rank):
+
+        data_dir = get_static_er_conf().get("eggroll.resourcemanager.nodemanager.containers.data.dir",None)
+        return data_dir+"/"+session_id+"/"+rank
+    def  get_container_models_dir(self,session_id,rank):
+        return self.get_container_workspace(session_id,rank)+"/"+"models"
+
+    def  get_container_logs_dir(self,session_id,rank):
+        return self.get_container_workspace(session_id,rank)+"/"+"logs"
+    def  get_container_path(self,content_type,session_id,rank):
+        # case ContentType.ALL => getContainerWorkspace(containerId)
+        # case ContentType.MODELS => getContainerModelsDir(containerId)
+        # case ContentType.LOGS => getContainerLogsDir(containerId)
+        #
+
+        if content_type == ContentType.ALL:
+                return self.get_container_workspace(session_id,rank)
+        elif  content_type ==ContentType.MODELS:
+                return self.get_container_models_dir(session_id,rank)
+        elif  content_type ==ContentType.LOGS:
+                return self.get_container_logs_dir(session_id,rank)
+        else:
+                raise RuntimeError(f"download content type {content_type} is not support ")
+
+
+
+    @_exception_logger
+    def download(self, request: deepspeed_download_pb2.DsDownloadRequest, context):
+        L.info(f"receive download request  {request}")
+        result = []
+        try:
+            for  rank in  request.ranks:
+                L.info(f"prepare to download container_id {rank}")
+                path = self.get_container_path(request.content_type,request.session_id,str(rank))
+                L.info(f"prepare to download path {path}")
+                content = zip2bytes(startdir=path)
+                compress_content = ContainerContent(rank=rank,content=content)
+                # message ContainerContent
+                # {
+                #     int64 container_id = 1;
+                #     bytes content = 2;
+                #     string compress_method = 3;
+                # }
+                result.append(compress_content)
+        except Exception as e:
+            L.exception(f"download error request  {request}")
+            raise  e
+        return deepspeed_download_pb2.DsDownloadResponse(session_id=request.session_id,container_content=result)
+
+    @_exception_logger
+    def download_by_split(self, request, context):
+        L.info(f"receive download_by_split request  {request}")
+        result = []
+        try:
+            for  rank in  request.ranks:
+                L.info(f"prepare to download container_id {rank}")
+                path = self.get_container_path(request.content_type,request.session_id,str(rank))
+                L.info(f"prepare to download path {path}")
+                content = zip2bytes(startdir=path)
+                result.append((rank,content))
+        except Exception as e:
+            L.exception(f"download error request  {request}")
+            raise  e
+
+        return chunker2(result,1024*1024*1024)
+
+
+
 
 class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
     @_exception_logger
@@ -178,6 +254,7 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
 
     @_exception_logger
     def recv(self, request, context):
+
         base_tag = request.header.tag
         L.debug(f'GrpcTransferServicer recv broker tag={base_tag}')
         callee_messages_broker = TransferService.get_broker(base_tag)
@@ -284,5 +361,34 @@ class TransferClient(object):
         if exception is not None:
             L.exception(f'fail to {endpoint} in TransferClient.recv, cur_retry={cur_retry}', exc_info=e)
             raise exception
+
+def zip2bytes(startdir,compression=ZIP_DEFLATED,compresslevel=1, **kwargs) -> bytes:
+    L.info(f"download start dir {startdir}")
+    if compression == ZIP_STORED:
+        compresslevel = None
+        # kwargs["compression"] = compression
+        # kwargs["compresslevel"] = compresslevel
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=compression,compresslevel=compresslevel) as z:
+        for dirpath, dirnames, filenames in os.walk(startdir):
+            for filename in filenames:
+                subpath = os.path.join(dirpath, filename)
+
+                with  open(subpath,'rb') as subfile:
+                    z.writestr(filename, subfile.read())
+    buffer.seek(0)
+    return buffer.read()
+
+def chunker(iterable, size):
+
+    for i in range(0, len(iterable), size):
+        yield  deepspeed_download_pb2.DsDownloadSplitResponse(data=iterable[i:i + size])
+
+
+def chunker2(iterable, size):
+    for j in iterable:
+        for i in range(0, len(j[1]), size):
+            yield deepspeed_download_pb2.DsDownloadSplitResponse(data=j[1][i:i + size], rank=j[0])
+
 
 
