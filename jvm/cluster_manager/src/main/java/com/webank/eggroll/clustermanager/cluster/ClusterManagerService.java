@@ -88,7 +88,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         }
         return result;
     }
-    @Schedule(cron= "0/10 * * * * ?")
+    @Schedule(cron= "0/30 * * * * ?")
     public void checkDbRunningProcessor() {
         try {
             long now = System.currentTimeMillis();

@@ -45,27 +45,27 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
 
     @URI(value = startContainers)
     public ErSessionMeta startContainers(Context context, ErSessionMeta sessionMeta) {
-        return defaultProcessorManager.startContainers(null, sessionMeta);
+        return defaultProcessorManager.startContainers(context, sessionMeta);
     }
 
     @URI(value = stopContainers)
     public ErSessionMeta stopContainers(Context context,ErSessionMeta sessionMeta) {
-        return defaultProcessorManager.stopContainers(null, sessionMeta);
+        return defaultProcessorManager.stopContainers(context, sessionMeta);
     }
 
     @URI(value = killContainers)
     public ErSessionMeta killContainers(Context context,ErSessionMeta sessionMeta) {
-        return defaultProcessorManager.killContainers(null, sessionMeta);
+        return defaultProcessorManager.killContainers(context, sessionMeta);
     }
 
     @URI(value = eggpairHeartbeat)
     public ErProcessor heartbeat(Context context,ErProcessor processor) {
-        return defaultProcessorManager.heartbeat(null, processor);
+        return defaultProcessorManager.heartbeat(context, processor);
     }
 
     @URI(value = checkNodeProcess)
     public ErProcessor checkNodeProcess(Context context,ErProcessor processor) {
-        return defaultProcessorManager.checkNodeProcess(null, processor);
+        return defaultProcessorManager.checkNodeProcess(context, processor);
     }
 
     @URI(value = startJobContainers)

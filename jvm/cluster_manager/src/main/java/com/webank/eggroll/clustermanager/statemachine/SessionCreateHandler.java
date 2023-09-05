@@ -80,12 +80,14 @@ public class SessionCreateHandler  extends AbstractSessionStateHandler{
        List<ErServerNode> serverNodes = (List<ErServerNode>)context.getData(Dict.SERVER_NODES);
         serverNodes.parallelStream().forEach(node->{
             ErSessionMeta  sendSession =new ErSessionMeta();
+
                 //BeanUtils.copyProperties(data, sendSession);
                 List<ErProcessor>  processors = Lists.newArrayList();
                 data.getProcessors().forEach(erProcessor -> {
                     if(erProcessor.getServerNodeId()==node.getId())
                         processors.add(erProcessor);
                 });
+                sendSession.setId(data.getId());
                 sendSession.setProcessors(processors);
                 NodeManagerClient nodeManagerClient = new  NodeManagerClient(node.getEndpoint());
                 //sendSession.getOptions().put("eggroll.resourcemanager.server.node.id",Long.toString(node.getId()));
