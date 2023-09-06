@@ -1,5 +1,6 @@
 package com.eggroll.core.grpc;
 
+import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.constant.ActionType;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.exceptions.EggRollBaseException;
@@ -8,16 +9,20 @@ import com.eggroll.core.exceptions.ExceptionInfo;
 import com.eggroll.core.flow.FlowLogUtil;
 import com.eggroll.core.invoke.InvokeInfo;
 import com.eggroll.core.pojo.RpcMessage;
+import com.eggroll.core.utils.JsonUtil;
 import com.google.protobuf.ByteString;
 import com.webank.eggroll.core.command.Command;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Dispatcher {
-    Logger logger  = LoggerFactory.getLogger(Dispatcher.class);
+    Logger logger = LoggerFactory.getLogger(Dispatcher.class);
+    Logger grpcLogger = LoggerFactory.getLogger("grpcTrace");
+
     public void call(Command.CommandRequest request,
                      StreamObserver<Command.CommandResponse> responseObserver) {
         String uri = request.getUri();
@@ -33,9 +38,9 @@ public class Dispatcher {
     private ConcurrentHashMap<String, InvokeInfo> uriMap = new ConcurrentHashMap();
 
     public byte[] dispatch(String uri, byte[] data) {
-        Context context  =new Context();
-        Object  sourceIp = ContextPrepareInterceptor.sourceIp.get();
-        if(sourceIp!=null){
+        Context context = new Context();
+        Object sourceIp = ContextPrepareInterceptor.sourceIp.get();
+        if (sourceIp != null) {
             context.setSourceIp(sourceIp.toString());
         }
         context.setActionType(ActionType.SERVER.name());
@@ -45,14 +50,17 @@ public class Dispatcher {
 
 //            logger.info("request {} invoke {}", uri, invokeInfo);
             if (invokeInfo == null) {
-                logger.info("uri map {}",uriMap);
-                throw new RuntimeException("invalid request : " + uri );
+                logger.info("uri map {}", uriMap);
+                throw new RuntimeException("invalid request : " + uri);
             }
+            String traceId = uri + "_" + System.currentTimeMillis();
             try {
                 RpcMessage rpcMessage = (RpcMessage) invokeInfo.getParamClass().newInstance();
+                printGrpcTraceLog(traceId, "request", rpcMessage);
                 rpcMessage.deserialize(data);
                 context.setRequest(rpcMessage);
                 RpcMessage response = (RpcMessage) invokeInfo.getMethod().invoke(invokeInfo.getObject(), context, rpcMessage);
+                printGrpcTraceLog(traceId, "response", response);
                 return response.serialize();
             } catch (Exception e) {
 //                e.printStackTrace();
@@ -60,13 +68,13 @@ public class Dispatcher {
                 ExceptionInfo exceptionInfo = ErrorMessageUtil.handleExceptionExceptionInfo(context, e);
                 context.setReturnCode(exceptionInfo.getCode());
                 context.setReturnMsg(exceptionInfo.getMessage());
-                if(e instanceof EggRollBaseException){
-                    throw (EggRollBaseException)e;
-                }else{
+                if (e instanceof EggRollBaseException) {
+                    throw (EggRollBaseException) e;
+                } else {
                     throw new RuntimeException(e);
                 }
             }
-        }finally {
+        } finally {
             FlowLogUtil.printFlowLog(context);
         }
     }
@@ -78,7 +86,7 @@ public class Dispatcher {
         this.uriMap.put(uri, invokeInfo);
     }
 
-    public  void register(Object service) {
+    public void register(Object service) {
         Method[] methods;
 
         if (service instanceof Class) {
@@ -106,5 +114,15 @@ public class Dispatcher {
 
         }
 
+    }
+
+    private void printGrpcTraceLog(String traceId, String type, RpcMessage message) {
+        try {
+            if (MetaInfo.EGGROLL_GRPC_REQUEST_PRINT) {
+                grpcLogger.info("[{}_{}]====> {}", traceId, type, JsonUtil.object2Json(message));
+            }
+        } catch (Exception e) {
+            logger.error("printGrpcTraceLog error : ", e);
+        }
     }
 }

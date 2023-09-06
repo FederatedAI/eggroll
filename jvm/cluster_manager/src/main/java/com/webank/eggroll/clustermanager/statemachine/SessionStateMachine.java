@@ -60,6 +60,7 @@ public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta>   {
     @Inject
     public void afterPropertiesSet() throws Exception {
         this.registeStateHander("_NEW",sessionCreateHandler);
+        this.registeStateHander("NEW_NEW",sessionCreateHandler);
         this.registeStateHander("NEW_ACTIVE",sessionActiveHandler);
         this.registeStateHander("NEW_KILLED",sessionKillHandler);
         this.registeStateHander("NEW_ERROR",sessionKillHandler);
