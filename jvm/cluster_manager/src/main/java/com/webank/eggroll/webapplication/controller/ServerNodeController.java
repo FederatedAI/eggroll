@@ -2,8 +2,8 @@ package com.webank.eggroll.webapplication.controller;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import com.webank.eggroll.clustermanager.entity.ProcessorResource;
-import com.webank.eggroll.webapplication.dao.ProcessorResourceDao;
+import com.webank.eggroll.clustermanager.entity.ServerNode;
+import com.webank.eggroll.webapplication.dao.ServerNodeDao;
 import com.webank.eggroll.webapplication.model.CommonResponse;
 import com.webank.eggroll.webapplication.utils.JsonFormatUtil;
 
@@ -15,13 +15,12 @@ import java.io.IOException;
 import java.util.List;
 
 @Singleton
-public class ProcessorResourceController extends HttpServlet {
+public class ServerNodeController extends HttpServlet {
 
-    private ProcessorResourceDao resourceDao;
-
+    private ServerNodeDao serverNodeDao;
     @Inject
-    public ProcessorResourceController(ProcessorResourceDao resourceDao) {
-        this.resourceDao = resourceDao;
+    public ServerNodeController(ServerNodeDao serverNodeDao) {
+        this.serverNodeDao = serverNodeDao;
     }
 
     @Override
@@ -29,8 +28,8 @@ public class ProcessorResourceController extends HttpServlet {
         int page = Integer.parseInt(req.getParameter("page"));
         int pageSize = Integer.parseInt(req.getParameter("pageSize"));
 
-        CommonResponse<List<ProcessorResource>> response;
-        List<ProcessorResource> resources = resourceDao.getData(page, pageSize);
+        CommonResponse<List<ServerNode>> response;
+        List<ServerNode> resources = serverNodeDao.getData(page, pageSize);
         if (resources != null && !resources.isEmpty()) {
             // 获取数据成功
             response = CommonResponse.success(resources);
@@ -49,3 +48,4 @@ public class ProcessorResourceController extends HttpServlet {
         resp.getWriter().write(json);
     }
 }
+
