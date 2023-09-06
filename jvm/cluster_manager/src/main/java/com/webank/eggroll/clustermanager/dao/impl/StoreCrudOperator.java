@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.constant.StringConstants;
+import com.eggroll.core.context.Context;
 import com.eggroll.core.exceptions.CrudException;
 import com.eggroll.core.pojo.*;
 import com.eggroll.core.utils.JsonUtil;
@@ -131,7 +132,7 @@ public class StoreCrudOperator {
         return new ErStore(outputStoreLocator, outputPartitions, outputOptions);
     }
 
-    public ErStore doGetOrCreateStore(ErStore input) {
+    public ErStore doGetOrCreateStore(Context context , ErStore input) {
         ErStoreLocator inputStoreLocator = input.getStoreLocator();
         String inputStoreType = inputStoreLocator.getStoreType();
         ErStore inputWithoutType = new ErStore();

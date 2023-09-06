@@ -4,6 +4,7 @@ import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.postprocessor.ApplicationStartedRunnerUtils;
 import com.eggroll.core.utils.CommandArgsUtils;
 import com.eggroll.core.utils.PropertiesUtil;
+import com.google.common.collect.Lists;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.webank.eggroll.guice.module.NodeModule;
@@ -16,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.Collections;
+import java.util.List;
 import java.util.Properties;
 
 public class Bootstrap {
@@ -33,9 +35,10 @@ public class Bootstrap {
         GrpcServer  grpcServer = injector.getInstance(GrpcServer.class);
         NodeResourceManager nodeResource = injector.getInstance(NodeResourceManager.class);
         CommandServiceProvider  commandServiceProvider= injector.getInstance(CommandServiceProvider.class);
-
+        List<String> packages = Lists.newArrayList();
+        packages.add(Bootstrap.class.getPackage().getName());
         try {
-            ApplicationStartedRunnerUtils.run(injector, Collections.singletonList(Bootstrap.class.getPackage().getName()), args);
+            ApplicationStartedRunnerUtils.run(injector, packages, args);
         } catch (Exception e) {
             logger.error("init error",e);
             //throw new RuntimeException(e);
