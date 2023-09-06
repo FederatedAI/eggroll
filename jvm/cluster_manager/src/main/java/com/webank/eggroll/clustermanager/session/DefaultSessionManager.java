@@ -49,7 +49,7 @@ public class DefaultSessionManager implements SessionManager {
     @Inject
     ClusterResourceManager clusterResourceManager;
 
-    public  void blockSession(ErSessionMeta erSessionMeta) throws InterruptedException {
+    public  boolean blockSession(ErSessionMeta erSessionMeta) throws InterruptedException {
         SessionLatchHolder  holder =  waitingMap.get(erSessionMeta.getId());
         if(holder==null){
             waitingMap.putIfAbsent(erSessionMeta.getId(),new SessionLatchHolder());
@@ -57,7 +57,8 @@ public class DefaultSessionManager implements SessionManager {
         holder =  waitingMap.get(erSessionMeta.getId());
         CountDownLatch latch = new CountDownLatch(1);
         holder.countDownLatchs.add(latch);
-        latch.await(MetaInfo.EGGROLL_SESSION_START_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        logger.info("before block {}",erSessionMeta.getId());
+        return latch.await(10, TimeUnit.SECONDS);
     }
 
     public void wakeUpSession(String sessionId){
@@ -83,7 +84,7 @@ public class DefaultSessionManager implements SessionManager {
     }
 
     @Override
-    public ErSessionMeta getOrCreateSession(Context context, ErSessionMeta sessionMeta) {
+    public synchronized ErSessionMeta getOrCreateSession(Context context, ErSessionMeta sessionMeta) {
         context.setSessionId(sessionMeta.getId());
         context.setOptions(sessionMeta.getOptions());
       //  if (MetaInfo.EGGROLL_SESSION_USE_RESOURCE_DISPATCH) {
@@ -101,9 +102,14 @@ public class DefaultSessionManager implements SessionManager {
         if (!SessionStatus.NEW.name().equals(newSession.getStatus())) {
             return newSession;
         }
+        boolean actived= false;
         try {
-            this.blockSession(sessionMeta);
-        } catch (InterruptedException e) {
+          actived =   this.blockSession(sessionMeta);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        if(!actived){
             ErSessionMeta erSessionMeta=  this.sessionMainService.getSessionMain(sessionMeta.getId());
             if(!SessionStatus.ACTIVE.name().equals(erSessionMeta.getStatus())){
                 logger.error("unable to start all processors for session id {} total {} active {} ",erSessionMeta.getId(),
@@ -117,6 +123,7 @@ public class DefaultSessionManager implements SessionManager {
                 throw new ErSessionException(builder.toString());
             }
         }
+        logger.error("xxxxxxxxxxxxxxxxxxx");
         return  sessionService.getSession(sessionMeta.getId(),true,true,true);
 
 //        if (checkSessionRpcReady(newSession)) {

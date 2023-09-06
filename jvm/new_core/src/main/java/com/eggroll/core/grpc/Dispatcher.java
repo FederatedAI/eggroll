@@ -60,10 +60,10 @@ public class Dispatcher {
                 ExceptionInfo exceptionInfo = ErrorMessageUtil.handleExceptionExceptionInfo(context, e);
                 context.setReturnCode(exceptionInfo.getCode());
                 context.setReturnMsg(exceptionInfo.getMessage());
-                if(e instanceof EggRollBaseException){
-                    throw (EggRollBaseException)e;
+                if(e.getCause() instanceof EggRollBaseException){
+                    throw (EggRollBaseException)e.getCause();
                 }else{
-                    throw new RuntimeException(e);
+                    throw new RuntimeException(e.getCause());
                 }
             }
         }finally {
