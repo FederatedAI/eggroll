@@ -5,13 +5,10 @@ import com.webank.eggroll.webapplication.exception.CodeEnum;
 import com.webank.eggroll.webapplication.exception.ErrorCode;
 import lombok.Data;
 
-
-import java.io.Serializable;
 import java.util.Objects;
 
 @Data
-public class CommonResponse<T>  {
-
+public class CommonResponse<T> {
 
 
     private int code;
@@ -71,6 +68,7 @@ public class CommonResponse<T>  {
     }
 
     public static <T> CommonResponse<T> success(T data) {
+
         return success(data, 0);
     }
 
@@ -99,7 +97,7 @@ public class CommonResponse<T>  {
         return response;
     }
 
-    public static <T> CommonResponse<T> warn(String msg,T data) {
+    public static <T> CommonResponse<T> warn(String msg, T data) {
         CommonResponse<T> response = new CommonResponse<>();
         response.code = ErrorCode.WARN;
         response.msg = msg;
@@ -118,7 +116,7 @@ public class CommonResponse<T>  {
 
     public static <T> boolean ifFail(CommonResponse<T> response) {
 
-        return Objects.isNull(response) ||  !CodeEnum.SUCCESS.getValue().equals(Integer.toString(response.getCode()));
+        return Objects.isNull(response) || !CodeEnum.SUCCESS.getValue().equals(Integer.toString(response.getCode()));
     }
 
     public static <T> boolean ifSuccess(CommonResponse<T> response) {
