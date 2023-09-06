@@ -3,9 +3,8 @@ package com.webank.eggroll.webapplication.model;
 import com.google.inject.Singleton;
 import com.google.inject.servlet.ServletModule;
 import com.webank.eggroll.guice.module.ClusterModule;
-import com.webank.eggroll.webapplication.controller.ProcessorResourceController;
-import com.webank.eggroll.webapplication.service.ProcessorResourceServiceN;
-import com.webank.eggroll.webapplication.service.impl.ProcessorResourceServiceNImpl;
+import com.webank.eggroll.guice.module.ClusterModule;
+import com.webank.eggroll.webapplication.controller.*;
 
 public class MyServletModule extends ServletModule {
     @Override
@@ -14,10 +13,17 @@ public class MyServletModule extends ServletModule {
         this.install(new ClusterModule());
         // 绑定 ProcessorResourceController
         bind(ProcessorResourceController.class).in(Singleton.class);
+        bind(ServerNodeController.class).in(Singleton.class);
+        bind(NodeResourceController.class).in(Singleton.class);
+        bind(SessionMainController.class).in(Singleton.class);
+        bind(SessionProcessorController.class).in(Singleton.class);
         // 绑定其他依赖类
-        bind(ProcessorResourceServiceN.class).to(ProcessorResourceServiceNImpl.class);
-//        bind(ProcessorResourceMapper.class).to().in(Singleton.class);
 
-        serve("/hello").with(ProcessorResourceController.class);
+        //配置url
+        serve("/processorresource").with(ProcessorResourceController.class);
+        serve("/servernode").with(ServerNodeController.class);
+        serve("/noderesource").with(NodeResourceController.class);
+        serve("/sessionmain").with(SessionMainController.class);
+        serve("/sessionprocessor").with(SessionProcessorController.class);
     }
 }
