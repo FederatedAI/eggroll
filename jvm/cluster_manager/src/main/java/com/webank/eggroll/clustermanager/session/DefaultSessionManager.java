@@ -38,6 +38,7 @@ import java.util.stream.IntStream;
 public class DefaultSessionManager implements SessionManager {
 
     Logger logger = LoggerFactory.getLogger(DefaultSessionManager.class);
+
     @Inject
     SessionMainService sessionService;
     @Inject
@@ -87,12 +88,7 @@ public class DefaultSessionManager implements SessionManager {
     public synchronized ErSessionMeta getOrCreateSession(Context context, ErSessionMeta sessionMeta) {
         context.setSessionId(sessionMeta.getId());
         context.setOptions(sessionMeta.getOptions());
-      //  if (MetaInfo.EGGROLL_SESSION_USE_RESOURCE_DISPATCH) {
         return getOrCreateSessionWithoutResourceDispath(context, sessionMeta);
-//        } else {
-////            getOrCreateSessionOld(sessionMeta);
-//        }
-
 
     }
 

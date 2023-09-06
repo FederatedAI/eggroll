@@ -43,6 +43,15 @@
             <DefaultRolloverStrategy max="24"/>
         </RollingFile>
 
+        <RollingFile name="grpcTrace" fileName="${logdir}/${env:module}.grpcTrace.log"
+                     filePattern="${logdir}/%d{yyyy-MM-dd}/grpcTrace.log.%d{yyyy-MM-dd}.log">
+            <PatternLayout charset="UTF-8" pattern="%d{yyyy-MM-dd HH:mm:ss,SSS}|%m%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy/>
+            </Policies>
+            <DefaultRolloverStrategy max="24"/>
+        </RollingFile>
+
 
 
 <!--        <RollingFile name="buffer" fileName="${logdir}/buffer.log"-->
@@ -78,6 +87,10 @@
 
         <AsyncLogger name="flow" level="info" includeLocation="true" additivity="true">
             <AppenderRef ref="flow"/>
+        </AsyncLogger>
+
+        <AsyncLogger name="grpcTrace" level="info" includeLocation="true" additivity="true">
+            <AppenderRef ref="grpcTrace"/>
         </AsyncLogger>
 
 <!--        <AsyncLogger name="buffer" level="info" includeLocation="true" additivity="false">-->
