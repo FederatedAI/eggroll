@@ -28,7 +28,7 @@ public class DefaultProcessorManager {
 
 
     public  ErProcessor heartbeat(Context context, ErProcessor proc){
-        logger.info("heart beat proc {}",proc);
+//        logger.info("heart beat proc {}",proc);
         ErProcessor previousHeartbeat = processorHeartBeat.asMap().get(proc.getId());
         if(previousHeartbeat==null){
             processorHeartBeat.asMap().put(proc.getId(),proc);

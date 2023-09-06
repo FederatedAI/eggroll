@@ -11,7 +11,7 @@ import java.util.*;
 
 @Data
 public class ErProcessor implements RpcMessage {
-    Logger log = LoggerFactory.getLogger(ErProcessor.class);
+
     private Long id = -1L;
     private String sessionId = StringConstants.EMPTY;
     private Long serverNodeId = -1L;
@@ -92,7 +92,7 @@ public class ErProcessor implements RpcMessage {
             this.pid = processor.getPid();
             this.tag= processor.getTag();
         } catch (InvalidProtocolBufferException e) {
-            log.error("deserialize error : ", e);
+
         }
     }
 
