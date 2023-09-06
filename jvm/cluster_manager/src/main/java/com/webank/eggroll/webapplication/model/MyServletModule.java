@@ -2,6 +2,7 @@ package com.webank.eggroll.webapplication.model;
 
 import com.google.inject.Singleton;
 import com.google.inject.servlet.ServletModule;
+import com.webank.eggroll.guice.module.ClusterModule;
 import com.webank.eggroll.webapplication.controller.ProcessorResourceController;
 import com.webank.eggroll.webapplication.service.ProcessorResourceServiceN;
 import com.webank.eggroll.webapplication.service.impl.ProcessorResourceServiceNImpl;
@@ -10,6 +11,7 @@ public class MyServletModule extends ServletModule {
     @Override
     protected void configureServlets() {
         super.configureServlets();
+        this.install(new ClusterModule());
         // 绑定 ProcessorResourceController
         bind(ProcessorResourceController.class).in(Singleton.class);
         // 绑定其他依赖类

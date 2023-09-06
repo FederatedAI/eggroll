@@ -3,6 +3,7 @@ package com.webank.eggroll.clustermanager.dao.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.mapper.Mapper;
+import com.eggroll.core.constant.ProcessorStatus;
 import com.eggroll.core.pojo.*;
 import com.google.common.collect.Maps;
 import com.google.inject.Inject;
@@ -39,6 +40,17 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
 
     @Inject
     SessionRanksService sessionRanksService;
+
+    public void updateSessionMainActiveCount(String sessionId){
+       List<ErProcessor> processors =  processorService.getProcessorBySession(sessionId,false);
+       long  activeCount = processors.stream().filter(p->p.getStatus().equals(ProcessorStatus.RUNNING.name())).count();
+        UpdateWrapper<SessionMain> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.lambda()
+                .set(SessionMain::getActiveProcCount,activeCount)
+                .eq(SessionMain::getSessionId,sessionId);
+        this.update(updateWrapper);
+    }
+
 
     public ErSessionMeta getSession(String sessionId) {
         SessionOption sessionOption = new SessionOption();

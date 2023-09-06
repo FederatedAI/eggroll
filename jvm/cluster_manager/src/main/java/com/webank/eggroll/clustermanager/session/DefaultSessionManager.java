@@ -60,6 +60,7 @@ public class DefaultSessionManager implements SessionManager {
 
     private ErSessionMeta getOrCreateSessionWithoutResourceDispath(Context context, ErSessionMeta sessionMeta) {
         ErSessionMeta newSession = sessionStateMachine.changeStatus(context, sessionMeta, null, SessionStatus.NEW.name());
+        logger.info("new session======={}",newSession);
         if (!SessionStatus.NEW.name().equals(newSession.getStatus())) {
             return newSession;
         }
@@ -81,12 +82,15 @@ public class DefaultSessionManager implements SessionManager {
             if (cur == null) {
                 return false;
             }
+            logger.info("=======cur session {}",cur);
+
             if (cur.isOverState() || SessionStatus.ACTIVE.name().equals(cur.getStatus()))
                 return true;
             if (SessionStatus.NEW.name().equals(cur.getStatus()) &&
                     cur.getActiveProcCount()!=null&&cur.getTotalProcCount() !=null &&
                     (cur.getActiveProcCount() < cur.getTotalProcCount())) {
                 try {
+                    logger.info("========waiting");
                     Thread.sleep(100);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
