@@ -1,7 +1,7 @@
 package com.webank.eggroll.nodemanager;
 
 import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.utils.ApplicationStartedRunnerUtils;
+import com.eggroll.core.postprocessor.ApplicationStartedRunnerUtils;
 import com.eggroll.core.utils.CommandArgsUtils;
 import com.eggroll.core.utils.PropertiesUtil;
 import com.google.inject.Guice;
@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.Collections;
 import java.util.Properties;
 
 public class Bootstrap {
@@ -34,7 +35,7 @@ public class Bootstrap {
         CommandServiceProvider  commandServiceProvider= injector.getInstance(CommandServiceProvider.class);
 
         try {
-            ApplicationStartedRunnerUtils.run(injector, args);
+            ApplicationStartedRunnerUtils.run(injector, Collections.singletonList(Bootstrap.class.getPackage().getName()), args);
         } catch (Exception e) {
             logger.error("init error",e);
             //throw new RuntimeException(e);
