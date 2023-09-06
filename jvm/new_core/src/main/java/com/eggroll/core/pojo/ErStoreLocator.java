@@ -86,6 +86,7 @@ public class ErStoreLocator implements RpcMessage {
     public static ErStoreLocator fromProto(Meta.StoreLocator storeLocator){
         ErStoreLocator erStoreLocator = new ErStoreLocator();
         erStoreLocator.deserialize(storeLocator.toByteArray());
+
         return erStoreLocator;
     }
 

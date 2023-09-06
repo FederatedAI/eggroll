@@ -78,6 +78,8 @@ public class ErStore implements RpcMessage {
     public void deserialize(byte[] data) {
         try {
             Meta.Store store = Meta.Store.parseFrom(data);
+
+            log.info("xxxxxxxxxx  store {}",store);
             this.storeLocator = ErStoreLocator.fromProto(store.getStoreLocator());
             this.partitions = store.getPartitionsList().stream().map(ErPartition::fromProto).collect(Collectors.toList());
             this.options.putAll(store.getOptionsMap());
