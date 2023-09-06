@@ -173,6 +173,7 @@ public class MetaInfo {
     public static Boolean CONFKEY_CORE_SECURITY_CLIENT_AUTH_ENABLED = false;
 
 
+
     @Config(confKey = "eggroll.core.command.default.serdes.type")
     public static String CONFKEY_CORE_COMMAND_DEFAULT_SERDES_TYPE;
     @Config(confKey = "eggroll.core.log.dir")
@@ -297,8 +298,12 @@ public class MetaInfo {
     public static Integer EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL = 3600000;
     @Config(confKey="eggroll.mybatis.mapper.package")
     public static String  EGGROLL_MYBATIS_MAPPER_PACKAGE="com.webank.eggroll.clustermanager.dao.mapper";
-    @Config(confKey="eggroll.flowlog.print.send.request")
-    public static Boolean EGGROLL_FLOWLOG_PRINT_SEND_REQUEST=false;
+    @Config(confKey="eggroll.flowlog.print")
+    public static Boolean EGGROLL_FLOWLOG_PRINT =false;
+    @Config(confKey="eggroll.request.print")
+    public static Boolean EGGROLL_GRPC_REQUEST_PRINT=false;
+
+
 
 
 
