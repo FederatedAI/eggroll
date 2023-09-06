@@ -2,15 +2,19 @@ package com.webank.eggroll.clustermanager.session;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.eggroll.core.config.MetaInfo;
+import com.eggroll.core.constant.ProcessorStatus;
 import com.eggroll.core.constant.ServerNodeStatus;
 import com.eggroll.core.constant.ServerNodeTypes;
 import com.eggroll.core.constant.SessionStatus;
 import com.eggroll.core.context.Context;
-import com.eggroll.core.pojo.ErServerNode;
-import com.eggroll.core.pojo.ErSessionMeta;
+import com.eggroll.core.exceptions.ErSessionException;
+import com.eggroll.core.grpc.NodeManagerClient;
+import com.eggroll.core.pojo.*;
 import com.google.common.collect.Lists;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.webank.eggroll.clustermanager.cluster.ClusterManagerService;
+import com.webank.eggroll.clustermanager.cluster.ClusterResourceManager;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.entity.SessionMain;
@@ -18,8 +22,11 @@ import com.webank.eggroll.clustermanager.statemachine.SessionStateMachine;
 import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.Arrays;
-import java.util.List;
+
+import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 
 @Singleton
@@ -39,6 +46,9 @@ public class DefaultSessionManager implements SessionManager {
 
     @Inject
     SessionMainService sessionMainService;
+
+    @Inject
+    ClusterResourceManager clusterResourceManager;
 
     @Override
     public ErSessionMeta getSessionMain(String sessionId) {
@@ -87,8 +97,8 @@ public class DefaultSessionManager implements SessionManager {
             if (cur.isOverState() || SessionStatus.ACTIVE.name().equals(cur.getStatus()))
                 return true;
             if (SessionStatus.NEW.name().equals(cur.getStatus()) &&
-                    cur.getActiveProcCount()!=null&&cur.getTotalProcCount() !=null &&
-                    (cur.getActiveProcCount() < cur.getTotalProcCount())) {
+                    ((cur.getActiveProcCount()==null || cur.getTotalProcCount() ==null) ||
+                    (cur.getActiveProcCount() < cur.getTotalProcCount()))) {
                 try {
                     logger.info("========waiting");
                     Thread.sleep(100);
