@@ -53,22 +53,23 @@ public abstract class AbstractStateMachine<T> {
 
 
     public void  tryLock( String key ){
-        ReentrantLock lock;
-        if (!lockMap.containsKey(key)) {
-            lockMap.putIfAbsent(key, new ReentrantLock());
-        }
-        lock = lockMap.get(key);
-      //  logger.info("lock key {}",key);
-        lock.lock();
+//        ReentrantLock lock;
+//        if (!lockMap.containsKey(key)) {
+//            lockMap.putIfAbsent(key, new ReentrantLock());
+//        }
+//        lock = lockMap.get(key);
+//       logger.info("lock key {}",key);
+//        lock.lock();
     }
 
     public void unLock(String key ){
-        ReentrantLock  lock = lockMap.get(key);
-        if(lock!=null){
-            lock.unlock();
-            lockMap.remove(key);
-        }
-     //   logger.info("unlock key {}",key);
+//        logger.info("unlock key {}",key);
+//        ReentrantLock  lock = lockMap.get(key);
+//        if(lock!=null){
+//            lock.unlock();
+//            lockMap.remove(key);
+//        }
+
     }
 
 
