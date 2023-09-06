@@ -34,8 +34,9 @@ public class TestSessionManager {
         options.put(Dict.CONFKEY_SESSION_PROCESSORS_PER_NODE ,"2");
         getOrCreateSessionMeta.setOptions(options);
         getOrCreateSessionMeta.setName("Test1");
-        getOrCreateSessionMeta.setActiveProcCount(1);
+        getOrCreateSessionMeta.setActiveProcCount(0);
         getOrCreateSessionMeta.setTotalProcCount(4);
+        getOrCreateSessionMeta.setStatus("NEW");
         ClusterManagerClient clusterManagerClient = new ClusterManagerClient(endpoint);
         ErSessionMeta result = clusterManagerClient.getOrCreateSession(new Context(),getOrCreateSessionMeta);
 //        getOrCreateSessionMeta.setId("testx_"+System.currentTimeMillis());
