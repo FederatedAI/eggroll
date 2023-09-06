@@ -51,8 +51,13 @@ public class ProcessorStateMachine extends  AbstractStateMachine<ErProcessor> {
     }
 
     @Override
-    public String getLockKey(ErProcessor erProcessor) {
-        return Long.toString(erProcessor.getId());
+    public String getLockKey(Context  context,ErProcessor erProcessor) {
+        String prefix = "PK_";
+        ErProcessor erInDb =(ErProcessor) context.getData(Dict.PROCESSOR_IN_DB);
+        if(erInDb!=null){
+            return prefix+ erInDb.getSessionId();
+        }
+        return prefix+ Long.toString(erProcessor.getId());
     }
 
 

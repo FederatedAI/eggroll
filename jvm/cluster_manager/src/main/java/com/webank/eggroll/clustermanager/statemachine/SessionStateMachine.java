@@ -53,7 +53,7 @@ public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta>   {
     }
 
     @Override
-    public String getLockKey(ErSessionMeta erSessionMeta) {
+    public String getLockKey(Context context ,ErSessionMeta erSessionMeta) {
         return erSessionMeta.getId();
     }
 
