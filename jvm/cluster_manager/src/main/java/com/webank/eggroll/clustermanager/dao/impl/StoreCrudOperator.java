@@ -13,11 +13,11 @@ import com.webank.eggroll.clustermanager.entity.ServerNode;
 import com.webank.eggroll.clustermanager.entity.StoreLocator;
 import com.webank.eggroll.clustermanager.entity.StoreOption;
 import com.webank.eggroll.clustermanager.entity.StorePartition;
+import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.mybatis.guice.transactional.Transactional;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 @Singleton
 public class StoreCrudOperator {
 
+    Logger logger = LoggerFactory.getLogger(StoreCrudOperator.class);
     @Inject
     StoreLocatorService storeLocatorService;
     @Inject
@@ -39,7 +40,6 @@ public class StoreCrudOperator {
     StoreOptionService storeOptionService;
 
     private final Map<Long, Object> nodeIdToNode = new ConcurrentHashMap<>();
-    private static final Logger LOGGER = LogManager.getLogger(StoreCrudOperator.class);
 
     public ErStore doGetStore(ErStore input) {
         Map<String, String> inputOptions = input.getOptions();
@@ -85,7 +85,7 @@ public class StoreCrudOperator {
                     .in(ServerNode::getServerNodeId, missingNodeId);
             List<ServerNode> nodeResult = serverNodeService.list(queryServerNode);
             if (nodeResult.isEmpty()) {
-                LOGGER.error("No valid node for this store: " + JsonUtil.object2Json(inputStoreLocator) + " missingId " + missingNodeId.toString());
+                logger.error("No valid node for this store: " + JsonUtil.object2Json(inputStoreLocator) + " missingId " + missingNodeId.toString());
                 throw new IllegalStateException("No valid node for this store: " + JsonUtil.object2Json(inputStoreLocator));
             }
 
@@ -133,12 +133,19 @@ public class StoreCrudOperator {
 
     public ErStore doGetOrCreateStore(ErStore input) {
         ErStoreLocator inputStoreLocator = input.getStoreLocator();
-        inputStoreLocator.setStoreType(StringConstants.EMPTY);
         String inputStoreType = inputStoreLocator.getStoreType();
-        ErStore existing = doGetStore(input);
+        ErStore inputWithoutType = new ErStore();
+        try {
+            BeanUtils.copyProperties(inputWithoutType, input);
+        } catch (Exception e) {
+            logger.error("BeanUtils.copyProperties");
+            throw new RuntimeException("BeanUtils.copyProperties");
+        }
+        inputWithoutType.getStoreLocator().setStoreType(StringConstants.EMPTY);
+        ErStore existing = doGetStore(inputWithoutType);
         if (existing != null) {
             if (!existing.getStoreLocator().getStoreType().equals(inputStoreType)) {
-                LOGGER.warn("store namespace: " + inputStoreLocator.getNamespace() + ", name: " +
+                logger.warn("store namespace: " + inputStoreLocator.getNamespace() + ", name: " +
                         inputStoreLocator.getName() + " already exist with store type: " +
                         existing.getStoreLocator().getStoreType() + ". requires type: " +
                         inputStoreLocator.getStoreType());
@@ -195,13 +202,13 @@ public class StoreCrudOperator {
             serverNodeIds.add(node.getId());
 
             ErProcessor binding = new ErProcessor();
-            binding.setId((long)i);
+            binding.setId((long) i);
             binding.setServerNodeId(isPartitionsSpecified ? input.getPartitions().get(i % specifiedPartitions.size()).getProcessor().getServerNodeId() : node.getId());
             binding.setTag("binding");
 
             newPartitions.add(new ErPartition(i
                     , inputStoreLocator
-                    ,binding
+                    , binding
                     , -1));
         }
         ConcurrentHashMap<String, String> newOptions = new ConcurrentHashMap<>();
@@ -220,13 +227,13 @@ public class StoreCrudOperator {
     public ErStore doDeleteStore(ErStore input) {
         ErStoreLocator inputStoreLocator = input.getStoreLocator();
         ErStoreLocator outputStoreLocator = null;
-        if ("*" .equals(inputStoreLocator.getName())) {
+        if ("*".equals(inputStoreLocator.getName())) {
             UpdateWrapper<StoreLocator> updateWrapper = new UpdateWrapper<>();
             updateWrapper.lambda().setSql("name = concat(name, " + System.currentTimeMillis() + ")")
                     .set(StoreLocator::getStatus, Dict.DELETED)
                     .eq(StoreLocator::getNamespace, inputStoreLocator.getNamespace())
                     .eq(StoreLocator::getStatus, Dict.NORMAL)
-                    .eq("*" .equals(inputStoreLocator.getStoreType()), StoreLocator::getStoreType, inputStoreLocator.getStoreType());
+                    .eq("*".equals(inputStoreLocator.getStoreType()), StoreLocator::getStoreType, inputStoreLocator.getStoreType());
             storeLocatorService.update(updateWrapper);
             outputStoreLocator = inputStoreLocator;
         } else {
@@ -252,7 +259,7 @@ public class StoreCrudOperator {
         return new ErStore(outputStoreLocator, new ArrayList<>(), new ConcurrentHashMap<>());
     }
 
-    public ErStoreList getStoreFromNamespace(ErStore input){
+    public ErStoreList getStoreFromNamespace(ErStore input) {
         ErStoreList storeWithLocatorOnly = getStoreLocators(input);
         List<ErStore> newStores = new ArrayList<>();
         for (ErStore store : storeWithLocatorOnly.getStores()) {
