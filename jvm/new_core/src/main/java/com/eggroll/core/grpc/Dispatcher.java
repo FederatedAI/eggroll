@@ -61,6 +61,7 @@ public class Dispatcher {
                 context.setRequest(rpcMessage);
                 RpcMessage response = (RpcMessage) invokeInfo.getMethod().invoke(invokeInfo.getObject(), context, rpcMessage);
                 printGrpcTraceLog(traceId, "response", response);
+
                 return response.serialize();
             } catch (Exception e) {
 //                e.printStackTrace();

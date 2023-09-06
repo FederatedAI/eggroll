@@ -80,7 +80,7 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
 
     @URI(value = getOrCreateStore)
     public ErStore getOrCreateStore(Context context ,ErStore erStore) {
-        return storeCrudOperator.doGetOrCreateStore(erStore);
+        return storeCrudOperator.doGetOrCreateStore(context,erStore);
     }
 
     @URI(value = deleteStore)
