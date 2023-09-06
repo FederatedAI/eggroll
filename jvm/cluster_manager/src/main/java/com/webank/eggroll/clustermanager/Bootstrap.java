@@ -13,7 +13,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Properties;
 
 public class Bootstrap {
@@ -40,7 +42,9 @@ public class Bootstrap {
 //      ServerNodeMapper  nodeMapper =  injector.getInstance(ServerNodeMapper.class);
 ////        logger.info("{}",nodeMapper.selectById(1));
         GrpcServer grpcServer = injector.getInstance(GrpcServer.class);
-        ApplicationStartedRunnerUtils.run(injector, Collections.singletonList(Bootstrap.class.getPackage().getName()), args);
+        List<String> packages = new ArrayList<>();
+        packages.add(Bootstrap.class.getPackage().getName());
+        ApplicationStartedRunnerUtils.run(injector, packages, args);
 
 
         synchronized (injector) {

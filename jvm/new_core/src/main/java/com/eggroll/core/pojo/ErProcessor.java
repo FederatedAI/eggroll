@@ -89,6 +89,8 @@ public class ErProcessor implements RpcMessage {
                 this.transferEndpoint = ErEndpoint.fromProto(processor.getTransferEndpoint());
             }
             this.options = processor.getOptionsMap();
+            this.pid = processor.getPid();
+            this.tag= processor.getTag();
         } catch (InvalidProtocolBufferException e) {
             log.error("deserialize error : ", e);
         }
