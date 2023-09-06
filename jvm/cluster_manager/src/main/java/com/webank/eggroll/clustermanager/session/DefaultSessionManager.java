@@ -59,7 +59,7 @@ public class DefaultSessionManager implements SessionManager {
         CountDownLatch latch = new CountDownLatch(1);
         holder.countDownLatchs.add(latch);
         logger.info("before block {}",erSessionMeta.getId());
-        return latch.await(10, TimeUnit.SECONDS);
+        return latch.await(20, TimeUnit.SECONDS);
     }
 
     public void wakeUpSession(String sessionId){
@@ -119,7 +119,7 @@ public class DefaultSessionManager implements SessionManager {
                 throw new ErSessionException(builder.toString());
             }
         }
-        logger.error("xxxxxxxxxxxxxxxxxxx");
+
         return  sessionService.getSession(sessionMeta.getId(),true,true,true);
 
 //        if (checkSessionRpcReady(newSession)) {
