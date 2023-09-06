@@ -32,6 +32,9 @@ public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta>   {
     @Inject
     SessionCreateHandler  sessionCreateHandler;
 
+    @Inject
+    SessionIgnoreHandler  sessionIgnoreHandler;
+
     @Override
     String buildStateChangeLine(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam) {
         String  line= "";
@@ -67,6 +70,7 @@ public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta>   {
         this.registeStateHander("ACTIVE_KILLED",sessionKillHandler);
         this.registeStateHander("ACTIVE_ERROR",sessionKillHandler);
         this.registeStateHander("ACTIVE_CLOSED",sessionKillHandler);
+        this.registeStateHander(IGNORE,sessionIgnoreHandler);
     }
 
 }

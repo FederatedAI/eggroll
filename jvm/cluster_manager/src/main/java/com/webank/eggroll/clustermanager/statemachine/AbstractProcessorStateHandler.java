@@ -49,9 +49,10 @@ public abstract class  AbstractProcessorStateHandler  implements   StateHandler<
                 .eq(SessionProcessor::getProcessorId,data.getId());
         if(data.getCommandEndpoint()!=null) {
             lambdaUpdateWrapper.set(SessionProcessor::getCommandEndpoint, data.getCommandEndpoint().toString());
-
         }
-
+        if(data.getPid()!=null&&data.getPid()>0){
+            lambdaUpdateWrapper.set(SessionProcessor::getPid,data.getPid());
+        }
         if(data.getTransferEndpoint()!=null) {
             lambdaUpdateWrapper.set(SessionProcessor::getTransferEndpoint, data.getTransferEndpoint().toString());
 

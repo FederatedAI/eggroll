@@ -16,6 +16,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public abstract class AbstractStateMachine<T> {
 
     Logger logger = LoggerFactory.getLogger(AbstractStateMachine.class);
+    public static final String IGNORE = "IGNORE";
     ConcurrentHashMap<String,ReentrantLock>  lockMap = new ConcurrentHashMap<>();
     ConcurrentHashMap<String,StateHandler<T>>  statueChangeHandlerMap = new ConcurrentHashMap<>();
     ThreadPoolExecutor   asynThreadPool =   new ThreadPoolExecutor(5,5,1, TimeUnit.SECONDS,new LinkedBlockingDeque<>(10));
@@ -87,25 +88,23 @@ public abstract class AbstractStateMachine<T> {
 //        t = prepare(t);
         StateHandler<T> handler =  statueChangeHandlerMap.get(statusLine);
         if(handler==null){
-            logger.error("wrong status line {} {}",statusLine,statueChangeHandlerMap);
-            throw new RuntimeException("statusLine "+statusLine+
-                    " handler not found ");
+           handler =  statueChangeHandlerMap.get(IGNORE);
+        }
+        if(handler==null){
+            logger.error("wrong status line {} ",statusLine);
+            throw  new RuntimeException("no status handler found for "+statusLine);
         }
         String  lockKey =  getLockKey(context,t);
         try{
             tryLock(lockKey);
             T result= handler.prepare(context,t,preStateParam,desStateParam);
             if(!handler.isBreak(context)) {
-//                result = handler.handle(context, result, preStateParam, desStateParam);
-//                if(callback!=null) {
-//                    callback.callback(context, result);
-//                }
-
                 result = transactionHandle(context,handler,result,preStateParam,desStateParam,callback);
                 if(!handler.isBreak(context)) {
                     if (handler.needAsynPostHandle(context)) {
                         T finalResult = result;
-                        asynThreadPool.submit(() -> handler.asynPostHandle(context, finalResult, preStateParam, desStateParam));
+                        StateHandler<T> finalHandler = handler;
+                        asynThreadPool.submit(() -> finalHandler.asynPostHandle(context, finalResult, preStateParam, desStateParam));
                     }
                 }
             }
