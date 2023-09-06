@@ -10,7 +10,6 @@ import com.eggroll.core.context.Context;
 import com.eggroll.core.grpc.ClusterManagerClient;
 import com.eggroll.core.pojo.*;
 import com.eggroll.core.postprocessor.ApplicationStartedRunner;
-import com.eggroll.core.utils.JsonUtil;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.nodemanager.containers.ContainersServiceHandler;
@@ -37,33 +36,26 @@ public class DefaultProcessorManager   implements ProcessorManager,ApplicationSt
 
     @Override
     public ErSessionMeta startContainers(Context context, ErSessionMeta sessionMeta) {
-        logger.info("xxxxxxx {}",context);
-        logger.info("[startContainers]=====sessionMeta: {}", JsonUtil.object2Json(sessionMeta));
         return containerService.operateContainers(context ,sessionMeta, Dict.NODE_CMD_START);
     }
 
     @Override
     public ErSessionMeta stopContainers(Context context, ErSessionMeta sessionMeta) {
-        logger.info("[stopContainers]=====sessionMeta: {}", JsonUtil.object2Json(sessionMeta));
         return containerService.operateContainers(context,sessionMeta,Dict.NODE_CMD_STOP);
     }
 
     @Override
     public ErSessionMeta killContainers(Context context, ErSessionMeta sessionMeta) {
-        logger.info("[killContainers]=====sessionMeta: {}", JsonUtil.object2Json(sessionMeta));
-
         return containerService.operateContainers(context,sessionMeta,Dict.NODE_CMD_KILL);
     }
 
     @Override
     public ErProcessor heartbeat(Context context, ErProcessor processor) {
-        logger.info("[heartbeat]=====processor: {}", JsonUtil.object2Json(processor));
         return client.hearbeat(context ,processor);
     }
 
     @Override
     public ErProcessor checkNodeProcess(Context context, ErProcessor processor){
-        logger.info("[checkNodeProcess]=====processor: {}", JsonUtil.object2Json(processor));
         ErProcessor result = new ErProcessor();
         try {
             BeanUtils.copyProperties(result,processor);
@@ -82,20 +74,17 @@ public class DefaultProcessorManager   implements ProcessorManager,ApplicationSt
 
     @Override
     public StartContainersResponse startJobContainers(StartContainersRequest startContainersRequest) {
-        logger.info("[startJobContainers]=====startContainersRequest: {}", JsonUtil.object2Json(startContainersRequest));
         return containersServiceHandler.startJobContainers(startContainersRequest);
     }
 
 
     @Override
     public StopContainersResponse stopJobContainers(StopContainersRequest stopContainersRequest) {
-        logger.info("[stopJobContainers]=====stopContainersRequest: {}", JsonUtil.object2Json(stopContainersRequest));
         return containersServiceHandler.stopJobContainers(stopContainersRequest);
     }
 
     @Override
     public KillContainersResponse killJobContainers(KillContainersRequest killContainersRequest) {
-        logger.info("[killJobContainers]=====killContainersRequest: {}", JsonUtil.object2Json(killContainersRequest));
         return containersServiceHandler.killJobContainers(killContainersRequest);
     }
 
