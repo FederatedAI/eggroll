@@ -19,8 +19,11 @@ public class ApplicationStartedRunnerUtils {
     private static List<ApplicationStartedRunner> getAllImplementations(Injector injector, List<String> packages) {
         List<ApplicationStartedRunner> implementations = new ArrayList<>();
         Set<Class<? extends ApplicationStartedRunner>> subClasses = new HashSet<>();
-        // add ApplicationStartedRunner's package
-        packages.add(ApplicationStartedRunner.class.getPackage().getName());
+        // add core
+        String corePackage = "com.eggroll.core";
+        if(!packages.contains(corePackage)){
+            packages.add(corePackage);
+        }
         for (String scanPackage : packages) {
             Reflections reflections = new Reflections(scanPackage);
             subClasses.addAll(reflections.getSubTypesOf(ApplicationStartedRunner.class));
