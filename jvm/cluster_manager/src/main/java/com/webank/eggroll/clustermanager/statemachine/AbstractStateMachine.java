@@ -85,8 +85,9 @@ public abstract class AbstractStateMachine<T> {
 
     public  T   changeStatus(Context context , T t, String preStateParam, String desStateParam ,Callback<T> callback){
         String statusLine = buildStateChangeLine(context,t,preStateParam,desStateParam);
-//        t = prepare(t);
+
         StateHandler<T> handler =  statueChangeHandlerMap.get(statusLine);
+       // logger.info("========status line {} {}",statusLine,handler);
         if(handler==null){
            handler =  statueChangeHandlerMap.get(IGNORE);
         }

@@ -34,7 +34,7 @@ public class NodeManagerClient {
   CommandClient  commandClient;
   ErEndpoint nodeManagerEndpoint;
   public  NodeManagerClient(ErEndpoint nodeManagerEndpoint){
-    logger.info("create new  nodemanager client {}",nodeManagerEndpoint);
+//    logger.info("create new  nodemanager client {}",nodeManagerEndpoint);
     if (nodeManagerEndpoint == null )
       throw new IllegalArgumentException("failed to create NodeManagerClient for endpoint: " + nodeManagerEndpoint);
     this.nodeManagerEndpoint = nodeManagerEndpoint;

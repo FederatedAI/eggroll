@@ -89,7 +89,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         }
         return result;
     }
-    @Schedule(cron= "0/30 * * * * ?")
+    @Schedule(cron= "0/10 * * * * ?")
     public void checkDbRunningProcessor() {
         try {
             long now = System.currentTimeMillis();
@@ -106,16 +106,19 @@ public class ClusterManagerService implements ApplicationStartedRunner {
                 for (ErProcessor processor : processorList) {
                     ErProcessor result = nodeManagerClient.checkNodeProcess(context,processor);
                     if (result == null || ProcessorStatus.KILLED.name().equals(result.getStatus())) {
-                        try {
-                            Thread.sleep(10000);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
+
+//                        try {
+//                            Thread.sleep(10000);
+//                        } catch (InterruptedException e) {
+//                            e.printStackTrace();
+//                        }
                         SessionProcessor processorInDb = sessionProcessorService.getById(processor.getId());
                         if (processorInDb != null) {
                             if (ProcessorStatus.RUNNING.name().equals(processorInDb.getStatus())) {
                                 ErProcessor checkNodeProcessResult = nodeManagerClient.checkNodeProcess(context,processor);
+
                                 if (checkNodeProcessResult == null || ProcessorStatus.KILLED.name().equals(checkNodeProcessResult.getStatus())) {
+
                                     processorStateMachine.changeStatus(new Context(), processor, null, ProcessorStatus.ERROR.name());
                                 }
                             }
@@ -186,6 +189,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         } else {
             List<ErProcessor> invalidProcessor = sessionProcessors.stream().filter(p -> StringUtils.equalsAny(p.getStatus(),
                     ProcessorStatus.ERROR.name(), ProcessorStatus.KILLED.name(), ProcessorStatus.STOPPED.name())).collect(Collectors.toList());
+            logger.info("invalid ================{}=={}",sessionProcessors.size(),invalidProcessor.size());
             if (invalidProcessor.size() > 0) {
                 boolean needKillSession = invalidProcessor.stream().anyMatch(p -> p.getUpdatedAt().getTime() < now - MetaInfo.EGGROLL_SESSION_STOP_TIMEOUT_MS);
                 if (needKillSession) {
@@ -220,7 +224,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
 
             for (ErSessionMeta session : sessions) {
                 try {
-                    List<ErProcessor> sessionProcessors = sessionMainService.getSession(session.getId()).getProcessors();
+                    List<ErProcessor> sessionProcessors = sessionMainService.getSession(session.getId(),true,false,false).getProcessors();
                     String ACTIVE = SessionStatus.ACTIVE.name();
                     String NEW = SessionStatus.NEW.name();
 
