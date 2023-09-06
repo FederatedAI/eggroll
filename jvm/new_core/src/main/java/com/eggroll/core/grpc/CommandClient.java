@@ -28,7 +28,7 @@ public class CommandClient {
             throw e;
         }
         finally {
-            if(MetaInfo.EGGROLL_FLOWLOG_PRINT_SEND_REQUEST)
+            if(MetaInfo.EGGROLL_FLOWLOG_PRINT)
                  FlowLogUtil.printFlowLog(context);
         }
     }
