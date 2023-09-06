@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 @Data
 public class ErSessionMeta implements RpcMessage {
 
-
+    Logger log = LoggerFactory.getLogger(ErSessionMeta.class);
     private String id = StringConstants.EMPTY;
     private String name = StringConstants.EMPTY;
     private String status = null;
@@ -61,8 +61,9 @@ public class ErSessionMeta implements RpcMessage {
             this.name = sessionMeta.getName();
             this.id = sessionMeta.getId();
             this.options = sessionMeta.getOptionsMap();
+            this.tag = sessionMeta.getTag();
         } catch (Exception e) {
-           // log.error("deserialize error : ", e);
+            log.error("deserialize error : ", e);
         }
     }
 
