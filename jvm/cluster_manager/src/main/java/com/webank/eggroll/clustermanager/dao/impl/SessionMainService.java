@@ -16,6 +16,8 @@ import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import com.webank.eggroll.clustermanager.entity.SessionRanks;
 import org.apache.commons.lang3.tuple.MutableTriple;
 import org.mybatis.guice.transactional.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 import java.util.ArrayList;
@@ -27,7 +29,7 @@ import java.util.stream.Collectors;
 
 @Singleton
 public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper, SessionMain>{
-
+    Logger logger = LoggerFactory.getLogger(SessionMainService.class);
 
     @Inject
     SessionOptionService  sessionOptionService;
@@ -41,14 +43,23 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
     @Inject
     SessionRanksService sessionRanksService;
 
-    public void updateSessionMainActiveCount(String sessionId){
-       List<ErProcessor> processors =  processorService.getProcessorBySession(sessionId,false);
-       long  activeCount = processors.stream().filter(p->p.getStatus().equals(ProcessorStatus.RUNNING.name())).count();
+    public boolean  updateSessionMainActiveCount(String sessionId){
+        List<ErProcessor> processors =  processorService.getProcessorBySession(sessionId,false);
+        logger.info("=============  {}",processors);
+        long  activeCount =0;
+        for(int i=0;i<processors.size();i++){
+            ErProcessor p = processors.get(i);
+            if(p.getStatus().equals(ProcessorStatus.RUNNING.name())){
+                activeCount=activeCount+1;
+            }
+        }
+        logger.info("total {} active {}",processors.size(),activeCount);
         UpdateWrapper<SessionMain> updateWrapper = new UpdateWrapper<>();
         updateWrapper.lambda()
                 .set(SessionMain::getActiveProcCount,activeCount)
                 .eq(SessionMain::getSessionId,sessionId);
         this.update(updateWrapper);
+        return processors.size()!=0&&processors.size()==activeCount;
     }
 
 

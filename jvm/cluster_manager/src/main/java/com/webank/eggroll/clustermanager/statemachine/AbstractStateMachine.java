@@ -58,6 +58,7 @@ public abstract class AbstractStateMachine<T> {
             lockMap.putIfAbsent(key, new ReentrantLock());
         }
         lock = lockMap.get(key);
+      //  logger.info("lock key {}",key);
         lock.lock();
     }
 
@@ -67,10 +68,11 @@ public abstract class AbstractStateMachine<T> {
             lock.unlock();
             lockMap.remove(key);
         }
+     //   logger.info("unlock key {}",key);
     }
 
 
-    abstract  public String  getLockKey(T t);
+    abstract  public String  getLockKey(Context context,T t);
     //abstract  protected T  doChangeStatus(Context context ,T t, String preStateParam, String desStateParam);
 //    abstract  public T prepare(T t);
 
@@ -78,7 +80,7 @@ public abstract class AbstractStateMachine<T> {
         return    changeStatus( context ,  t,  preStateParam,  desStateParam ,null);
     }
 
-    @Transactional
+
     public  T   changeStatus(Context context , T t, String preStateParam, String desStateParam ,Callback<T> callback){
         String statusLine = buildStateChangeLine(context,t,preStateParam,desStateParam);
 //        t = prepare(t);
@@ -88,15 +90,17 @@ public abstract class AbstractStateMachine<T> {
             throw new RuntimeException("statusLine "+statusLine+
                     " handler not found ");
         }
-        String  lockKey =  getLockKey(t);
+        String  lockKey =  getLockKey(context,t);
         try{
             tryLock(lockKey);
             T result= handler.prepare(context,t,preStateParam,desStateParam);
             if(!handler.isBreak(context)) {
-                result = handler.handle(context, result, preStateParam, desStateParam);
-                if(callback!=null) {
-                    callback.callback(context, result);
-                }
+//                result = handler.handle(context, result, preStateParam, desStateParam);
+//                if(callback!=null) {
+//                    callback.callback(context, result);
+//                }
+
+                result = transactionHandle(context,handler,result,preStateParam,desStateParam,callback);
                 if(!handler.isBreak(context)) {
                     if (handler.needAsynPostHandle(context)) {
                         T finalResult = result;
@@ -110,6 +114,15 @@ public abstract class AbstractStateMachine<T> {
         } finally {
             unLock(lockKey);
         }
+    }
+
+    @Transactional
+    private  T  transactionHandle(Context  context,StateHandler<T> handler ,T result,String preStateParam,String desStateParam,Callback<T> callback){
+        result = handler.handle(context, result, preStateParam, desStateParam);
+        if(callback!=null) {
+            callback.callback(context, result);
+        }
+        return result;
     }
 
 }

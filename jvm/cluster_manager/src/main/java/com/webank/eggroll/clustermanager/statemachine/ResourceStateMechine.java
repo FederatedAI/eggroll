@@ -22,7 +22,7 @@ public class ResourceStateMechine extends AbstractStateMachine<ErProcessor> {
 
     @Override
     //这里需要锁nodeid  ，因为资源按节点分配
-    public String getLockKey(ErProcessor processor) {
+    public String getLockKey(Context context,ErProcessor processor) {
         return processor.getServerNodeId().toString();
     }
 

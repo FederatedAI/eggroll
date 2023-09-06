@@ -19,11 +19,15 @@ import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.entity.SessionMain;
 import com.webank.eggroll.clustermanager.statemachine.SessionStateMachine;
+import com.webank.eggroll.core.meta.Meta;
 import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -34,21 +38,44 @@ import java.util.stream.IntStream;
 public class DefaultSessionManager implements SessionManager {
 
     Logger logger = LoggerFactory.getLogger(DefaultSessionManager.class);
-
     @Inject
     SessionMainService sessionService;
-
     @Inject
     SessionStateMachine sessionStateMachine;
-
     @Inject
     ServerNodeService serverNodeService;
-
     @Inject
     SessionMainService sessionMainService;
-
     @Inject
     ClusterResourceManager clusterResourceManager;
+
+    public  void blockSession(ErSessionMeta erSessionMeta) throws InterruptedException {
+        SessionLatchHolder  holder =  waitingMap.get(erSessionMeta.getId());
+        if(holder==null){
+            waitingMap.putIfAbsent(erSessionMeta.getId(),new SessionLatchHolder());
+        }
+        holder =  waitingMap.get(erSessionMeta.getId());
+        CountDownLatch latch = new CountDownLatch(1);
+        holder.countDownLatchs.add(latch);
+        latch.await(MetaInfo.EGGROLL_SESSION_START_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    }
+
+    public void wakeUpSession(String sessionId){
+        logger.info("wake up session {} block thread ",sessionId);
+        if(waitingMap.get(sessionId)!=null){
+            waitingMap.get(sessionId).countDownLatchs.forEach(countDownLatch -> countDownLatch.countDown());
+            waitingMap.remove(sessionId);
+        }else{
+            logger.warn("wake up session {} block thread not found ",sessionId);
+        }
+    }
+
+    ConcurrentHashMap<String,SessionLatchHolder>  waitingMap = new ConcurrentHashMap<String,SessionLatchHolder>();
+
+    class SessionLatchHolder{
+        long createTimestamp=System.currentTimeMillis();
+        List<CountDownLatch>  countDownLatchs= Lists.newArrayList();
+    }
 
     @Override
     public ErSessionMeta getSessionMain(String sessionId) {
@@ -60,11 +87,11 @@ public class DefaultSessionManager implements SessionManager {
         context.setSessionId(sessionMeta.getId());
         context.setOptions(sessionMeta.getOptions());
       //  if (MetaInfo.EGGROLL_SESSION_USE_RESOURCE_DISPATCH) {
-            getOrCreateSessionWithoutResourceDispath(context, sessionMeta);
+        return getOrCreateSessionWithoutResourceDispath(context, sessionMeta);
 //        } else {
 ////            getOrCreateSessionOld(sessionMeta);
 //        }
-        return sessionMeta;
+
 
     }
 
@@ -74,46 +101,72 @@ public class DefaultSessionManager implements SessionManager {
         if (!SessionStatus.NEW.name().equals(newSession.getStatus())) {
             return newSession;
         }
-        if (checkSessionRpcReady(newSession)) {
-            return sessionStateMachine.changeStatus(context, newSession, SessionStatus.NEW.name(), SessionStatus.ACTIVE.name());
-        } else {
-            return sessionStateMachine.changeStatus(context, newSession, SessionStatus.NEW.name(), SessionStatus.ERROR.name());
+        try {
+            this.blockSession(sessionMeta);
+        } catch (InterruptedException e) {
+            ErSessionMeta erSessionMeta=  this.sessionMainService.getSessionMain(sessionMeta.getId());
+            if(!SessionStatus.ACTIVE.name().equals(erSessionMeta.getStatus())){
+                logger.error("unable to start all processors for session id {} total {} active {} ",erSessionMeta.getId(),
+                        erSessionMeta.getTotalProcCount(),erSessionMeta.getActiveProcCount());
+                killSession(context,sessionMeta);
+                StringBuilder builder = new StringBuilder();
+                builder.append("unable to start all processors for session id: . ")
+                        .append(sessionMeta.getId())
+                        .append("total processors:").append(erSessionMeta.getTotalProcCount()) .append(" \n")
+                        .append("started count:").append(erSessionMeta.getActiveProcCount());
+                throw new ErSessionException(builder.toString());
+            }
         }
+        return  sessionService.getSession(sessionMeta.getId(),true,true,true);
+
+//        if (checkSessionRpcReady(newSession)) {
+//            return sessionStateMachine.changeStatus(context, newSession, SessionStatus.NEW.name(), SessionStatus.ACTIVE.name());
+//        } else {
+//            return sessionStateMachine.changeStatus(context, newSession, SessionStatus.NEW.name(), SessionStatus.ERROR.name());
+//        }
 
     }
 
-    private boolean checkSessionRpcReady(ErSessionMeta session) {
-
-        long startTimeout = System.currentTimeMillis() + MetaInfo.EGGROLL_SESSION_START_TIMEOUT_MS;
-        boolean isStarted = false;
-        ErSessionMeta cur = null;
-        while (System.currentTimeMillis() <= startTimeout) {
-            cur = this.sessionService.getSession(session.getId(), false, false, false);
-            if (cur == null) {
-                return false;
-            }
-            logger.info("=======cur session {}",cur);
-
-            if (cur.isOverState() || SessionStatus.ACTIVE.name().equals(cur.getStatus()))
-                return true;
-            if (SessionStatus.NEW.name().equals(cur.getStatus()) &&
-                    ((cur.getActiveProcCount()==null || cur.getTotalProcCount() ==null) ||
-                    (cur.getActiveProcCount() < cur.getTotalProcCount()))) {
-                try {
-                    logger.info("========waiting");
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            } else {
-                isStarted = true;
-                break;
-            }
-        }
-        return isStarted;
 
 
-    }
+//    private boolean checkSessionRpcReady(ErSessionMeta session) {
+//
+//        long startTimeout = System.currentTimeMillis() + MetaInfo.EGGROLL_SESSION_START_TIMEOUT_MS;
+//        boolean isStarted = false;
+//        ErSessionMeta cur = null;
+//        while (System.currentTimeMillis() <= startTimeout) {
+//            cur = this.sessionService.getSession(session.getId(), false, false, false);
+//            if (cur == null) {
+//                return false;
+//            }
+//            logger.info("=======cur session {}",cur);
+//
+//            if (cur.isOverState() || SessionStatus.ACTIVE.name().equals(cur.getStatus()))
+//                return true;
+//
+//
+//
+//            if (SessionStatus.NEW.name().equals(cur.getStatus()) &&
+//                    ((cur.getActiveProcCount()==null || cur.getTotalProcCount() ==null) ||
+//                    (cur.getActiveProcCount() < cur.getTotalProcCount()))) {
+////                try {
+////                    logger.info("========waiting");
+////                    Thread.sleep(100);
+////                } catch (InterruptedException e) {
+////                    e.printStackTrace();
+////                }
+//                if(waitingMap.putIfAbsent())
+//
+//
+//            } else {
+//                isStarted = true;
+//                break;
+//            }
+//        }
+//        return isStarted;
+//
+//
+//    }
 
     private List<ErServerNode> getHealthServerNode() {
         ErServerNode serverNodeExample = new ErServerNode();
