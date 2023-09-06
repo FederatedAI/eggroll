@@ -8,6 +8,7 @@ import com.eggroll.core.pojo.ErProcessor;
 import com.google.inject.Inject;
 import com.webank.eggroll.clustermanager.dao.impl.ProcessorService;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
+import org.apache.commons.lang3.StringUtils;
 
 
 public abstract class  AbstractProcessorStateHandler  implements   StateHandler<ErProcessor>{
@@ -43,7 +44,24 @@ public abstract class  AbstractProcessorStateHandler  implements   StateHandler<
 
 
     protected   void updateState(ErProcessor  data,String   desStateParam){
-        processorService.update(new LambdaUpdateWrapper<SessionProcessor>().set(SessionProcessor::getStatus,desStateParam).eq(SessionProcessor::getProcessorId,data.getId()));
+        LambdaUpdateWrapper<SessionProcessor> lambdaUpdateWrapper =  new LambdaUpdateWrapper<SessionProcessor>()
+                .set(SessionProcessor::getStatus,desStateParam)
+                .eq(SessionProcessor::getProcessorId,data.getId());
+        if(data.getCommandEndpoint()!=null) {
+            lambdaUpdateWrapper.set(SessionProcessor::getCommandEndpoint, data.getCommandEndpoint().toString());
+
+        }
+
+        if(data.getTransferEndpoint()!=null) {
+            lambdaUpdateWrapper.set(SessionProcessor::getTransferEndpoint, data.getTransferEndpoint().toString());
+
+        }
+
+        processorService.update(new LambdaUpdateWrapper<SessionProcessor>()
+                .set(SessionProcessor::getStatus,desStateParam).
+                set(SessionProcessor::getCommandEndpoint,data.getCommandEndpoint().toString())
+                        .   set(SessionProcessor::getTransferEndpoint,data.getTransferEndpoint().toString())
+                .eq(SessionProcessor::getProcessorId,data.getId()));
     }
 
 

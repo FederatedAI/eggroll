@@ -2,10 +2,7 @@ package com.webank.eggroll.clustermanager.statemachine;
 
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.constant.ProcessorStatus;
-import com.eggroll.core.constant.ProcessorType;
-import com.eggroll.core.constant.ServerNodeStatus;
-import com.eggroll.core.constant.ServerNodeTypes;
+import com.eggroll.core.constant.*;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.ErEndpoint;
@@ -39,6 +36,7 @@ public class SessionCreateHandler  extends AbstractSessionStateHandler{
     @Override
     public ErSessionMeta handle(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam) {
         logger.info("session create handle begin");
+        erSessionMeta.setStatus(SessionStatus.NEW.name());
         ErSessionMeta   sessionInDb =  sessionMainService.getSession(erSessionMeta.getId(),true,true,false);
         if(sessionInDb!=null)
             return  sessionInDb;
