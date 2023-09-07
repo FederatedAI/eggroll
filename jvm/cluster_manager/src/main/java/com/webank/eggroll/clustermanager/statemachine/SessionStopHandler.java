@@ -2,6 +2,8 @@ package com.webank.eggroll.clustermanager.statemachine;
 
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.constant.ProcessorStatus;
+import com.eggroll.core.constant.ServerNodeStatus;
+import com.eggroll.core.constant.ServerNodeTypes;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.ErServerNode;
@@ -21,7 +23,10 @@ public class SessionStopHandler extends AbstractSessionStateHandler{
 
     @Override
     public  void asynPostHandle(Context context, ErSessionMeta data , String preStateParam, String desStateParam){
-        List<ErServerNode> serverNodes = (List< ErServerNode>)context.getData(Dict.SERVER_NODES);
+        ErServerNode  erServerNodeExample =new  ErServerNode();
+        erServerNodeExample.setNodeType(ServerNodeTypes.NODE_MANAGER.name());
+        erServerNodeExample.setStatus(ServerNodeStatus.HEALTHY.name());
+        List<ErServerNode> serverNodes = serverNodeService.getListByErServerNode(erServerNodeExample);
         serverNodes.parallelStream().forEach(serverNode -> {
             try{
                 NodeManagerClient nodeManagerClient = new NodeManagerClient(serverNode.getEndpoint());
@@ -44,7 +49,7 @@ public class SessionStopHandler extends AbstractSessionStateHandler{
         if(data.getActiveProcCount()!=null)
             erSessionMeta.setActiveProcCount(data.getActiveProcCount());
 
-        this.setIsBreak(context,true);
+        this.openAsynPostHandle(context);
         return erSessionMeta;
     }
 

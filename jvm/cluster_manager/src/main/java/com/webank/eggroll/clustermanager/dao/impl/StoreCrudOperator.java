@@ -134,7 +134,7 @@ public class StoreCrudOperator {
         return new ErStore(outputStoreLocator, outputPartitions, outputOptions);
     }
 
-    public ErStore doGetOrCreateStore(Context context, ErStore input) {
+    public synchronized ErStore doGetOrCreateStore(Context context, ErStore input) {
         ErStoreLocator inputStoreLocator = input.getStoreLocator();
         String inputStoreType = inputStoreLocator.getStoreType();
         ErStore inputWithoutType =ObjectUtils.clone(input);
