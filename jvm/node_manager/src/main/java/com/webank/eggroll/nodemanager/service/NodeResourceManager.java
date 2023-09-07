@@ -8,8 +8,8 @@ import com.eggroll.core.pojo.ErEndpoint;
 import com.eggroll.core.pojo.ErNodeHeartbeat;
 import com.eggroll.core.pojo.ErResource;
 import com.eggroll.core.pojo.ErServerNode;
+import com.eggroll.core.postprocessor.ApplicationStartedRunner;
 import com.eggroll.core.utils.NetUtils;
-import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.nodemanager.env.Shell;
 import com.webank.eggroll.nodemanager.env.SysInfoLinux;
@@ -20,13 +20,14 @@ import com.webank.eggroll.nodemanager.utils.GetSystemInfo;
 import org.apache.commons.beanutils.BeanUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Singleton
-public class NodeResourceManager {
+public class NodeResourceManager implements ApplicationStartedRunner {
 
     Logger logger = LoggerFactory.getLogger(NodeResourceManager.class);
 
@@ -90,12 +91,6 @@ public class NodeResourceManager {
         }
         ResourceWrapper resourceWrapper = getResourceWrapper(rType);
         return resourceWrapper.getAllocated().getAndAdd(count);
-    }
-
-    public void start() {
-        NodeManagerMeta.loadNodeManagerMetaFromFile();
-        NodeManagerTask.runTask(heartBeatThread);
-        NodeManagerTask.runTask(resourceCountThread);
     }
 
     public Long getPhysicalMemorySize() {
@@ -182,6 +177,13 @@ public class NodeResourceManager {
         }
         newErServerNode.setResources(resources);
         return newErServerNode;
+    }
+
+    @Override
+    public void run(String[] args) throws Exception {
+        NodeManagerMeta.loadNodeManagerMetaFromFile();
+        NodeManagerTask.runTask(heartBeatThread);
+        NodeManagerTask.runTask(resourceCountThread);
     }
 
     class ResourceCountThread extends Thread {
