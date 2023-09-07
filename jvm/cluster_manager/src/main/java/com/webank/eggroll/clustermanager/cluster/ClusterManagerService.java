@@ -136,7 +136,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         log.info("prepare to kill redidual processor {}", JsonUtil.object2Json(processor));
         ErServerNode serverNodeInDb = serverNodeService.getByIdFromCache(processor.getServerNodeId());
         if(serverNodeInDb!=null) {
-            ErSessionMeta erSessionMeta = sessionMainService.getSession(processor.getSessionId());
+            ErSessionMeta erSessionMeta = sessionMainService.getSession(processor.getSessionId(),true,false,false);
             if(erSessionMeta!=null) {
                 erSessionMeta.getOptions().put(Dict.SERVER_NODE_ID, processor.getServerNodeId().toString());
                 NodeManagerClient nodeManagerClient = new NodeManagerClient(serverNodeInDb.getEndpoint());
