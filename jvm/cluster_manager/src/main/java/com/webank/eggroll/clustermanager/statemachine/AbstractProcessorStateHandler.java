@@ -9,9 +9,13 @@ import com.google.inject.Inject;
 import com.webank.eggroll.clustermanager.dao.impl.ProcessorService;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public abstract class  AbstractProcessorStateHandler  implements   StateHandler<ErProcessor>{
+
+    Logger logger = LoggerFactory.getLogger(AbstractProcessorStateHandler.class);
 
     @Inject
     ResourceStateMechine  resourceStateMechine;
@@ -30,7 +34,9 @@ public abstract class  AbstractProcessorStateHandler  implements   StateHandler<
                 return sessionProcessor.toErProcessor();
             }else
             {
-                throw  new RuntimeException("");
+                logger.error("processor {} is not found",data.getId());
+             //  setIsBreak(context,true);
+               return  data;
             }
         }
     }

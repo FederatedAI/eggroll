@@ -111,6 +111,7 @@ public abstract class AbstractStateMachine<T> {
             }
             return result;
         } catch (Exception e) {
+            e.printStackTrace();
            throw  new RuntimeException(e);
         } finally {
             unLock(lockKey);
