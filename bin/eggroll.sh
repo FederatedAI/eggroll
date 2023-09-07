@@ -184,7 +184,7 @@ start() {
 	fi
 }
 
-start() {
+debug() {
 	getpid
 	if [[ $? -eq 1 ]]; then
 		mklogsdir
