@@ -40,9 +40,9 @@ from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErPair
 from eggroll.core.meta_model import ErTask, ErProcessor, ErEndpoint
-from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
+from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc, deepspeed_download_pb2_grpc
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
-    TransferService
+    TransferService, GrpcDsDownloadServicer
 from eggroll.core.utils import _exception_logger, add_runtime_storage
 from eggroll.core.utils import hash_code
 from eggroll.core.utils import set_static_er_conf, get_static_er_conf
@@ -752,7 +752,7 @@ def stop_processor(node_manager_client: NodeManagerClient, myself: ErProcessor):
                     cmd_str = data[1].decode('utf-8')
                     if 'stop' in cmd_str and str(os.getpid()) in cmd_str:
                         myself._status = ProcessorStatus.STOPPED
-                        node_manager_client.heartbeat(myself)
+                        send_heartbeat(node_manager_client,myself)
 
                 except BaseException as e:
                     print("exception:", e)
@@ -802,6 +802,7 @@ def serve(args):
                                                           command_server)
 
     transfer_servicer = GrpcTransferServicer()
+    ds_download_servicer =  GrpcDsDownloadServicer()
 
     port = args.port
     transfer_port = args.transfer_port
@@ -813,6 +814,7 @@ def serve(args):
         transfer_port = port
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                                 transfer_server)
+        deepspeed_download_pb2_grpc.add_DsDownloadServiceServicer_to_server(ds_download_servicer, transfer_server)
     else:
         transfer_server_max_workers = int(
             RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_DATA_SERVER_EXECUTOR_POOL_MAX_SIZE.get())
@@ -838,6 +840,8 @@ def serve(args):
         transfer_port = transfer_server.add_insecure_port(f'[::]:{transfer_port}')
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                                 transfer_server)
+
+        deepspeed_download_pb2_grpc.add_DsDownloadServiceServicer_to_server(ds_download_servicer,transfer_server)
         transfer_server.start()
     pid = os.getpid()
 
@@ -885,7 +889,7 @@ def serve(args):
         })
 
         # cluster_manager_client.heartbeat(myself)
-        node_manager_client.heartbeat(myself)
+         #node_manager_client.heartbeat(myself)
         add_runtime_storage('er_session_id', session_id)
 
         if platform.system() == "Windows":
@@ -895,6 +899,8 @@ def serve(args):
     L.info(f'egg_pair started at port={port}, transfer_port={transfer_port}')
 
     run = True
+
+
 
     def exit_gracefully(signum, frame):
         nonlocal run
@@ -906,12 +912,13 @@ def serve(args):
     signal.signal(signal.SIGINT, exit_gracefully)
 
     while run:
-        time.sleep(1)
+        time.sleep(int(RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_SERVER_HEARTBEAT_INTERVAL.get()))
+        send_heartbeat(node_manager_client,myself)
 
     L.info(f'sending exit heartbeat to cm')
     if cluster_manager:
         myself._status = ProcessorStatus.STOPPED
-        node_manager_client.heartbeat(myself)
+        send_heartbeat(node_manager_client,myself)
 
     GrpcChannelFactory.shutdown_all_now()
 
@@ -924,6 +931,17 @@ def serve(args):
 
     L.info(f'system metric at exit: {get_system_metric(1)}')
     L.info(f'egg_pair {args.processor_id} at port={port}, transfer_port={transfer_port}, pid={pid} stopped gracefully')
+
+def send_heartbeat(node_manager_client:NodeManagerClient, myself:ErProcessor):
+    try:
+       node_manager_client.heartbeat(myself)
+    except Exception as e:
+        L.exception(f"eggpair send heartbeat to nodemanager error")
+
+
+
+
+
 
 
 if __name__ == '__main__':
