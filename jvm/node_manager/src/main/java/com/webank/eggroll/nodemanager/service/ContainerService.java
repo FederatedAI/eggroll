@@ -113,7 +113,7 @@ public class ContainerService {
                 .add(String.format("%s-%s", param.getModuleName(), param.getProcessorId()))
                 .toString();
         logger.info("doStopCmd : {}", doStopCmd);
-        param.setExeCmd(doStopCmd);
+        param.setStartCmd(doStopCmd);
         Thread thread = runCommand(param);
         thread.start();
         try {
