@@ -1,6 +1,7 @@
 package com.webank.eggroll.clustermanager.statemachine;
 
 import com.eggroll.core.config.Dict;
+import com.eggroll.core.constant.ProcessorStatus;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.ErServerNode;
@@ -51,7 +52,7 @@ public class SessionStopHandler extends AbstractSessionStateHandler{
     public ErSessionMeta handle(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam) {
         updateStatus(context,erSessionMeta,preStateParam,desStateParam);
         erSessionMeta.getProcessors().forEach(processor ->{
-            processorStateMachine.changeStatus(context,processor,null,desStateParam );
+            processorStateMachine.changeStatus(context,processor,null, ProcessorStatus.STOPPED.name());
         });
         return sessionMainService.getSession(erSessionMeta.getId(),true,false,false);
     }

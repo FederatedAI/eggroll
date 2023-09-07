@@ -54,6 +54,7 @@ public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta>   {
         }
         line= preStateParam+"_"+desStateParam;
         context.putLogData("session_status_change",line);
+        
         return  line;
     }
 
