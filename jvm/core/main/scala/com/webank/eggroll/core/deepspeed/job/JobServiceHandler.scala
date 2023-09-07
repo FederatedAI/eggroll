@@ -1,5 +1,6 @@
 package com.webank.eggroll.core.deepspeed.job
 
+import com.google.gson.Gson
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.containers.JobProcessorTypes
@@ -14,11 +15,15 @@ import com.webank.eggroll.core.resourcemanager.{ClusterResourceManager, SessionM
 import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
 
+import java.util
+import scala.collection.JavaConverters.asJavaIterableConverter
 import scala.collection.mutable.ArrayBuffer
+import scala.util.Random
 import scala.util.control.Breaks.{break, breakable}
 
 object JobServiceHandler extends Logging {
   private lazy val smDao = new SessionMetaDao
+  private lazy val nodeDao = new  ServerNodeCrudOperator;
 
   //  ClusterManagerService.registerProcessorCallback(JobProcessorTypes.DeepSpeed.toString, (event: ProcessorEvent) => {
   //    new Thread(() => {
@@ -56,6 +61,77 @@ object JobServiceHandler extends Logging {
     QueryJobStatusResponse(sessionId = sessionId, status = status)
   }
 
+
+
+
+  def prepareJobDownload (prepareRequest: PrepareJobDownloadRequest):PrepareJobDownloadResponse = {
+    val sessionId = prepareRequest.sessionId
+    logInfo(f"download job request, sessionId: ${sessionId}")
+    val contentType = prepareRequest.contentType
+    val compressMethod = prepareRequest.compressMethod
+    var contentMap =  new util.HashMap[Any,Any]()
+    var processors =  ArrayBuffer[ErProcessor]()
+
+    val nodeIdMeta = smDao.getRanks(sessionId).flatMap { case (containerId, nodeId, globalRank, localRank) =>
+      val index = if (prepareRequest.ranks.isEmpty) globalRank else prepareRequest.ranks.indexOf(globalRank)
+      if (index >= 0) {
+        Some(nodeId, containerId, globalRank, localRank, index)
+      } else {
+        None
+      }
+    }.groupBy(_._1)
+
+
+    nodeIdMeta .map(t=>{
+      var options = new  util.HashMap[String,String]()
+      var serverNodeIndb = nodeDao.getServerNode(ErServerNode(id = t._1))
+      if(serverNodeIndb != null) {
+        options.put("ip",serverNodeIndb.endpoint.host)
+        options.put("port",serverNodeIndb.endpoint.port.toString)
+           contentMap.put(serverNodeIndb.id.toString,t._2.map(e=>{Array(e._1,e._2,e._3,e._4,e._5)}))
+
+           processors.append(ErProcessor(sessionId = prepareRequest.sessionId,
+             serverNodeId = t._1,
+             processorType = ProcessorTypes.EGG_PAIR,
+             name = "DS-DOWNLOAD",
+             status = ProcessorStatus.NEW,
+             options =  options
+
+           ))
+      }
+    })
+
+    if(processors.length==0){
+      throw  new ErSessionException(s"can not find download rank info for session ${sessionId} ")
+    }
+    var  newSession = ClusterResourceManager.submitJodDownload(ResourceApplication(sessionId = "DS-DOWNLOAD-"+System.currentTimeMillis()+"-"+scala.util.Random.nextInt(100).toString,
+      processors=processors.toArray
+    ))
+    if(newSession.status!=SessionStatus.ACTIVE){
+      throw  new  ErSessionException("session status is "+newSession.status)
+    }
+    newSession.processors.map(p=>{
+
+      if(contentMap.containsKey(p.serverNodeId.toString)){
+
+        contentMap.put(     p.transferEndpoint.toString,contentMap.get(p.serverNodeId.toString))
+
+        contentMap.remove(p.serverNodeId.toString)
+      } else{
+        logInfo(s"download cannot found node ${p.serverNodeId}")
+      }
+    })
+
+
+    var  gson= new Gson()
+
+    PrepareJobDownloadResponse(sessionId = newSession.id, content = gson.toJson(contentMap))
+  }
+
+
+
+
+
   def handleJobDownload(downloadJobRequest: DownloadJobRequest): DownloadJobResponse = {
     val sessionId = downloadJobRequest.sessionId
     logInfo(f"download job request, sessionId: ${sessionId}")
@@ -79,7 +155,7 @@ object JobServiceHandler extends Logging {
           new NodeManagerClient(node.endpoint).downloadContainers(
             DownloadContainersRequest(
               sessionId = sessionId,
-              containerIds = ranks.map(_._2),
+              ranks = ranks.map(_._3),
               compressMethod = compressMethod,
               compressLevel = downloadJobRequest.compressLevel,
               contentType = contentType
@@ -88,7 +164,7 @@ object JobServiceHandler extends Logging {
           case e: Exception =>
             e.printStackTrace()
             ranks.map(r => ContainerContent(
-              containerId = r._2,
+              rank = r._3,
               content = Array.empty,
               compressMethod = downloadJobRequest.compressMethod))
         }
@@ -101,18 +177,21 @@ object JobServiceHandler extends Logging {
   }
 
   private def waitSubmittedContainers(sessionId: String, expectedWorldSize: Int, timeout: Long): Array[ErProcessor] = {
+    logInfo(s"session $sessionId wait container start begin")
     var isStarted = false
     breakable {
       while (System.currentTimeMillis() <= timeout) {
         val cur = smDao.getSessionMain(sessionId)
         if (cur.activeProcCount < expectedWorldSize) {
           // assert no container error
+          val activeCount = cur.activeProcCount
+          logInfo(s"session $sessionId active $activeCount  expect $expectedWorldSize")
           smDao.getSession(sessionId).processors.foreach { processor =>
             if (processor.status == ProcessorStatus.ERROR) {
               throw new ErSessionException(s"processor ${processor.id} failed to start")
             }
           }
-          Thread.sleep(100)
+          Thread.sleep(300)
         } else {
           isStarted = true
           break
@@ -154,7 +233,9 @@ object JobServiceHandler extends Logging {
     val sessionId = submitJobRequest.sessionId
 
     val worldSize = submitJobRequest.worldSize
-
+    if(!ClusterResourceManager.checkMaxResource(ResourceTypes.VGPU_CORE,worldSize)){
+      throw new ErSessionException(s"resource request gpu count ${worldSize} is too big")
+    }
     // prepare processors
     val prepareProcessors = Array.fill(worldSize)(ErProcessor(
       processorType = JobProcessorTypes.DeepSpeed.toString,
@@ -237,17 +318,25 @@ object JobServiceHandler extends Logging {
 
 
         deepspeedConfigsWithNode.groupBy(_._2).par.foreach { case (node, nodeAndConfigs) =>
-          val nodeManagerClient = new NodeManagerClient(node.endpoint)
-          nodeManagerClient.startJobContainers(
-            StartDeepspeedContainerRequest(
-              sessionId = sessionId,
-              name = submitJobRequest.name,
-              commandArguments = submitJobRequest.commandArguments,
-              environmentVariables = submitJobRequest.environmentVariables,
-              files = submitJobRequest.files,
-              zippedFiles = submitJobRequest.zippedFiles,
-              deepspeedConfigs = nodeAndConfigs.map { case (containerId, _, config) => containerId -> config }(collection.breakOut),
-              options = submitJobRequest.options))
+          new Thread(new Runnable {
+            override def run(): Unit = {
+              val nodeManagerClient = new NodeManagerClient(node.endpoint)
+              var begin= System.currentTimeMillis()
+              logInfo(s"session id $sessionId prepare to start container")
+              nodeManagerClient.startJobContainers(
+                StartDeepspeedContainerRequest(
+                  sessionId = sessionId,
+                  name = submitJobRequest.name,
+                  commandArguments = submitJobRequest.commandArguments,
+                  environmentVariables = submitJobRequest.environmentVariables,
+                  files = submitJobRequest.files,
+                  zippedFiles = submitJobRequest.zippedFiles,
+                  deepspeedConfigs = nodeAndConfigs.map { case (containerId, _, config) => containerId -> config }(collection.breakOut),
+                  options = submitJobRequest.options))
+              var cost =System.currentTimeMillis()-begin
+              logInfo(s"session id $sessionId start container cost $cost")
+            }
+          }).start()
         }
 
         // wait for containers to start, throw exception if timeout
@@ -264,6 +353,7 @@ object JobServiceHandler extends Logging {
         }
 
         // active
+
         smDao.updateSessionStatus(sessionId = sessionId,
           status = SessionStatus.ACTIVE,
           required_old_status = Some(SessionStatus.NEW))
@@ -283,7 +373,7 @@ object JobServiceHandler extends Logging {
   }
 
   def killJob(sessionId: String, isTimeout: Boolean): Unit = {
-    logInfo(s"killing job $sessionId")
+    logInfo(s"try killing job $sessionId")
     try {
       ClusterResourceManager.lockSession(sessionId)
       ClusterResourceManager.killJobMap.put(sessionId,System.currentTimeMillis())
@@ -291,7 +381,7 @@ object JobServiceHandler extends Logging {
         return
       }
     val sessionMeta = smDao.getSession(sessionId)
-    if (StringUtils.equalsAny(sessionMeta.status, SessionStatus.KILLED, SessionStatus.CLOSED, SessionStatus.ERROR)) {
+    if (StringUtils.equalsAny(sessionMeta.status, SessionStatus.FINISHED,SessionStatus.KILLED, SessionStatus.CLOSED, SessionStatus.ERROR)) {
       return
     }
     val serverNodeCrudOperator = new ServerNodeCrudOperator()
@@ -302,14 +392,21 @@ object JobServiceHandler extends Logging {
       }
       nodeAndProcessors.par.foreach { case (node, processors) =>
         try {
+          logInfo(s"send to node $node ,kill $sessionId ")
           new NodeManagerClient(node.endpoint)
             .killJobContainers(KillContainersRequest(sessionId = sessionId, containers = processors.map(_.id)))
+          logInfo(s"send to node $node ,kill $sessionId  over")
         } catch {
           case e: Exception =>
+            logError(s"kill $sessionId  container error,node  $node",e)
             e.printStackTrace()
         }
       }
-    smDao.updateSessionMain(sessionMeta.copy(status = SessionStatus.ERROR), afterCall = defaultSessionCallback)
+      logInfo(s"killing job send to node over $sessionId")
+      var now = System.currentTimeMillis()
+      smDao.updateSessionMain(sessionMeta.copy(status = SessionStatus.ERROR), afterCall = defaultSessionCallback)
+      var cost = System.currentTimeMillis()-now
+      logInfo(s"killing job update session main over $sessionId ,cost $cost")
     }finally {
       ClusterResourceManager.unlockSession(sessionId)
     }

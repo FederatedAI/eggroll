@@ -97,6 +97,8 @@ class NodeManagerService extends NodeManager with Logging {
           case "kill" => container.kill()
           case _ => throw new IllegalArgumentException(s"op not supported: '${opType}'")
         }
+      }else{
+    
       }
     })
 
