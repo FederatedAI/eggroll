@@ -82,7 +82,7 @@ public class DefaultSessionManager implements SessionManager {
     }
 
     @Override
-    public synchronized ErSessionMeta getOrCreateSession(Context context, ErSessionMeta sessionMeta) {
+    public ErSessionMeta getOrCreateSession(Context context, ErSessionMeta sessionMeta) {
         context.setSessionId(sessionMeta.getId());
         context.setOptions(sessionMeta.getOptions());
         return getOrCreateSessionWithoutResourceDispath(context, sessionMeta);
