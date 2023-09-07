@@ -90,9 +90,6 @@ public class DefaultSessionManager implements SessionManager {
     }
 
     private ErSessionMeta getOrCreateSessionWithoutResourceDispath(Context context, ErSessionMeta sessionMeta) {
-
-
-
         ErSessionMeta newSession = sessionStateMachine.changeStatus(context, sessionMeta, null, SessionStatus.NEW.name());
         logger.info("new session======={}",newSession);
         if (!SessionStatus.NEW.name().equals(newSession.getStatus())) {
