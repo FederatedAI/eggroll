@@ -1,6 +1,7 @@
 package com.webank.eggroll.clustermanager.statemachine;
 
 import com.eggroll.core.config.Dict;
+import com.eggroll.core.constant.ProcessorStatus;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.ErServerNode;
@@ -25,9 +26,11 @@ public class SessionKillHandler extends  AbstractSessionStateHandler{
     @Override
     public  void asynPostHandle(Context context, ErSessionMeta data , String preStateParam, String desStateParam){
         List<ErServerNode> serverNodes = (List< ErServerNode>)context.getData(Dict.SERVER_NODES);
+        logger.info("==============servernodes {}",serverNodes);
         serverNodes.parallelStream().forEach(serverNode -> {
             try{
                 NodeManagerClient nodeManagerClient = new NodeManagerClient(serverNode.getEndpoint());
+                logger.info("send to node {} to stop container",serverNode.getEndpoint());
                 nodeManagerClient.stopContainers(context,data);
             }catch (Exception e){
                 logger.error("send stop command error",e);
@@ -46,15 +49,16 @@ public class SessionKillHandler extends  AbstractSessionStateHandler{
         }
         if(data.getActiveProcCount()!=null)
             erSessionMeta.setActiveProcCount(data.getActiveProcCount());
-        this.setIsBreak(context,true);
+        this.openAsynPostHandle(context);
         return erSessionMeta;
     }
 
     @Override
     public ErSessionMeta handle(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam) {
         updateStatus(context,erSessionMeta,preStateParam,desStateParam);
+        logger.info("===================={}",erSessionMeta);
         erSessionMeta.getProcessors().forEach(processor ->{
-            processorStateMachine.changeStatus(context,processor,null,desStateParam );
+            processorStateMachine.changeStatus(context,processor,null, ProcessorStatus.KILLED.name());
         });
         return sessionMainService.getSession(erSessionMeta.getId(),true,false,false);
     }
