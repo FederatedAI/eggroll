@@ -31,6 +31,8 @@ class NodeManagerClient(var nodeManagerEndpoint: ErEndpoint) {
 
   private val commandClient = new CommandClient(nodeManagerEndpoint)
 
+
+
   def this(serverHost: String, serverPort: Int) {
     this(new ErEndpoint(serverHost, serverPort))
   }
@@ -38,6 +40,10 @@ class NodeManagerClient(var nodeManagerEndpoint: ErEndpoint) {
   def this() {
     this(StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST, "localhost"),
       StaticErConf.getInt(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, -1))
+  }
+
+  def getRankLog():Unit ={
+
   }
 
   def heartbeat(processor: ErProcessor): ErProcessor =

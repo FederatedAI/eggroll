@@ -4,6 +4,7 @@ import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.containers.ContainersServiceHandler
+import com.webank.eggroll.core.ex.grpc.{NodeManagerExtendTransferService}
 import com.webank.eggroll.core.meta.{ErProcessor, ErResourceAllocation, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.GrpcServerUtils
@@ -29,13 +30,14 @@ class NodeManagerBootstrap extends BootstrapBase with Logging {
     // val sessionId = cmd.getOptionValue('s')
     StaticErConf.addProperties(confPath)
 
-
     // register services
     // To support parameters to NodeManagerService,
     // we instantiate a NodeManagerService instance here
     forkJoinPool = new ForkJoinPool()
     val executionContext = ExecutionContext.fromExecutorService(forkJoinPool)
-    val nodeManagerJobService = new ContainersServiceHandler()(executionContext)
+
+
+    val nodeManagerJobService =  ContainersServiceHandler.getOrCreate(executionContext)
 
     CommandRouter.register(serviceName = NodeManagerCommands.startContainers.uriString,
       serviceParamTypes = Array(classOf[ErSessionMeta]),
@@ -120,7 +122,7 @@ class NodeManagerBootstrap extends BootstrapBase with Logging {
     StaticErConf.addProperty(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, this.port.toString)
 
     server = GrpcServerUtils.createServer(
-      port = this.port, grpcServices = List(new CommandService))
+      port = this.port, grpcServices = List(new CommandService,new NodeManagerExtendTransferService))
 
     server.start()
     this.port = server.getPort

@@ -6,6 +6,21 @@ import java.io.*;
 
 public class ProcessUtils {
 
+
+    public  static Process createProcess(String  command) throws IOException {
+        String[] cmd = new String[] { "/bin/sh", "-c", command };
+        return  Runtime.getRuntime().exec(cmd);
+    }
+
+
+
+
+
+
+
+
+
+
     public static boolean checkProcess(String processId) {
 
         boolean flag = true;
@@ -23,13 +38,8 @@ public class ProcessUtils {
                     +
                        "| grep -w  " + processId;
             }
-            System.err.println(command);
-            String[] cmd = new String[] { "/bin/sh", "-c", command };
-
-             process = Runtime.getRuntime().exec(cmd);
-
+            process = createProcess(command);
             BufferedReader br = new BufferedReader(new InputStreamReader( process.getInputStream()));
-
             String line=null;
             StringBuffer b=new StringBuffer();
             while (true) {
