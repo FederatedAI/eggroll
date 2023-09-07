@@ -127,7 +127,7 @@ object ClusterManagerConfKeys {
   val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_DEFAULT_AUTO_COMMIT = "eggroll.resourcemanager.clustermanager.datasource.db.default.auto.commit"
   val CONFKEY_CLUSTER_MANAGER_HOST = "eggroll.resourcemanager.clustermanager.host"
   val CONFKEY_CLUSTER_MANAGER_PORT = "eggroll.resourcemanager.clustermanager.port"
-  var CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT = ErConfKey("eggroll.resourcemanager.clustermanager.node.heartbeat.expire.count",2)
+  var CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT = ErConfKey("eggroll.resourcemanager.clustermanager.node.heartbeat.expire.count",200)
   val EGGROLL_RESOURCEMANAGER_CLUSTERMANAGER_JDBC_PASSWORD_DECRYPTOR = ErConfKey("eggroll.resourcemanager.clustermanager.jdbc.password.decryptor")
   val EGGROLL_RESOURCEMANAGER_CLUSTERMANAGER_JDBC_PASSWORD_DECRYPTOR_ARGS = ErConfKey("eggroll.resourcemanager.clustermanager.jdbc.password.decryptor.args")
   val EGGROLL_RESOURCEMANAGER_CLUSTERMANAGER_JDBC_PASSWORD_DECRYPTOR_ARGS_SPLITER = ErConfKey("eggroll.resourcemanager.clustermanager.jdbc.password.decryptor.args.spliter", ",")
@@ -160,13 +160,17 @@ object SessionConfKeys {
   val CONFKEY_SESSION_NAME = "eggroll.session.name"
   val CONFKEY_SESSION_PROCESSORS_PER_NODE = "eggroll.session.processors.per.node"
   val EGGROLL_SESSION_START_TIMEOUT_MS = ErConfKey("eggroll.session.start.timeout.ms", 20000)
+  val EGGROLL_SESSION_STATUS_NEW_TIMEOUT_MS = ErConfKey("eggroll.session.status.new.timeout.ms", 8*3600*1000+20000)
   val EGGROLL_SESSION_STOP_TIMEOUT_MS = ErConfKey("eggroll.session.stop.timeout.ms", 20000)
+  val EGGROLL_SESSION_MAX_LIVE_MS = ErConfKey("eggroll.session.max.live.ms", 48*3600*1000)
+  var EGGROLL_SESSION_STATUS_CHECK_INTERVAL_MS = ErConfKey("eggroll.session.status.check.interval.ms", 5000)
   val EGGROLL_SESSION_PYTHON_PATH = "python.path"
   val EGGROLL_SESSION_PYTHON_VENV = "python.venv"
   var EGGROLL_SESSION_USE_RESOURCE_DISPATCH = "eggroll.session.use.resource.dispatch"
   val EGGROLL_RESOURCE_DISPATCH_INTERVAL = ErConfKey("eggroll.session.resource.dispatch.interval", 3000)
   val EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL = ErConfKey("eggroll.resource.lock.expire.interval", 3600000)
-
+  val EGGROLL_RESOURCE_COUNT_INTERVAL = ErConfKey("eggroll.resource.count.interval", 10000)
+  val EGGROLL_RESOURCE_SYSTEM_UPDATE_INTERVAL = ErConfKey("eggroll.resource.count.interval", 60000)
   //, false
 }
 

@@ -69,6 +69,12 @@
           <artifactId>jna-platform</artifactId>
           <version>${jna.platform.version}</version>
       </dependency>
+      <dependency>
+          <groupId>io.grpc</groupId>
+          <artifactId>grpc-stub</artifactId>
+          <version>1.55.1</version>
+          <scope>compile</scope>
+      </dependency>
 
 
   </dependencies>

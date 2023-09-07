@@ -3,16 +3,18 @@ package com.webank.eggroll.core.resourcemanager
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant.ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT
 import com.webank.eggroll.core.constant.NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL
-import com.webank.eggroll.core.constant.SessionConfKeys.EGGROLL_SESSION_STOP_TIMEOUT_MS
-import com.webank.eggroll.core.constant.{ProcessorStatus, ServerNodeStatus, SessionConfKeys, SessionStatus}
+import com.webank.eggroll.core.constant.SessionConfKeys.{EGGROLL_SESSION_MAX_LIVE_MS, EGGROLL_SESSION_STATUS_CHECK_INTERVAL_MS, EGGROLL_SESSION_STOP_TIMEOUT_MS}
+import com.webank.eggroll.core.constant.{ProcessorStatus, ProcessorTypes, ResourceManagerConfKeys, ServerNodeStatus, SessionConfKeys, SessionStatus}
 import com.webank.eggroll.core.deepspeed.job.JobServiceHandler
 import com.webank.eggroll.core.deepspeed.job.JobServiceHandler.killJob
 import com.webank.eggroll.core.error.ErSessionException
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.resourcemanager.ProcessorStateMachine.defaultSessionCallback
+import com.webank.eggroll.core.resourcemanager.SessionManagerService.smDao
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.util.Logging
 
+import java.util.concurrent.ConcurrentHashMap
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
@@ -24,6 +26,9 @@ trait ClusterManager {
 object ClusterManagerService extends Logging {
 
   var nodeHeartbeatMap = mutable.Map[Long, ErNodeHeartbeat]()
+  var residualHeartbeatMap = new  ConcurrentHashMap[Long,ErProcessor]()
+
+
   lazy val serverNodeCrudOperator = new ServerNodeCrudOperator()
   private lazy val smDao = new SessionMetaDao()
 
@@ -41,45 +46,90 @@ object ClusterManagerService extends Logging {
 
   }
 
-  private val nodeProcessChecker = new Thread(() => {
-    var serverNodeCrudOperator = new ServerNodeCrudOperator
-    while (true) {
-      try {
-        var now = System.currentTimeMillis();
-        var erProcessors = serverNodeCrudOperator.queryProcessor(null, ErProcessor(status = ProcessorStatus.RUNNING));
-        var grouped = erProcessors.groupBy(x => {
-          x.serverNodeId
-        })
-        grouped.par.
-          foreach(e => {
-            var serverNode = serverNodeCrudOperator.getServerNode(ErServerNode(id = e._1))
-            var nodeManagerClient = new NodeManagerClient(serverNode.endpoint)
-            e._2.par.foreach(processor => {
-              try {
+  private def  checkDbRunningProcessor():Unit={
+    var now = System.currentTimeMillis();
+    var erProcessors = serverNodeCrudOperator.queryProcessor(null, ErProcessor(status = ProcessorStatus.RUNNING));
+    var grouped = erProcessors.groupBy(x => {
+      x.serverNodeId
+    })
+    grouped.par.
+      foreach(e => {
+        var serverNode = serverNodeCrudOperator.getServerNode(ErServerNode(id = e._1))
+        var nodeManagerClient = new NodeManagerClient(serverNode.endpoint)
+        e._2.par.foreach(processor => {
+          try {
 
-                var result = nodeManagerClient.checkNodeProcess(processor)
-                if (result == null || result.status == ProcessorStatus.KILLED) {
-                  Thread.sleep(10000)
-                  var processorInDb = serverNodeCrudOperator.queryProcessor(null, ErProcessor(id = processor.id))
-                  if (processorInDb.length > 0) {
-                    if (processorInDb.apply(0).status == ProcessorStatus.RUNNING) {
-                      var result = nodeManagerClient.checkNodeProcess(processor)
-                      if (result == null || result.status == ProcessorStatus.KILLED) {
-                        ProcessorStateMachine.changeStatus(processor, desStateParam = ProcessorStatus.ERROR)
-                      }
-                    }
+            var result = nodeManagerClient.checkNodeProcess(processor)
+            if (result == null || result.status == ProcessorStatus.KILLED) {
+              Thread.sleep(10000)
+              var processorInDb = serverNodeCrudOperator.queryProcessor(null, ErProcessor(id = processor.id))
+              if (processorInDb.length > 0) {
+                if (processorInDb.apply(0).status == ProcessorStatus.RUNNING) {
+                  var result = nodeManagerClient.checkNodeProcess(processor)
+                  if (result == null || result.status == ProcessorStatus.KILLED) {
+                    ProcessorStateMachine.changeStatus(processor, desStateParam = ProcessorStatus.ERROR)
                   }
                 }
-              } catch {
-                case e: Throwable =>
-                  e.printStackTrace()
               }
-            })
-          })
+            }
+          } catch {
+            case e: Throwable =>
+              e.printStackTrace()
+          }
+        })
+      })
+
+  }
+
+
+  private def  killResidualProcessor(processor : ErProcessor) :Unit= {
+    logInfo(s"prepare to kill redidual processor ${processor}")
+    var  serverNode =   serverNodeCrudOperator.getServerNode(ErServerNode(id = processor.serverNodeId))
+    var  erSessionMeta =   smDao.getSession(processor.sessionId)
+    val  newSessionMeta = erSessionMeta.copy(
+                           options = erSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> processor.serverNodeId.toString))
+    val  nodeManagerClient = new NodeManagerClient(
+                           ErEndpoint(host = serverNode.endpoint.host,
+                             port = serverNode.endpoint.port))
+    nodeManagerClient.killContainers(newSessionMeta)
+
+  }
+
+  private var  redidualProcessorChecker = new Thread(()=> {
+    while (true) {
+      try {
+        residualHeartbeatMap.forEach((k, v) => {
+          try {
+            killResidualProcessor(v)
+            residualHeartbeatMap.remove(k)
+          } catch {
+            case e: Throwable =>
+                  e.printStackTrace()
+                  logError(s"kill residual processor error: ${e.getMessage}")
+          }
+        })
       }
       catch {
         case e: Throwable =>
           e.printStackTrace()
+      }
+      Thread.sleep(CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt)
+    }
+  },"REDIDUAL_PROCESS_CHECK_THREAD"
+)
+
+
+
+  private val nodeProcessChecker = new Thread(() => {
+  
+    while (true) {
+      try {
+          checkDbRunningProcessor()
+      }
+      catch {
+        case e: Throwable =>
+          e.printStackTrace()
+
       }
       Thread.sleep(CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt)
     }
@@ -99,30 +149,37 @@ object ClusterManagerService extends Logging {
 
   private def checkAndHandleEggpairOutTimeSession(session: ErSessionMeta, sessionProcessors: Array[ErProcessor]): Unit = {
     var current = System.currentTimeMillis()
-    if (session.createTime.getTime < current - 2 * SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get().toLong) {
+    if (session.createTime.getTime < current -  SessionConfKeys.EGGROLL_SESSION_STATUS_NEW_TIMEOUT_MS.get().toLong) {
       //sessionMeta: ErSessionMeta, afterState: String
+      logInfo(s"session ${session} status stay at ${session.status} too long ,prepare to kill")
       SessionManagerService.killSession(session, SessionStatus.KILLED)
     }
   }
 
 
   private def checkAndHandleEggpairActiveSession(session: ErSessionMeta, sessionProcessors: Array[ErProcessor]): Unit = {
+    var now = System.currentTimeMillis()
+    var liveTime = EGGROLL_SESSION_MAX_LIVE_MS.get().toLong
+    if( session.createTime.getTime<now -liveTime ){
+      logError(s"session ${session.id} is timeout, live time is ${liveTime} ,max live time in config is ${EGGROLL_SESSION_MAX_LIVE_MS.get().toLong} ");
+      SessionManagerService.killSession(session)
+    }else {
+      var invalidProcessor = sessionProcessors.filter(p => {
+        p.status == ProcessorStatus.ERROR ||
+          p.status == ProcessorStatus.KILLED ||
+          p.status == ProcessorStatus.STOPPED
+      })
+      if (invalidProcessor.length > 0) {
 
-    var invalidProcessor = sessionProcessors.filter(p => {
-      p.status == ProcessorStatus.ERROR ||
-        p.status == ProcessorStatus.KILLED ||
-        p.status == ProcessorStatus.STOPPED
-    })
-    if (invalidProcessor.length > 0) {
-      var now = System.currentTimeMillis()
-      var needKillSession: Boolean = false
+        var needKillSession: Boolean = false
 
-      needKillSession = invalidProcessor.exists(p => p.updatedAt.getTime < now - EGGROLL_SESSION_STOP_TIMEOUT_MS.get().toLong)
-      if (needKillSession) {
-        logInfo(s"invalid processors ${invalidProcessor},session watcher kill eggpair session ${session} ");
-        SessionManagerService.killSession(session)
+        needKillSession = invalidProcessor.exists(p => p.updatedAt.getTime < now - EGGROLL_SESSION_STOP_TIMEOUT_MS.get().toLong)
+        if (needKillSession) {
+          logInfo(s"invalid processors ${invalidProcessor},session watcher kill eggpair session ${session} ");
+          SessionManagerService.killSession(session)
+        }
+
       }
-
     }
 
   }
@@ -147,6 +204,7 @@ object ClusterManagerService extends Logging {
         s"update session status to `Finished`")
     }
   }
+
 
   private val sessionWatcher = {
     /*
@@ -183,10 +241,10 @@ object ClusterManagerService extends Logging {
                 catch {
                   case e: Throwable=>
                   logError(s"session watcher handle session ${session.id} error ${e.getMessage}")
-                  e.printStackTrace()}
-
+                  e.printStackTrace()
+                }
             }
-            Thread.sleep(1000)
+            Thread.sleep(EGGROLL_SESSION_STATUS_CHECK_INTERVAL_MS.get().toLong)
           }catch {
             case e: Throwable=>
                   logError(s"session watcher handle error ${e.getMessage}")
@@ -225,6 +283,7 @@ object ClusterManagerService extends Logging {
     sessionWatcher.start()
     nodeHeartbeatChecker.start()
     nodeProcessChecker.start()
+    redidualProcessorChecker.start()
   }
 
   def updateNode(serverNode: ErServerNode, needUpdateResource: Boolean, isHeartbeat: Boolean): ErServerNode = synchronized {

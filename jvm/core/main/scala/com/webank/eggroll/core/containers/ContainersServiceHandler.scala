@@ -2,19 +2,30 @@ package com.webank.eggroll.core.containers
 
 import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.constant.{NodeManagerConfKeys, ProcessorStatus}
-import com.webank.eggroll.core.containers.ContainersServiceHandler.{CompressMethod, zip}
+import com.webank.eggroll.core.containers.ContainersServiceHandler.{CompressMethod, LogStreamHolder, logError, zip}
 import com.webank.eggroll.core.containers.container.{ContainersManager, DeepSpeedContainer, WarpedDeepspeedContainerConfig}
 import com.webank.eggroll.core.containers.meta._
+import com.webank.eggroll.core.error.PathNotExistException
 import com.webank.eggroll.core.meta.ErProcessor
 import com.webank.eggroll.core.resourcemanager.NodeManagerMeta
 import com.webank.eggroll.core.session.StaticErConf
-import com.webank.eggroll.core.util.Logging
+import com.webank.eggroll.core.transfer.Extend
+import com.webank.eggroll.core.util.{Logging, ProcessUtils}
+import io.grpc.Status
+import io.grpc.stub.StreamObserver
+import org.apache.commons.lang3.StringUtils
 
-import java.io.{ByteArrayOutputStream, FileInputStream}
+import java.io.{BufferedReader, ByteArrayOutputStream, FileInputStream, InputStreamReader}
 import java.nio.file.Files
+import java.util
+import java.util.concurrent.{ConcurrentHashMap, ConcurrentMap}
 import java.util.zip.{ZipEntry, ZipOutputStream}
+import scala.collection.JavaConverters.asJavaIterableConverter
+import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContext
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.reflect.io.Path
+import scala.util.control.Breaks.{break, breakable}
 
 
 class ContainersServiceHandler(implicit ec: ExecutionContext,
@@ -82,7 +93,7 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
         sessionId = sessionId,
         processorId = containerId,
         deepspeedContainerConfig = new WarpedDeepspeedContainerConfig(deepspeedConfig),
-        containerWorkspace = getContainerWorkspace(containerId),
+        containerWorkspace = getContainerWorkspace(sessionId, deepspeedConfig.rank),
         commandArguments = startDeepspeedContainerRequest.commandArguments,
         environmentVariables = startDeepspeedContainerRequest.environmentVariables,
         files = startDeepspeedContainerRequest.files,
@@ -119,22 +130,22 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
   def downloadContainers(downloadContainersRequest: DownloadContainersRequest): DownloadContainersResponse = {
     val sessionId = downloadContainersRequest.sessionId
     val containerContentType = downloadContainersRequest.contentType
-    val containerIds = downloadContainersRequest.containerIds
-    logInfo(s"(sessionId=$sessionId)downloading containers: ${containerIds.mkString(",")}")
+    val ranks = downloadContainersRequest.ranks
+    logInfo(s"(sessionId=$sessionId)downloading containers: ${ranks.mkString(",")}")
 
-    val contents = containerIds.map { containerId =>
+    val contents = ranks.map { rank =>
       val targetDir = containerContentType match {
-        case ContentType.ALL => getContainerWorkspace(containerId)
-        case ContentType.MODELS => getContainerModelsDir(containerId)
-        case ContentType.LOGS => getContainerLogsDir(containerId)
+        case ContentType.ALL => getContainerWorkspace(sessionId, rank)
+        case ContentType.MODELS => getContainerModelsDir(sessionId, rank)
+        case ContentType.LOGS => getContainerLogsDir(sessionId, rank)
         case _ => throw new IllegalArgumentException(s"unsupported container content type: $containerContentType")
       }
       downloadContainersRequest.compressMethod match {
         case CompressMethod.ZIP =>
           if (targetDir.exists)
-            ContainerContent(containerId, zip(targetDir, downloadContainersRequest.compressLevel), CompressMethod.ZIP)
+            ContainerContent(rank, zip(targetDir, downloadContainersRequest.compressLevel), CompressMethod.ZIP)
           else
-            ContainerContent(containerId, Array[Byte](), CompressMethod.ZIP)
+            ContainerContent(rank, Array[Byte](), CompressMethod.ZIP)
         case _ =>
           throw new IllegalArgumentException(s"compress method not supported: ${downloadContainersRequest.compressMethod}")
       }
@@ -142,20 +153,140 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
     DownloadContainersResponse(sessionId = downloadContainersRequest.sessionId, containerContents = contents)
   }
 
-  private def getContainerWorkspace(containerId: Long): Path = {
-    containersDataDir / containerId.toString
+  private def getContainerWorkspace(sessionId: String, rank: Long): Path = {
+    containersDataDir / sessionId / rank.toString
   }
 
-  private def getContainerModelsDir(containerId: Long): Path = {
-    getContainerWorkspace(containerId) / MODELS
+  private def getContainerModelsDir(sessionId: String, rank: Long): Path = {
+    getContainerWorkspace(sessionId, rank) / MODELS
   }
 
-  private def getContainerLogsDir(containerId: Long): Path = {
-    getContainerWorkspace(containerId) / LOGS
+  private def getContainerLogsDir(sessionId: String, rank: Long): Path = {
+    getContainerWorkspace(sessionId, rank) / LOGS
   }
+
+
+
+
+  def  createLogStream(request: Extend.GetLogRequest, responseObserver: StreamObserver[Extend.GetLogResponse]): LogStreamHolder =synchronized{
+//    tail -n 1000：显示最后1000行
+//    tail -n +1000：从1000行开始显示，显示1000行以后的
+//    head -n 1000：显示前面1000行
+//
+
+      var sessionId = request.getSessionId
+      var line =  if(request.getStartLine>0) request.getStartLine else "+0"
+
+      var rank = request.getRank
+      var path: Path = getContainerLogsDir(sessionId, rank.toLong)
+      path = path / (if(StringUtils.isNotEmpty(request.getLogType))request.getLogType else "INFO" ) + ".log"
+
+      if (!path.exists) {
+        throw new PathNotExistException(s"can not found file ${path}")
+      }
+      var command ="tail -F -n  "+line +" "+ path
+      var logStreamHolder = new LogStreamHolder(System.currentTimeMillis(), "tail -F -n  "+line +" "+ path, responseObserver, "running")
+      return logStreamHolder
+
+  }
+
+
+
+
 }
 
 object ContainersServiceHandler extends Logging {
+
+  var  singleton : ContainersServiceHandler=null
+
+  def  getOrCreate(executionContext: ExecutionContext):ContainersServiceHandler = synchronized{
+    if(singleton!=null){
+       singleton
+    }else{
+      singleton =  new ContainersServiceHandler()(executionContext)
+      singleton
+    }
+  }
+
+  def get(): ContainersServiceHandler ={
+     singleton;
+  }
+
+
+
+
+  class LogStreamHolder(createTimestamp:Long,
+                         command:String,
+                        streamObserver: StreamObserver[Extend.GetLogResponse],
+                        var status: String){
+
+    var thread:Thread = null;
+    var  bufferReader:BufferedReader= null
+    var process:Process=null;
+      def  stop():Unit={
+        logInfo("receive stop log stream command")
+        this.status = "stop"
+        thread.interrupt()
+        process.destroyForcibly()
+        bufferReader.close()
+
+      }
+
+      def  run(): Unit ={
+        logInfo(s"log begin to run")
+        thread = new Thread(()=>{
+          try {
+            logInfo(s"log stream begin ${command}")
+            process = ProcessUtils.createProcess(command)
+            bufferReader= new BufferedReader(new InputStreamReader(process.getInputStream()))
+            var batchSize = 10;
+            breakable {
+              while (true&& !Thread.interrupted()) {
+                if(status=="stop"){
+                  break;
+                }
+                var logBuffer = new ArrayBuffer[String]()
+                var line: String = bufferReader.readLine()
+                if(line!=null){
+                  logBuffer.append(line)
+                }
+
+                if (logBuffer.size > 0) {
+                  var response: Extend.GetLogResponse = Extend.GetLogResponse.newBuilder().setCode("0").addAllDatas(logBuffer.toList.asJava).build()
+                  streamObserver.onNext(response)
+                } else {
+                  Thread.sleep(1000)
+                }
+              }
+            }
+          }catch{
+            case t: InterruptedException =>
+            case t: Throwable => logError("start log stream error",t)
+          }
+          finally {
+            if(bufferReader!=null){
+              bufferReader.close()
+
+            }
+            if(process!=null)
+              process.destroyForcibly()
+            if(streamObserver!=null) {
+              try{
+                streamObserver.onCompleted()
+              }catch{
+                case t: Throwable =>
+                  logError("send onCmpleted error")
+              }
+            }
+            logInfo("log stream destroy over")
+          }
+
+        })
+        thread .start()
+      }
+
+  }
+
 
   object CompressMethod {
     val ZIP = "zip"
