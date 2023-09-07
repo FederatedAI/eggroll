@@ -15,11 +15,13 @@ import com.webank.eggroll.clustermanager.entity.StoreLocator;
 import com.webank.eggroll.clustermanager.entity.StoreOption;
 import com.webank.eggroll.clustermanager.entity.StorePartition;
 import org.apache.commons.beanutils.BeanUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.mybatis.guice.transactional.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -132,16 +134,10 @@ public class StoreCrudOperator {
         return new ErStore(outputStoreLocator, outputPartitions, outputOptions);
     }
 
-    public ErStore doGetOrCreateStore(Context context , ErStore input) {
+    public ErStore doGetOrCreateStore(Context context, ErStore input) {
         ErStoreLocator inputStoreLocator = input.getStoreLocator();
         String inputStoreType = inputStoreLocator.getStoreType();
-        ErStore inputWithoutType = new ErStore();
-        try {
-            BeanUtils.copyProperties(inputWithoutType, input);
-        } catch (Exception e) {
-            logger.error("BeanUtils.copyProperties");
-            throw new RuntimeException("BeanUtils.copyProperties");
-        }
+        ErStore inputWithoutType =ObjectUtils.clone(input);
         inputWithoutType.getStoreLocator().setStoreType(StringConstants.EMPTY);
         ErStore existing = doGetStore(inputWithoutType);
         if (existing != null) {
@@ -156,7 +152,6 @@ public class StoreCrudOperator {
             return doCreateStore(input);
         }
     }
-
 
     public ErStore doCreateStore(ErStore input) {
         Map<String, String> inputOptions = input.getOptions();
