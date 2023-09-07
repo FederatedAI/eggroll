@@ -103,7 +103,7 @@ public class ContainerService {
 
     private boolean doStop(ContainerParam param, boolean force) {
         String option = force ? "kill" : "stop";
-        String linuxSubCmd = String.format("ps aux | grep 'session-id %s' | grep 'server-node-id %s' | grep 'processor-id %s", param.getSessionId(), param.getServerNodeId(), param.getProcessorId());
+        String linuxSubCmd = String.format("ps aux | grep 'session-id %s' | grep 'server-node-id %s' | grep 'processor-id %s'", param.getSessionId(), param.getServerNodeId(), param.getProcessorId());
         String subCmd = param.isWindows() ? "None" : linuxSubCmd;
         String doStopCmd = new StringJoiner(" ")
                 .add(param.getExeCmd())
