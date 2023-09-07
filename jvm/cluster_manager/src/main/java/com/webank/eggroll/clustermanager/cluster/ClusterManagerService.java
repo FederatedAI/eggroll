@@ -89,6 +89,10 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         }
         return result;
     }
+
+    /**
+     * 检查DB中状态为running的进程,如果DB中的状态和节点上对应进程的状态不一致，则表示该进程异常
+     */
     @Schedule(cron= "0/10 * * * * ?")
     public void checkDbRunningProcessor() {
         try {
@@ -97,14 +101,19 @@ public class ClusterManagerService implements ApplicationStartedRunner {
             erProcessor.setStatus(ProcessorStatus.RUNNING.name());
             List<ErProcessor> erProcessors = sessionProcessorService.doQueryProcessor(erProcessor);
 
+            // 根据节点分组
             Map<Long, List<ErProcessor>> grouped = erProcessors.stream().collect(Collectors.groupingBy(ErProcessor::getServerNodeId));
             Context  context = new Context();
             grouped.forEach((serverNodeId, processorList) -> {
+                // 从缓存中拿出该节点的坐标信息，并建立该客户端连接
                 ErServerNode serverNode = serverNodeService.getByIdFromCache(serverNodeId);
                 if(serverNode!=null){
                 NodeManagerClient nodeManagerClient = new NodeManagerClient(serverNode.getEndpoint());
+                // 检查节点上每个进程的状态
                 for (ErProcessor processor : processorList) {
                     ErProcessor result = nodeManagerClient.checkNodeProcess(context,processor);
+
+                    // 如果该节点上的进程状态为kill或者不存在
                     if (result == null || ProcessorStatus.KILLED.name().equals(result.getStatus())) {
 
 //                        try {
@@ -112,13 +121,13 @@ public class ClusterManagerService implements ApplicationStartedRunner {
 //                        } catch (InterruptedException e) {
 //                            e.printStackTrace();
 //                        }
+                        //
                         SessionProcessor processorInDb = sessionProcessorService.getById(processor.getId());
                         if (processorInDb != null) {
                             if (ProcessorStatus.RUNNING.name().equals(processorInDb.getStatus())) {
                                 ErProcessor checkNodeProcessResult = nodeManagerClient.checkNodeProcess(context,processor);
 
                                 if (checkNodeProcessResult == null || ProcessorStatus.KILLED.name().equals(checkNodeProcessResult.getStatus())) {
-
                                     processorStateMachine.changeStatus(new Context(), processor, null, ProcessorStatus.ERROR.name());
                                 }
                             }
@@ -146,6 +155,9 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         }
     }
 
+    /**
+     * 定时kill掉泄露的进程（收到了已经标记为关闭的心跳）
+     */
     @Schedule(cron= "0/10 * * * * ?")
     public void checkRedidualProcessor(){
         try {
@@ -219,6 +231,8 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         }
         log.debug("found all processor belongs to session " + session.getId() + " finished, update session status to `Finished`");
     }
+
+
     @Schedule(cron= "0/5 * * * * ?")
     public   void  sessionWatcherSchedule(){
         try {
