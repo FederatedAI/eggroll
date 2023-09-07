@@ -89,6 +89,10 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         }
         return result;
     }
+
+    /**
+     * 检查DB中状态为running的进程
+     */
     @Schedule(cron= "0/10 * * * * ?")
     public void checkDbRunningProcessor() {
         try {
@@ -97,12 +101,14 @@ public class ClusterManagerService implements ApplicationStartedRunner {
             erProcessor.setStatus(ProcessorStatus.RUNNING.name());
             List<ErProcessor> erProcessors = sessionProcessorService.doQueryProcessor(erProcessor);
 
+            // 根据节点分组
             Map<Long, List<ErProcessor>> grouped = erProcessors.stream().collect(Collectors.groupingBy(ErProcessor::getServerNodeId));
             Context  context = new Context();
             grouped.forEach((serverNodeId, processorList) -> {
                 ErServerNode serverNode = serverNodeService.getByIdFromCache(serverNodeId);
                 if(serverNode!=null){
                 NodeManagerClient nodeManagerClient = new NodeManagerClient(serverNode.getEndpoint());
+                // 检查节点上每个进程的状态
                 for (ErProcessor processor : processorList) {
                     ErProcessor result = nodeManagerClient.checkNodeProcess(context,processor);
                     if (result == null || ProcessorStatus.KILLED.name().equals(result.getStatus())) {
@@ -136,7 +142,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         log.info("prepare to kill redidual processor {}", JsonUtil.object2Json(processor));
         ErServerNode serverNodeInDb = serverNodeService.getByIdFromCache(processor.getServerNodeId());
         if(serverNodeInDb!=null) {
-            ErSessionMeta erSessionMeta = sessionMainService.getSession(processor.getSessionId());
+            ErSessionMeta erSessionMeta = sessionMainService.getSession(processor.getSessionId(),true,false,false);
             if(erSessionMeta!=null) {
                 erSessionMeta.getOptions().put(Dict.SERVER_NODE_ID, processor.getServerNodeId().toString());
                 NodeManagerClient nodeManagerClient = new NodeManagerClient(serverNodeInDb.getEndpoint());
