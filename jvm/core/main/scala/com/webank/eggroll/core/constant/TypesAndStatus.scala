@@ -59,7 +59,19 @@ object ProcessorTypes {
 
   val ROLL_PAIR_MASTER = "roll_pair_master"
   val EGG_PAIR = "egg_pair"
+  val DEEPSPEED_DOWNLOAD = "deepspeed_download"
 }
+
+object  LogStreamStatus{
+
+  val  INIT_STATUS="init"
+  val  PREPARE_STATUS="prepare"
+  val  RUNNING_STATUS="running"
+  val  ERROR_STATUS="error"
+  val STOP_STATUS ="stop"
+
+}
+
 
 object ServerNodeTypes {
   val CLUSTER_MANAGER = "CLUSTER_MANAGER"
@@ -135,6 +147,7 @@ object ProcessorStatus {
 
 object SessionStatus {
   val NEW = "NEW"
+  var BEFORE_DESTORY = "BEFORE_DESTORY"
   val NEW_TIMEOUT = "NEW_TIMEOUT"
   val ACTIVE = "ACTIVE"
   val CLOSED = "CLOSED"

@@ -1,5 +1,6 @@
 package com.webank.eggroll.core.resourcemanager
 
+import com.google.common.cache.{Cache, CacheBuilder, CacheLoader, LoadingCache}
 import com.webank.eggroll.core.Bootstrap.logDebug
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant.SessionConfKeys.EGGROLL_SESSION_USE_RESOURCE_DISPATCH
@@ -11,12 +12,12 @@ import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.ResourceAp
 import com.webank.eggroll.core.resourcemanager.SessionManagerService.{beforeCall, serverNodeCrudOperator, sessionLockMap, smDao}
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.session.StaticErConf
-import com.webank.eggroll.core.util.Logging
+import com.webank.eggroll.core.util.{CacheUtil, Logging}
 import org.apache.commons.lang3.StringUtils
 
 import java.lang.Thread.sleep
 import java.sql.Connection
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import java.util.concurrent.locks.ReentrantLock
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -123,19 +124,28 @@ object SessionManagerService extends Logging {
     if (StringUtils.equalsAny(dbSessionMeta.status, SessionStatus.KILLED, SessionStatus.CLOSED, SessionStatus.ERROR)) {
       return dbSessionMeta
     }
-    val sessionHosts = dbSessionMeta.processors.map(p => p.commandEndpoint.host).toSet
-    val serverNodeCrudOperator = new ServerNodeCrudOperator()
-    val sessionServerNodes = serverNodeCrudOperator.getServerClusterByHosts(sessionHosts.toList.asJava).serverNodes
+    if(dbSessionMeta.processors.length>0) {
+      val sessionHosts = dbSessionMeta.processors.filter(p=>p.commandEndpoint!=null&&StringUtils.isNotEmpty(p.commandEndpoint.host))
+        .map(p => p.commandEndpoint.host).toSet
+      if(!sessionHosts.isEmpty) {
+        val serverNodeCrudOperator = new ServerNodeCrudOperator()
+        val sessionServerNodes = serverNodeCrudOperator.getServerClusterByHosts(sessionHosts.toList.asJava).serverNodes
 
-    sessionServerNodes.par.foreach(n => {
-      // TODO:1: add new params?
-      val newSessionMeta = dbSessionMeta.copy(
-        options = dbSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
-      val nodeManagerClient = new NodeManagerClient(
-        ErEndpoint(host = n.endpoint.host,
-          port = n.endpoint.port))
-      nodeManagerClient.killContainers(newSessionMeta)
-    })
+        sessionServerNodes.par.foreach(n => {
+          // TODO:1: add new params?
+          try {
+            val newSessionMeta = dbSessionMeta.copy(
+              options = dbSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
+            val nodeManagerClient = new NodeManagerClient(
+              ErEndpoint(host = n.endpoint.host,
+                port = n.endpoint.port))
+            nodeManagerClient.killContainers(newSessionMeta)
+          }catch {
+            case  exception: Throwable=> logError(s"send commmand kill container to ${n.endpoint.toString} failed : ${exception.getMessage}")
+          }
+        })
+      }
+    }
 
     // todo:1: update selective
     smDao.updateSessionMain(dbSessionMeta.copy(activeProcCount = 0, status = afterState),afterCall=ProcessorStateMachine.defaultSessionCallback)
@@ -148,29 +158,24 @@ object SessionManagerService extends Logging {
 
 class SessionManagerService extends SessionManager with Logging {
 
+  var heartBeatMap = new  ConcurrentHashMap[Long,ErProcessor]()
+  var processorHeartBeat:Cache[String,ErProcessor] = CacheUtil.buildErProcessorCache(1000,10,TimeUnit.MINUTES)
+
+
   def heartbeat(proc: ErProcessor): ErProcessor = {
-   // smDao.updateProcessor(proc)
-
-    logInfo(s"receive heartbeat processor ${proc.id}  ${proc.status} ")
-
-    ProcessorStateMachine.changeStatus(proc,desStateParam=proc.status)
-//      proc.status match {
-//      case status if(status==ProcessorStatus.STOPPED||status==ProcessorStatus.KILLED||status==ProcessorStatus.ERROR)=>
-//          logInfo(s"processor ${proc.id}    prepare to return resource")
-//           ProcessorStateMachine.changeStatus(proc,desStateParam=status)
-//      case status if (status==ProcessorStatus.RUNNING )=>
-//          logInfo("receive heartbeat running ,")
-//        ProcessorStateMachine.changeStatus(proc,desStateParam=status)
-//     //     ClusterResourceManager.allocateResource(Array(proc),beforeCall= beforeCall)
-//    }
-//    if(proc.status==ProcessorStatus.STOPPED||
-//      proc.status==ProcessorStatus.KILLED||
-//      proc.status==ProcessorStatus.ERROR
-//    ) {
-//      logInfo(s"heart beat return resource ${proc}")
-//      ClusterResourceManager.returnResource(Array(proc))
-//    }
-    proc
+      logInfo(s"receive heartbeat processor ${proc.id}  ${proc.status} ")
+      var previousHeartbeat = processorHeartBeat.asMap.get(proc.id.toString)
+      if(previousHeartbeat==null){
+          processorHeartBeat.asMap.put(proc.id.toString,proc)
+          ProcessorStateMachine.changeStatus(proc,desStateParam=proc.status)
+      }else{
+          if(previousHeartbeat.status!=proc.status) {
+            processorHeartBeat.asMap.put(proc.id.toString,proc)
+            ProcessorStateMachine.changeStatus(proc,desStateParam=proc.status)
+          }
+          // if status is same as the  cached processor, do nothing
+      }
+      proc
   }
 
 
@@ -529,6 +534,9 @@ class SessionManagerService extends SessionManager with Logging {
       return dbSessionMeta
     }
 
+
+    val beforeDestorySession = dbSessionMeta.copy(activeProcCount = 0, status = SessionStatus.BEFORE_DESTORY)
+
     val sessionHosts = mutable.Set[String]()
     dbSessionMeta.processors.foreach(p => {
       if (p != null && p.commandEndpoint != null) sessionHosts += p.commandEndpoint.host
@@ -544,12 +552,16 @@ class SessionManagerService extends SessionManager with Logging {
     }
     sessionServerNodes.foreach(n => {
       // TODO:1: add new params?
-      val newSessionMeta = dbSessionMeta.copy(
-        options = dbSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
-      val nodeManagerClient = new NodeManagerClient(
-        ErEndpoint(host = n.endpoint.host,
-          port = n.endpoint.port))
-      nodeManagerClient.stopContainers(newSessionMeta)
+      try {
+        val newSessionMeta = dbSessionMeta.copy(
+          options = dbSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
+        val nodeManagerClient = new NodeManagerClient(
+          ErEndpoint(host = n.endpoint.host,
+            port = n.endpoint.port))
+        nodeManagerClient.stopContainers(newSessionMeta)
+      }catch{
+          case  exception: Throwable=> logError(s"send commmand kill container to ${n.endpoint.toString} failed : ${exception.getMessage}")
+      }
     })
 
     val stopTimeout = System.currentTimeMillis() + SessionConfKeys.EGGROLL_SESSION_STOP_TIMEOUT_MS.get().toLong
