@@ -184,12 +184,13 @@ start() {
 	fi
 }
 
-debug() {
+start() {
 	getpid
 	if [[ $? -eq 1 ]]; then
 		mklogsdir
 		export EGGROLL_LOG_FILE=${module}
-		cmd="java -server -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=7007   ${jvm_options} -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -Dspring.config.location=file:${EGGROLL_HOME}/conf/eggroll.properties -cp ${EGGROLL_HOME}/lib/*: ${main_class}  -p $port -s ${processor_tag}"
+		export module=${module}
+		cmd="java -server -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=7007   ${jvm_options} -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.xml -Dmodule=${module} -cp ${EGGROLL_HOME}/lib/*: ${main_class}  -p $port -s ${processor_tag}"
 
 		echo $cmd
 		if [ $start_mode = 0 ];then
@@ -200,9 +201,9 @@ debug() {
 
 		getpid
 		if [[ $? -eq 0 ]]; then
-			echo "service start sucessfully. pid=${pid}"
+			echo "service debug sucessfully. pid=${pid}"
 		else
-			echo "service start failed"
+			echo "service debug failed"
 		fi
 	else
 		echo "service already started. pid=${pid}"
