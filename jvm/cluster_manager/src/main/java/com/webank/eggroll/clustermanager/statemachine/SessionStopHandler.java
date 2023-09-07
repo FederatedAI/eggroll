@@ -42,6 +42,8 @@ public class SessionStopHandler extends AbstractSessionStateHandler{
         }
         if(data.getActiveProcCount()!=null)
             erSessionMeta.setActiveProcCount(data.getActiveProcCount());
+
+        this.setIsBreak(context,true);
         return erSessionMeta;
     }
 
