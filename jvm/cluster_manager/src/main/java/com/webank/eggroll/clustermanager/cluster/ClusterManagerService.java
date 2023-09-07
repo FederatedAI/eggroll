@@ -192,7 +192,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         } else {
             List<ErProcessor> invalidProcessor = sessionProcessors.stream().filter(p -> StringUtils.equalsAny(p.getStatus(),
                     ProcessorStatus.ERROR.name(), ProcessorStatus.KILLED.name(), ProcessorStatus.STOPPED.name())).collect(Collectors.toList());
-            logger.info("invalid ================{}=={}",sessionProcessors.size(),invalidProcessor.size());
+//            logger.info("invalid ================{}=={}",sessionProcessors.size(),invalidProcessor.size());
             if (invalidProcessor.size() > 0) {
                 boolean needKillSession = invalidProcessor.stream().anyMatch(p -> p.getUpdatedAt().getTime() < now - MetaInfo.EGGROLL_SESSION_STOP_TIMEOUT_MS);
                 if (needKillSession) {

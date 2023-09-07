@@ -27,6 +27,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import static com.eggroll.core.config.MetaInfo.EGGROLL_SESSION_START_TIMEOUT_MS;
+
 
 @Singleton
 @Data
@@ -54,7 +56,7 @@ public class DefaultSessionManager implements SessionManager {
         CountDownLatch latch = new CountDownLatch(1);
         holder.countDownLatchs.add(latch);
         logger.info("before block {}",erSessionMeta.getId());
-        return latch.await(20, TimeUnit.SECONDS);
+        return latch.await(EGGROLL_SESSION_START_TIMEOUT_MS, TimeUnit.MILLISECONDS);
     }
 
     public void wakeUpSession(String sessionId){
