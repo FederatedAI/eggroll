@@ -16,13 +16,26 @@
  *
  */
 
-package com.webank.eggroll.core.constant
+syntax = "proto3";
 
-object NetworkConstants {
-  val DEFAULT_LOCALHOST_IP = "127.0.0.1"
+package com.webank.eggroll.core.transfer;
 
-  val TRANSFER_PROTOCOL_MAGIC_NUMBER: Array[Byte] =
-    Array(0x46.toByte, 0x70.toByte, 0x93.toByte, 0x94.toByte) // 0x46709394
-  val TRANSFER_PROTOCOL_VERSION: Array[Byte] =
-    Array(0x00.toByte, 0x00.toByte, 0x00.toByte, 0x01.toByte) // 0x00000001
+message GetLogRequest {
+  string sessionId = 1;
+  string rank = 2;
+  string path = 3;
+  int32  startLine = 4;
+  string logType =5;
+}
+
+message GetLogResponse {
+  string code =1;
+  repeated string datas = 2;
+  string msg = 3;
+}
+
+
+// TODO: use transfer lib
+service ExtendTransferServer {
+  rpc getLog ( stream GetLogRequest) returns (stream GetLogResponse);
 }

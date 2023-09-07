@@ -15,7 +15,7 @@ object DownloadContainersResponse {
     DownloadContainersResponse(
       sessionId = src.getSessionId,
       containerContents = src.getContainerContentList.asScala.map(v =>
-        ContainerContent(v.getContainerId, v.getContent.toByteArray, v.getCompressMethod)).toArray
+        ContainerContent(v.getRank, v.getContent.toByteArray, v.getCompressMethod)).toArray
     )
   }
 
