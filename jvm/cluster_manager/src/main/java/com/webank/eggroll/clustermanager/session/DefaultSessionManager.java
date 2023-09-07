@@ -90,6 +90,9 @@ public class DefaultSessionManager implements SessionManager {
     }
 
     private ErSessionMeta getOrCreateSessionWithoutResourceDispath(Context context, ErSessionMeta sessionMeta) {
+
+
+
         ErSessionMeta newSession = sessionStateMachine.changeStatus(context, sessionMeta, null, SessionStatus.NEW.name());
         logger.info("new session======={}",newSession);
         if (!SessionStatus.NEW.name().equals(newSession.getStatus())) {
@@ -195,7 +198,7 @@ public class DefaultSessionManager implements SessionManager {
     @Override
     public ErSessionMeta getSession(Context context, ErSessionMeta sessionMeta) {
 //        checkSessionRpcReady(sessionMeta);
-        return sessionService.getSession(sessionMeta.getId(), true, false, false);
+        return sessionService.getSession(sessionMeta.getId(), true, true, false);
     }
 
     @Override
@@ -204,30 +207,30 @@ public class DefaultSessionManager implements SessionManager {
     }
 
     @Override
-    public ErSessionMeta stopSession(Context context, ErSessionMeta sessionMeta) {
+    public synchronized ErSessionMeta stopSession(Context context, ErSessionMeta sessionMeta) {
         return sessionStateMachine.changeStatus(context, sessionMeta, null, SessionStatus.CLOSED.name());
     }
 
     @Override
-    public ErSessionMeta killSession(Context context, String sessionId) {
+    public synchronized ErSessionMeta killSession(Context context, String sessionId) {
         ErSessionMeta sessionMeta = sessionMainService.getSession(sessionId);
         return sessionStateMachine.changeStatus(context, sessionMeta, null, SessionStatus.KILLED.name());
     }
 
     @Override
-    public ErSessionMeta killSession(Context context, ErSessionMeta sessionMeta) {
+    public synchronized ErSessionMeta killSession(Context context, ErSessionMeta sessionMeta) {
         return sessionStateMachine.changeStatus(context, sessionMeta, null, SessionStatus.KILLED.name());
 
     }
 
     @Override
-    public ErSessionMeta killSession(Context context, ErSessionMeta sessionMeta, String afterState) {
+    public synchronized ErSessionMeta killSession(Context context, ErSessionMeta sessionMeta, String afterState) {
         return sessionStateMachine.changeStatus(context, sessionMeta, null, afterState);
     }
 
 
     @Override
-    public ErSessionMeta killAllSessions(Context context, ErSessionMeta sessionMeta) {
+    public synchronized ErSessionMeta killAllSessions(Context context, ErSessionMeta sessionMeta) {
         QueryWrapper<SessionMain> queryWrapper = new QueryWrapper<>();
         queryWrapper.lambda().in(SessionMain::getStatus, Arrays.asList(SessionStatus.NEW.name(), SessionStatus.ACTIVE.name()));
         List<SessionMain> killList = sessionMainService.list(queryWrapper);

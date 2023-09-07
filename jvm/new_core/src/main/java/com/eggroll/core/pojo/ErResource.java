@@ -12,7 +12,7 @@ import java.util.List;
 
 @Data
 public class ErResource implements RpcMessage {
-    Logger log = LoggerFactory.getLogger(ErResource.class);
+
     private Long resourceId = -1L;
     private String sessionId;
     private String resourceType = Dict.EMPTY;
@@ -68,7 +68,7 @@ public class ErResource implements RpcMessage {
             this.used = resource.getUsed();
             this.allocated = resource.getAllocated();
         } catch (Exception e) {
-            log.error("deserialize error : ", e);
+
         }
     }
 }
