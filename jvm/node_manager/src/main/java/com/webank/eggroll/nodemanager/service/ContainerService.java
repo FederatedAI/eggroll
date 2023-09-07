@@ -26,11 +26,13 @@ public class ContainerService {
     public ErSessionMeta operateContainers(Context context, ErSessionMeta sessionMeta, String opType) {
         context.setSessionId(sessionMeta.getId());
         List<ErProcessor> processors = sessionMeta.getProcessors();
+        logger.info("receive processors {}",processors);
         RuntimeErConf runtimeErConf = new RuntimeErConf(sessionMeta);
         Long myServerNodeId = NodeManagerMeta.serverNodeId;
         logger.info("operateContainers param opType: {}, myServerNodeId:{}",opType,myServerNodeId);
         for (ErProcessor p : processors) {
-            if (p.getServerNodeId() != myServerNodeId) {
+            if (p.getServerNodeId().intValue() != myServerNodeId.intValue()) {
+                logger.info("processor servernode {} myServerNode {}",p.getServerNodeId(),myServerNodeId);
                 continue;
             }
             ContainerParam param = new ContainerParam(runtimeErConf, p.getProcessorType(), p.getId());
