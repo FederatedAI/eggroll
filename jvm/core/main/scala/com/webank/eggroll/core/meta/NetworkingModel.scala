@@ -106,7 +106,8 @@ case class ErProcessor(id: Long = -1,
                        tag: String = StringConstants.EMPTY,
                        resources: Array[ErResource]= Array(),
                        createdAt:Timestamp= null,
-                       updatedAt:Timestamp=null
+                       updatedAt:Timestamp=null,
+                       lastHeartbeat: Long =0
                       ) extends NetworkingRpcMessage {
   override def toString: String = {
     val sb = new StringBuilder

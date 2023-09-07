@@ -1,5 +1,6 @@
 package com.webank.eggroll.core.resourcemanager
 
+import com.webank.eggroll.core.constant.SessionConfKeys.EGGROLL_RESOURCE_SYSTEM_UPDATE_INTERVAL
 import com.webank.eggroll.core.constant.{ResourceStatus, ResourceTypes, StringConstants}
 import com.webank.eggroll.core.meta.{ErProcessor, ErResource}
 import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.{logInfo, serverNodeCrudOperator}
@@ -8,9 +9,13 @@ import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.util.Logging
 
 import java.sql.Connection
+import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 object ResourceStateMachine extends Logging{
+
+
+  var nodeResourceUpdateTimeMap :mutable.Map[Long,Long] = mutable.Map[Long,Long]()
 
   def  changeState(connection: Connection,processors: Array[ErProcessor],beforeState:String,afterState:String ): Unit =synchronized{
     if(connection==null){
@@ -25,17 +30,30 @@ object ResourceStateMachine extends Logging{
 
   private def   changeStateInner(connection: Connection,processors: Array[ErProcessor],beforeState:String,afterState:String ): Unit ={
     var  stateLine =  beforeState+"_"+afterState
+    logInfo(s"resource change state ${stateLine}")
     stateLine match {
       case "init_pre_allocated" =>  preAllocateResource(connection,processors)
       case statusLine if(statusLine=="pre_allocated_allocated"||statusLine=="pre_allocated_allocate_failed"||statusLine=="allocated_return") =>
         updateResource(connection,processors,beforeState,afterState,afterCall = (conn,p)=>{
-          countAndUpdateNodeResource(conn,p.serverNodeId)
+          countAndUpdateNodeResourceInner(conn,p.serverNodeId)
         })
       case _ => logError(s"there is no need do something with resource status ${stateLine}")
     }
   }
 
-  private def  countAndUpdateNodeResource(conn: Connection,serverNodeId: Long): Unit ={
+  def countAndUpdateNodeResource(serverNodeId: Long): Unit ={
+    var lastUpdateTime:Long =nodeResourceUpdateTimeMap.getOrElse(serverNodeId,0)
+    if(System.currentTimeMillis() > lastUpdateTime + EGGROLL_RESOURCE_SYSTEM_UPDATE_INTERVAL.get().toInt){
+      BaseDao.dbc.withTransaction(conn=> {
+        countAndUpdateNodeResourceInner(conn,serverNodeId)
+      })
+
+    }
+
+  }
+
+  private def  countAndUpdateNodeResourceInner(conn: Connection,serverNodeId: Long): Unit = synchronized{
+
     var  paramResources = new ArrayBuffer[ErResource]()
     var resourceList =  serverNodeCrudOperator.queryProcessorResourceList(conn,serverNodeId,Array(ResourceStatus.ALLOCATED ,ResourceStatus.PRE_ALLOCATED))
     if(resourceList.length>0) {
@@ -70,9 +88,10 @@ object ResourceStateMachine extends Logging{
       paramResources.append(ErResource(serverNodeId = serverNodeId,
         resourceType = ResourceTypes.VCPU_CORE, preAllocated = 0, allocated = 0, extention = ""))
     }
+    logInfo(s"try to update node resource ${serverNodeId} resource ${paramResources} ");
 
     serverNodeCrudOperator.updateNodeResource(conn, serverNodeId, paramResources.toArray)
-
+    nodeResourceUpdateTimeMap.put(serverNodeId,System.currentTimeMillis())
   }
 
 
@@ -83,7 +102,7 @@ object ResourceStateMachine extends Logging{
 
       serverNodeCrudOperator.insertProcessorResource(conn, processors);
     processors.groupBy(_.serverNodeId).foreach(e=>{
-      countAndUpdateNodeResource(conn,e._1)
+      countAndUpdateNodeResourceInner(conn,e._1)
     }
   )
 
