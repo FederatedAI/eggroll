@@ -2,9 +2,11 @@ package com.eggroll.core.pojo;
 
 import com.webank.eggroll.core.meta.Meta;
 import lombok.Data;
+import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -13,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Data
-public class ErStore implements RpcMessage {
+public class ErStore implements RpcMessage , Cloneable {
     Logger log = LoggerFactory.getLogger(ErStore.class);
     private ErStoreLocator storeLocator;
     private List<ErPartition> partitions;
@@ -86,5 +88,27 @@ public class ErStore implements RpcMessage {
         } catch (Exception e) {
             log.error("deserialize error : ", e);
         }
+    }
+
+    @Override
+    public Object clone() throws CloneNotSupportedException {
+        ErStore erStore = (ErStore)super.clone();
+        if(this.storeLocator != null){
+            erStore.setStoreLocator(ObjectUtils.clone(this.storeLocator));
+        }
+        if(this.partitions !=null){
+            List<ErPartition> cloneErPartitions =  new ArrayList<>();
+            for (ErPartition partition : this.partitions) {
+                if(partition!=null){
+                    cloneErPartitions.add(ObjectUtils.clone(partition));
+                }
+            }
+            erStore.setPartitions(cloneErPartitions);
+        }
+        if(this.options != null){
+            Map<String, String> cloneOptions = new HashMap<>(this.options);
+            erStore.setOptions(cloneOptions);
+        }
+        return erStore;
     }
 }

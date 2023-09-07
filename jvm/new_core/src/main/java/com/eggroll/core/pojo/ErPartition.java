@@ -8,7 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Data
-public class ErPartition implements RpcMessage {
+public class ErPartition implements RpcMessage,Cloneable {
     Logger log = LoggerFactory.getLogger(ErPartition.class);
     private int id =-1;
     private ErStoreLocator storeLocator;
@@ -67,5 +67,10 @@ public class ErPartition implements RpcMessage {
         } catch (InvalidProtocolBufferException e) {
             log.error("deserialize error : ",e);
         }
+    }
+
+    @Override
+    public Object clone() throws CloneNotSupportedException {
+        return super.clone();
     }
 }
