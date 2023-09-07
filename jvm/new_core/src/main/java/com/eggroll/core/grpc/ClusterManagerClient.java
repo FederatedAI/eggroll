@@ -54,6 +54,13 @@ public class ClusterManagerClient {
         return response;
     }
 
+    public ErStore   getOrCreateStore(Context context,ErStore erStore){
+        byte[] responseData = cc.call(context ,endpoint, getOrCreateStore, erStore.serialize());
+        ErStore response = new ErStore();
+        response.deserialize(responseData);
+        return response;
+    }
+
 
 //    def nodeHeartbeat(node: ErNodeHeartbeat): ErNodeHeartbeat =
 //    cc.call[ErNodeHeartbeat](ManagerCommands.nodeHeartbeat, node)
