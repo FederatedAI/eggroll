@@ -13,7 +13,7 @@ import java.util.UUID;
 
 
 @Data
-public class ErStoreLocator implements RpcMessage {
+public class ErStoreLocator implements RpcMessage,Cloneable {
     Logger log = LoggerFactory.getLogger(ErStoreLocator.class);
 
     private Long id;
@@ -110,5 +110,10 @@ public class ErStoreLocator implements RpcMessage {
             } catch (Exception e) {
                 log.error("deserialize error : ", e);
             }
+    }
+
+    @Override
+    public Object clone() throws CloneNotSupportedException {
+        return super.clone();
     }
 }
