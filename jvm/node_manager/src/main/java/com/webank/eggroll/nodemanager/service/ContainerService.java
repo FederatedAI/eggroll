@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
+import java.util.stream.Collectors;
 
 @Singleton
 public class ContainerService {
@@ -25,8 +26,11 @@ public class ContainerService {
 
     public ErSessionMeta operateContainers(Context context, ErSessionMeta sessionMeta, String opType) {
         context.setSessionId(sessionMeta.getId());
+
         List<ErProcessor> processors = sessionMeta.getProcessors();
+        List<Long> pids =processors.stream().map(p->p.getId()).collect(Collectors.toList());
         logger.info("receive processors {}",processors);
+        context.putLogData("pids",pids.toString());
         RuntimeErConf runtimeErConf = new RuntimeErConf(sessionMeta);
         Long myServerNodeId = NodeManagerMeta.serverNodeId;
         logger.info("operateContainers param opType: {}, myServerNodeId:{}",opType,myServerNodeId);
