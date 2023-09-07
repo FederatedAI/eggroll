@@ -137,9 +137,12 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         ErServerNode serverNodeInDb = serverNodeService.getByIdFromCache(processor.getServerNodeId());
         if(serverNodeInDb!=null) {
             ErSessionMeta erSessionMeta = sessionMainService.getSession(processor.getSessionId());
-            erSessionMeta.getOptions().put(Dict.SERVER_NODE_ID, processor.getServerNodeId().toString());
-            NodeManagerClient nodeManagerClient = new NodeManagerClient(serverNodeInDb.getEndpoint());
-            nodeManagerClient.killContainers(context,erSessionMeta);
+            if(erSessionMeta!=null) {
+                erSessionMeta.getOptions().put(Dict.SERVER_NODE_ID, processor.getServerNodeId().toString());
+                NodeManagerClient nodeManagerClient = new NodeManagerClient(serverNodeInDb.getEndpoint());
+                nodeManagerClient.killContainers(context, erSessionMeta);
+            }
+
         }
     }
 
