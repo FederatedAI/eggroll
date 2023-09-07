@@ -23,7 +23,7 @@ public class DefaultProcessorManager {
     @Inject
     ProcessorStateMachine processorStateMachine;
    // ConcurrentHashMap<Long,ErProcessor>  residualHeartbeatMap = new ConcurrentHashMap<Long,ErProcessor>();
-    Cache<Long,ErProcessor>  processorHeartBeat= CacheUtil.buildErProcessorCache(1000,10,TimeUnit.MINUTES);
+    Cache<String,ErProcessor>  processorHeartBeat= CacheUtil.buildErProcessorCache(1000,1,TimeUnit.MINUTES);
 
 
 
@@ -31,11 +31,11 @@ public class DefaultProcessorManager {
 //        logger.info("heart beat proc {}",proc);
         ErProcessor previousHeartbeat = processorHeartBeat.asMap().get(proc.getId());
         if(previousHeartbeat==null){
-            processorHeartBeat.asMap().put(proc.getId(),proc);
+            processorHeartBeat.asMap().put(proc.getId().toString(),proc);
             processorStateMachine.changeStatus(context ,proc,null,proc.getStatus());
         }else{
             if(!previousHeartbeat.getStatus().equals(proc.getStatus())) {
-                processorHeartBeat.asMap().put(proc.getId(),proc);
+                processorHeartBeat.asMap().put(proc.getId().toString(),proc);
                 processorStateMachine.changeStatus(context,proc,null,proc.getStatus());
             }
         }

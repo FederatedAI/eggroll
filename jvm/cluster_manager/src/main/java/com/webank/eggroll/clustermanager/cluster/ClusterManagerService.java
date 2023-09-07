@@ -154,6 +154,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
 
     @Schedule(cron= "0/10 * * * * ?")
     public void checkRedidualProcessor(){
+//        logger.info("check redidual proceesor begin");
         try {
             Context  context = new Context();
             residualHeartbeatMap.forEach((k, v) -> {
