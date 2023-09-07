@@ -26,8 +26,9 @@ object ProcessorStateMachine extends Logging{
         if(preState==null){
         var processorsInDb =   serverNodeCrudOperator.queryProcessor(connection,erProcessor.copy(status=null))
           if(processorsInDb.length==0){
-              logError(s"can not found processor , ${erProcessor}")
-              throw new ErProcessorException(s"can not found processor id ${erProcessor.id}")
+              ClusterManagerService.residualHeartbeatMap.put(paramProcessor.id,paramProcessor)
+//              logError(s"can not found processor , ${erProcessor}")
+//              throw new ErProcessorException(s"can not found processor id ${erProcessor.id}")
           }else{
             preState = processorsInDb.apply(0).status
             processorType = processorsInDb.apply(0).processorType
@@ -58,6 +59,8 @@ object ProcessorStateMachine extends Logging{
               if(dispatchConfig=="true"||processorType=="DeepSpeed")
                   ResourceStateMachine.changeState(conn,Array(erProcessor),ResourceStatus.ALLOCATED,ResourceStatus.RETURN)
             })
+          case statusLine if(statusLine=="FINISHED_RUNNING"||statusLine=="STOPPED_RUNNING"||statusLine=="KILLED_RUNNING"||statusLine=="ERROR_RUNNING")=>
+            ClusterManagerService.residualHeartbeatMap.put(paramProcessor.id,paramProcessor)
           case _=> logInfo(s"there is no need to do something with ${erProcessor.id} state ${statusLine}");
         }
     if( dispatchConfig=="false"&&processorType != "DeepSpeed"){
