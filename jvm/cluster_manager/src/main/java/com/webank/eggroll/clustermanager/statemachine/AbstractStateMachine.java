@@ -95,7 +95,7 @@ public abstract class AbstractStateMachine<T> {
             logger.error("wrong status line {} ",statusLine);
             throw  new RuntimeException("no status handler found for "+statusLine);
         }
-        logger.info("choose state handler {} to work",handler);
+       // logger.info("choose state handler {} to work",handler);
         String  lockKey =  getLockKey(context,t);
         try{
             tryLock(lockKey);

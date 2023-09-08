@@ -2,12 +2,15 @@ package com.webank.eggroll.clustermanager.statemachine;
 
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.constant.ProcessorStatus;
+import com.eggroll.core.constant.ServerNodeStatus;
+import com.eggroll.core.constant.ServerNodeTypes;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.ErServerNode;
 import com.eggroll.core.pojo.ErSessionMeta;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -23,9 +26,15 @@ public class SessionKillHandler extends  AbstractSessionStateHandler{
     @Inject
     SessionMainService  sessionMainService;
 
+    @Inject
+    ServerNodeService  serverNodeService;
+
     @Override
     public  void asynPostHandle(Context context, ErSessionMeta data , String preStateParam, String desStateParam){
-        List<ErServerNode> serverNodes = (List< ErServerNode>)context.getData(Dict.SERVER_NODES);
+        ErServerNode  erServerNodeExample =new  ErServerNode();
+        erServerNodeExample.setNodeType(ServerNodeTypes.NODE_MANAGER.name());
+        erServerNodeExample.setStatus(ServerNodeStatus.HEALTHY.name());
+        List<ErServerNode> serverNodes = serverNodeService.getListByErServerNode(erServerNodeExample);
         logger.info("==============servernodes {}",serverNodes);
         serverNodes.parallelStream().forEach(serverNode -> {
             try{
@@ -50,6 +59,7 @@ public class SessionKillHandler extends  AbstractSessionStateHandler{
         if(data.getActiveProcCount()!=null)
             erSessionMeta.setActiveProcCount(data.getActiveProcCount());
         this.openAsynPostHandle(context);
+
         return erSessionMeta;
     }
 

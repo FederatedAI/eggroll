@@ -18,6 +18,7 @@ import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.entity.SessionMain;
 import com.webank.eggroll.clustermanager.statemachine.SessionStateMachine;
 import lombok.Data;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,7 +83,7 @@ public class DefaultSessionManager implements SessionManager {
     }
 
     @Override
-    public synchronized ErSessionMeta getOrCreateSession(Context context, ErSessionMeta sessionMeta) {
+    public  ErSessionMeta getOrCreateSession(Context context, ErSessionMeta sessionMeta) {
         context.setSessionId(sessionMeta.getId());
         context.setOptions(sessionMeta.getOptions());
         return getOrCreateSessionWithoutResourceDispath(context, sessionMeta);
@@ -90,6 +91,16 @@ public class DefaultSessionManager implements SessionManager {
     }
 
     private ErSessionMeta getOrCreateSessionWithoutResourceDispath(Context context, ErSessionMeta sessionMeta) {
+
+        ErSessionMeta  sessionInDb =  sessionService.getSession(sessionMeta.getId(),true,true,false);
+            if (sessionInDb != null) {
+                if (sessionInDb.getStatus().equals(SessionStatus.ACTIVE.name())) {
+                    return sessionInDb;
+                } else {
+                    return this.getSessionBusyWaiting(sessionMeta);
+                }
+            }
+
         ErSessionMeta newSession = sessionStateMachine.changeStatus(context, sessionMeta, null, SessionStatus.NEW.name());
         logger.info("new session======={}",newSession);
         if (!SessionStatus.NEW.name().equals(newSession.getStatus())) {
@@ -167,6 +178,31 @@ public class DefaultSessionManager implements SessionManager {
 //
 //
 //    }
+
+
+    private ErSessionMeta getSessionBusyWaiting(ErSessionMeta session) {
+        long startTimeout = System.currentTimeMillis() + MetaInfo.EGGROLL_SESSION_START_TIMEOUT_MS;
+        boolean isStarted = false;
+        ErSessionMeta cur = null;
+        while (System.currentTimeMillis() <= startTimeout) {
+            cur = this.sessionMainService.getSession(session.getId(), false, false, false);
+            if (cur != null && !SessionStatus.NEW.name().equals(cur.getStatus()) && !StringUtils.isBlank(cur.getId())) {
+                break;
+            } else {
+                try {
+                    logger.info("waiting session {}",session.getId());
+                    Thread.sleep(300);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        if(cur!=null)
+        {
+            cur =  this.sessionMainService.getSession(session.getId(),true,false,false);
+        }
+        return cur;
+    }
 
     private List<ErServerNode> getHealthServerNode() {
         ErServerNode serverNodeExample = new ErServerNode();

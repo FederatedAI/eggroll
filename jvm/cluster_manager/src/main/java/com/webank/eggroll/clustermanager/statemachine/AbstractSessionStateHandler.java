@@ -53,7 +53,7 @@ public abstract class AbstractSessionStateHandler implements   StateHandler<ErSe
         });
 
         erSessionMeta.getProcessors().forEach(p->{
-            logger.info("prepare to handle processor {}",p);
+//            logger.info("prepare to handle processor {}",p);
             processorStateMachine.changeStatus(context,p,null, SessionStatus.NEW.name());
         });
 
