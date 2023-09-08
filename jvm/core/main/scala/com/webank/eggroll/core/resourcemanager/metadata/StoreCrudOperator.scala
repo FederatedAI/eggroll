@@ -133,6 +133,7 @@ object StoreCrudOperator extends Logging {
       queryServerNode.append(s"select * from server_node where status = '${ServerNodeStatus.HEALTHY}'")
         .append(s" and node_type = '${ServerNodeTypes.NODE_MANAGER}'")
         .append(s" and server_node_id in (")
+
       for(i <- 0 until missingNodeId.length){
         if (first) first = false else queryServerNode.append(", ")
         queryServerNode.append("?")

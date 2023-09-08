@@ -94,6 +94,7 @@ object JobCommands {
   val stopJob = new CommandURI(prefix = prefix, name = "stopJob")
   val killJob = new CommandURI(prefix = prefix, name = "killJob")
   val downloadJob = new CommandURI(prefix = prefix, name = "downloadJob")
+  val prepareJobDownload =  new  CommandURI(prefix = prefix,name = "prepareJobDownload")
 }
 
 object RendezvousStoreCommands {

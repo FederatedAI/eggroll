@@ -20,7 +20,7 @@ package com.webank.eggroll.core.client
 
 import com.webank.eggroll.core.command.CommandClient
 import com.webank.eggroll.core.constant._
-import com.webank.eggroll.core.deepspeed.job.meta.{SubmitJobRequest, SubmitJobResponse}
+import com.webank.eggroll.core.deepspeed.job.meta.{DownloadJobRequest, DownloadJobResponse, PrepareJobDownloadRequest, PrepareJobDownloadResponse, SubmitJobRequest, SubmitJobResponse}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.session.StaticErConf
 
@@ -117,4 +117,9 @@ class ClusterManagerClient(val endpoint: ErEndpoint) {
 
   def submitJob(job: SubmitJobRequest): SubmitJobResponse =
     cc.call(JobCommands.submitJob, job)
+
+  def prepareJobDownload(job: PrepareJobDownloadRequest): PrepareJobDownloadResponse =
+    cc.call(JobCommands.prepareJobDownload, job)
+
+
 }
