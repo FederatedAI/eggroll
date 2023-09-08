@@ -28,17 +28,20 @@ public class ContainerService {
         context.setSessionId(sessionMeta.getId());
 
         List<ErProcessor> processors = sessionMeta.getProcessors();
-        RuntimeErConf runtimeErConf = new RuntimeErConf(sessionMeta);
+        List<Long> pids =processors.stream().map(p->p.getId()).collect(Collectors.toList());
+        String sessionId = sessionMeta.getId();
+        logger.info("receive sessionId {}, processors {}",sessionId,processors);
+        context.putLogData("sessionId",sessionId);
+        context.putLogData("pids",pids.toString());
+//        RuntimeErConf runtimeErConf = new RuntimeErConf(sessionMeta);
         Long myServerNodeId = NodeManagerMeta.serverNodeId;
         logger.info("operateContainers param opType: {}, myServerNodeId:{}",opType,myServerNodeId);
-        List pids = processors.stream().map(p->p.getId()).collect(Collectors.toList());
-        context.putLogData("pids",pids.toString());
         for (ErProcessor p : processors) {
             if (p.getServerNodeId().intValue() != myServerNodeId.intValue()) {
                 logger.info("processor servernode {} myServerNode {}",p.getServerNodeId(),myServerNodeId);
                 continue;
             }
-            ContainerParam param = new ContainerParam(runtimeErConf, p.getProcessorType(), p.getId());
+            ContainerParam param = new ContainerParam(sessionId, p.getProcessorType(), p.getId());
             switch (opType) {
                 case Dict.NODE_CMD_START:
                     start(context ,param);
