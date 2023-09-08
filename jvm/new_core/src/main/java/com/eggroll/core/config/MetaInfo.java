@@ -299,7 +299,7 @@ public class MetaInfo {
     @Config(confKey="eggroll.mybatis.mapper.package")
     public static String  EGGROLL_MYBATIS_MAPPER_PACKAGE="com.webank.eggroll.clustermanager.dao.mapper";
     @Config(confKey="eggroll.flowlog.print.client")
-    public static Boolean EGGROLL_FLOWLOG_PRINT_CLIENT =true;
+    public static Boolean EGGROLL_FLOWLOG_PRINT_CLIENT =false;
     @Config(confKey="eggroll.request.print")
     public static Boolean EGGROLL_GRPC_REQUEST_PRINT=false;
 

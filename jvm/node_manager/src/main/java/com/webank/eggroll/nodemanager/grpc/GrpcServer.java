@@ -3,6 +3,7 @@ package com.webank.eggroll.nodemanager.grpc;
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.grpc.ContextPrepareInterceptor;
 import com.eggroll.core.grpc.ServiceExceptionHandler;
+import com.eggroll.core.postprocessor.ApplicationStartedRunner;
 import com.eggroll.core.utils.FileSystemUtils;
 import com.eggroll.core.utils.NetUtils;
 import com.google.common.collect.Lists;
@@ -30,7 +31,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 @Singleton
-public class GrpcServer {
+public class GrpcServer implements ApplicationStartedRunner {
 
     Logger logger = LoggerFactory.getLogger(GrpcServer.class);
 
@@ -128,4 +129,8 @@ public class GrpcServer {
     }
 
 
+    @Override
+    public void run(String[] args) throws Exception {
+        start();
+    }
 }
