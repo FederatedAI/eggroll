@@ -33,7 +33,7 @@ public class SessionCreateHandler  extends AbstractSessionStateHandler{
     }
 
     @Override
-    public ErSessionMeta handle(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam) {
+    public synchronized ErSessionMeta handle(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam) {
         logger.info("session create handle begin");
         erSessionMeta.setStatus(SessionStatus.NEW.name());
         ErSessionMeta   sessionInDb =  sessionMainService.getSession(erSessionMeta.getId(),true,true,false);
@@ -87,6 +87,7 @@ public class SessionCreateHandler  extends AbstractSessionStateHandler{
                         processors.add(erProcessor);
                 });
                 sendSession.setId(data.getId());
+                logger.info("==============processor {}",processors);
                 sendSession.setProcessors(processors);
                 NodeManagerClient nodeManagerClient = new  NodeManagerClient(node.getEndpoint());
                 //sendSession.getOptions().put("eggroll.resourcemanager.server.node.id",Long.toString(node.getId()));
