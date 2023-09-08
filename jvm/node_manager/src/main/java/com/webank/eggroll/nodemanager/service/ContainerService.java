@@ -28,12 +28,11 @@ public class ContainerService {
         context.setSessionId(sessionMeta.getId());
 
         List<ErProcessor> processors = sessionMeta.getProcessors();
-        List<Long> pids =processors.stream().map(p->p.getId()).collect(Collectors.toList());
-        logger.info("receive processors {}",processors);
-        context.putLogData("pids",pids.toString());
         RuntimeErConf runtimeErConf = new RuntimeErConf(sessionMeta);
         Long myServerNodeId = NodeManagerMeta.serverNodeId;
         logger.info("operateContainers param opType: {}, myServerNodeId:{}",opType,myServerNodeId);
+        List pids = processors.stream().map(p->p.getId()).collect(Collectors.toList());
+        context.putLogData("pids",pids.toString());
         for (ErProcessor p : processors) {
             if (p.getServerNodeId().intValue() != myServerNodeId.intValue()) {
                 logger.info("processor servernode {} myServerNode {}",p.getServerNodeId(),myServerNodeId);
@@ -42,13 +41,13 @@ public class ContainerService {
             ContainerParam param = new ContainerParam(runtimeErConf, p.getProcessorType(), p.getId());
             switch (opType) {
                 case Dict.NODE_CMD_START:
-                    start(param);
+                    start(context ,param);
                     break;
                 case Dict.NODE_CMD_STOP:
-                    stop(param);
+                    stop(context,param);
                     break;
                 case Dict.NODE_CMD_KILL:
-                    kill(param);
+                    kill(context,param);
                     break;
                 default:
                     logger.error("option not support: {}", opType);
@@ -58,7 +57,7 @@ public class ContainerService {
         return sessionMeta;
     }
 
-    private boolean start(ContainerParam param) {
+    private boolean start(Context  context ,ContainerParam param) {
         String pythonPathArgs = "";
         String pythonVenvArgs = "";
         if (param.getPythonPath() != null && !param.getPythonPath().isEmpty()) {
@@ -89,7 +88,7 @@ public class ContainerService {
         String standaloneTag = System.getProperty("eggroll.standalone.tag", "");
         logger.info(standaloneTag + joiner);
         logger.info("============runCommand===========: {}", JsonUtil.object2Json(param));
-        Thread thread = runCommand(param);
+        Thread thread = runCommand(context,param);
         thread.start();
         try {
             thread.join();
@@ -99,15 +98,15 @@ public class ContainerService {
         return thread.isAlive();
     }
 
-    private boolean stop(ContainerParam param) {
-        return doStop(param, false);
+    private boolean stop(Context context,ContainerParam param) {
+        return doStop(context,param, false);
     }
 
-    private boolean kill(ContainerParam param) {
-        return doStop(param, true);
+    private boolean kill(Context context,ContainerParam param) {
+        return doStop(context ,param, true);
     }
 
-    private boolean doStop(ContainerParam param, boolean force) {
+    private boolean doStop(Context context,ContainerParam param, boolean force) {
         String option = force ? "kill" : "stop";
         String linuxSubCmd = String.format("ps aux | grep 'session-id %s' | grep 'server-node-id %s' | grep 'processor-id %s'", param.getSessionId(), param.getServerNodeId(), param.getProcessorId());
         String subCmd = param.isWindows() ? "None" : linuxSubCmd;
@@ -120,7 +119,7 @@ public class ContainerService {
                 .toString();
         logger.info("doStopCmd : {}", doStopCmd);
         param.setStartCmd(doStopCmd);
-        Thread thread = runCommand(param);
+        Thread thread = runCommand(context,param);
         thread.start();
         try {
             thread.join();
@@ -130,7 +129,7 @@ public class ContainerService {
         return thread.isAlive();
     }
 
-    private Thread runCommand(ContainerParam param) {
+    private Thread runCommand(Context context ,ContainerParam param) {
         return new Thread(() -> {
             ProcessBuilder processorBuilder = new ProcessBuilder(param.getBootStrapShell(), param.getBootStrapShellArgs(), param.getStartCmd());
             Map<String, String> builderEnv = processorBuilder.environment();
