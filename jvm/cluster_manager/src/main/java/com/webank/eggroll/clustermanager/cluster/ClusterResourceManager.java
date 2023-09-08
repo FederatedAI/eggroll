@@ -544,10 +544,6 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
             lock.unlock();
         }
     }
-//    @Schedule(cron = "0/5 * * * * ?")
-//    public void  testCron(){
-//            System.err.println("test cron");
-//    }
 
     @Override
     public void run(String[] args) throws Exception {

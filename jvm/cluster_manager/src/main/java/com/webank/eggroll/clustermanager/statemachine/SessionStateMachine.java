@@ -72,7 +72,7 @@ public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta>   {
         this.registeStateHander("NEW_ERROR",sessionKillHandler);
         this.registeStateHander("ACTIVE_KILLED",sessionKillHandler);
         this.registeStateHander("ACTIVE_ERROR",sessionKillHandler);
-        this.registeStateHander("ACTIVE_CLOSED",sessionKillHandler);
+        this.registeStateHander("ACTIVE_CLOSED",sessionStopHandler);
         this.registeStateHander(IGNORE,sessionIgnoreHandler);
     }
 

@@ -16,16 +16,16 @@
   -->
 <Configuration status="ERROR" monitorInterval="60">
     <Properties>
-        <Property name="logdir">${env-EGGROLL_LOG_DIR--logs/}/${env-EGGROLL_SESSION_ID--eggroll}</Property>
+        <Property name="logdir">${env:EGGROLL_LOG_DIR:-logs/}/${env:EGGROLL_SESSION_ID:-eggroll}</Property>
         <Property name="project">fate</Property>
-	<Property name="module">${env-module}</Property>
+        <Property name="module">${env:module}</Property>
     </Properties>
     <Appenders>
         <Console name="console" target="SYSTEM_OUT">
             <PatternLayout charset="UTF-8"
                            pattern="%d{yyyy-MM-dd HH:mm:ss,SSS} [%-5p] %c{1.}(%F:%L) - %m%n"/>
         </Console>
-        <RollingFile name="info" fileName="${logdir}/${env-module}.log"
+        <RollingFile name="info" fileName="${logdir}/${env:module}.log"
                      filePattern="${logdir}/%d{yyyy-MM-dd}/${module}.log.%d{yyyy-MM-dd}">
             <PatternLayout charset="UTF-8" pattern="%d{yyyy-MM-dd HH:mm:ss,SSS} [%-5p] %c{1.}(%F:%L) - %m%n"/>
             <Policies>
@@ -34,7 +34,7 @@
             <DefaultRolloverStrategy max="24"/>
         </RollingFile>
 
-        <RollingFile name="flow" fileName="${logdir}/${env-module}.flow.log"
+        <RollingFile name="flow" fileName="${logdir}/${env:module}.flow.log"
                      filePattern="${logdir}/%d{yyyy-MM-dd}/flow.log.%d{yyyy-MM-dd}.log">
             <PatternLayout charset="UTF-8" pattern="%d{yyyy-MM-dd HH:mm:ss,SSS}|%m%n"/>
             <Policies>
@@ -43,7 +43,7 @@
             <DefaultRolloverStrategy max="24"/>
         </RollingFile>
 
-        <RollingFile name="grpcTrace" fileName="${logdir}/${env-module}.grpcTrace.log"
+        <RollingFile name="grpcTrace" fileName="${logdir}/${env:module}.grpcTrace.log"
                      filePattern="${logdir}/%d{yyyy-MM-dd}/grpcTrace.log.%d{yyyy-MM-dd}.log">
             <PatternLayout charset="UTF-8" pattern="%d{yyyy-MM-dd HH:mm:ss,SSS}|%m%n"/>
             <Policies>
@@ -54,14 +54,14 @@
 
 
 
-<!--        <RollingFile name="buffer" fileName="${logdir}/buffer.log"-->
-<!--                     filePattern="${logdir}/%d{yyyy-MM-dd}/buffer.log.%d{yyyy-MM-dd}.log">-->
-<!--            <PatternLayout charset="UTF-8" pattern="%d{yyyy-MM-dd HH:mm:ss,SSS}|%m%n"/>-->
-<!--            <Policies>-->
-<!--                <TimeBasedTriggeringPolicy/>-->
-<!--            </Policies>-->
-<!--            <DefaultRolloverStrategy max="24"/>-->
-<!--        </RollingFile>-->
+        <!--        <RollingFile name="buffer" fileName="${logdir}/buffer.log"-->
+        <!--                     filePattern="${logdir}/%d{yyyy-MM-dd}/buffer.log.%d{yyyy-MM-dd}.log">-->
+        <!--            <PatternLayout charset="UTF-8" pattern="%d{yyyy-MM-dd HH:mm:ss,SSS}|%m%n"/>-->
+        <!--            <Policies>-->
+        <!--                <TimeBasedTriggeringPolicy/>-->
+        <!--            </Policies>-->
+        <!--            <DefaultRolloverStrategy max="24"/>-->
+        <!--        </RollingFile>-->
 
         <RollingFile name="error" fileName="${logdir}/${module}-error.log"
                      filePattern="${logdir}/${module}-error.log.%d{yyyy-MM-dd}.log">
@@ -93,9 +93,9 @@
             <AppenderRef ref="grpcTrace"/>
         </AsyncLogger>
 
-<!--        <AsyncLogger name="buffer" level="info" includeLocation="true" additivity="false">-->
-<!--            <AppenderRef ref="buffer"/>-->
-<!--        </AsyncLogger>-->
+        <!--        <AsyncLogger name="buffer" level="info" includeLocation="true" additivity="false">-->
+        <!--            <AppenderRef ref="buffer"/>-->
+        <!--        </AsyncLogger>-->
         <!--
         <AsyncLogger name="debug" level="debug" includeLocation="true" additivity="false">
             <AppenderRef ref="debug"/>
