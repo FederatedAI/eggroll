@@ -904,6 +904,9 @@ def serve(args):
 
     def exit_gracefully(signum, frame):
         nonlocal run
+        if cluster_manager:
+            myself._status = ProcessorStatus.STOPPED
+            send_heartbeat(node_manager_client, myself)
         run = False
         L.info(
             f'egg_pair {args.processor_id} at port={port}, transfer_port={transfer_port}, pid={pid} receives signum={signal.getsignal(signum)}, stopping gracefully.')
@@ -912,8 +915,8 @@ def serve(args):
     signal.signal(signal.SIGINT, exit_gracefully)
 
     while run:
-        time.sleep(int(RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_SERVER_HEARTBEAT_INTERVAL.get()))
         send_heartbeat(node_manager_client,myself)
+        time.sleep(int(RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_SERVER_HEARTBEAT_INTERVAL.get()))
 
     L.info(f'sending exit heartbeat to cm')
     if cluster_manager:
