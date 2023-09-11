@@ -116,4 +116,10 @@ public class ErStoreLocator implements RpcMessage,Cloneable {
     public Object clone() throws CloneNotSupportedException {
         return super.clone();
     }
+
+    public String buildKey(){
+        return (this.namespace == null ? "" : this.namespace) + "_" +
+                (this.name == null ? "" : this.name) + "_" +
+                (this.storeType == null ? "" : this.storeType);
+    }
 }

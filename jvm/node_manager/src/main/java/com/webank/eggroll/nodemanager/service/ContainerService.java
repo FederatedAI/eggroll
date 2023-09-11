@@ -28,7 +28,7 @@ public class ContainerService {
         context.setSessionId(sessionMeta.getId());
 
         List<ErProcessor> processors = sessionMeta.getProcessors();
-        List<Long> pids =processors.stream().map(p->p.getId()).collect(Collectors.toList());
+        List<Long> pids =processors.stream().map(ErProcessor::getId).collect(Collectors.toList());
         String sessionId = sessionMeta.getId();
         logger.info("receive sessionId {}, processors {}",sessionId,processors);
         context.putLogData("sessionId",sessionId);

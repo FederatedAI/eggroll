@@ -8,25 +8,25 @@ import com.eggroll.core.context.Context;
 import com.eggroll.core.exceptions.CrudException;
 import com.eggroll.core.pojo.*;
 import com.eggroll.core.utils.JsonUtil;
+import com.eggroll.core.utils.LockUtils;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.entity.ServerNode;
 import com.webank.eggroll.clustermanager.entity.StoreLocator;
 import com.webank.eggroll.clustermanager.entity.StoreOption;
 import com.webank.eggroll.clustermanager.entity.StorePartition;
-import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.mybatis.guice.transactional.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 @Singleton
@@ -43,6 +43,7 @@ public class StoreCrudOperator {
     StoreOptionService storeOptionService;
 
     private final Map<Long, Object> nodeIdToNode = new ConcurrentHashMap<>();
+    public ConcurrentHashMap<String, ReentrantLock> storeLockMap = new ConcurrentHashMap<>();
 
     public ErStore doGetStore(ErStore input) {
         Map<String, String> inputOptions = input.getOptions();
@@ -134,10 +135,10 @@ public class StoreCrudOperator {
         return new ErStore(outputStoreLocator, outputPartitions, outputOptions);
     }
 
-    public synchronized ErStore doGetOrCreateStore(Context context, ErStore input) {
+    public ErStore doGetOrCreateStore(Context context, ErStore input) {
         ErStoreLocator inputStoreLocator = input.getStoreLocator();
         String inputStoreType = inputStoreLocator.getStoreType();
-        ErStore inputWithoutType =ObjectUtils.clone(input);
+        ErStore inputWithoutType = ObjectUtils.clone(input);
         inputWithoutType.getStoreLocator().setStoreType(StringConstants.EMPTY);
         ErStore existing = doGetStore(inputWithoutType);
         if (existing != null) {
@@ -149,7 +150,22 @@ public class StoreCrudOperator {
             }
             return existing;
         } else {
-            return doCreateStore(input);
+            try {
+                LockUtils.lock(storeLockMap,input.getStoreLocator().buildKey());
+                existing = doGetStore(inputWithoutType);
+                if (existing != null) {
+                    if (!existing.getStoreLocator().getStoreType().equals(inputStoreType)) {
+                        logger.warn("store namespace: " + inputStoreLocator.getNamespace() + ", name: " +
+                                inputStoreLocator.getName() + " already exist with store type: " +
+                                existing.getStoreLocator().getStoreType() + ". requires type: " +
+                                inputStoreLocator.getStoreType());
+                    }
+                    return existing;
+                }
+                return doCreateStore(input);
+            } finally {
+                LockUtils.unLock(storeLockMap,input.getStoreLocator().buildKey());
+            }
         }
     }
 
