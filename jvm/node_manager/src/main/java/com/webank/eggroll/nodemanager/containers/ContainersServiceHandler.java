@@ -1,6 +1,7 @@
 package com.webank.eggroll.nodemanager.containers;
 
 
+import com.eggroll.core.config.Dict;
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.containers.container.ContainersManager;
 import com.eggroll.core.containers.container.DeepSpeedContainer;
@@ -10,14 +11,22 @@ import com.eggroll.core.containers.meta.StartContainersResponse;
 import com.eggroll.core.containers.meta.StopContainersResponse;
 import com.eggroll.core.pojo.*;
 import com.google.inject.Singleton;
+import com.webank.eggroll.core.meta.Containers;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 @Singleton
 public class ContainersServiceHandler {
@@ -141,10 +150,91 @@ public class ContainersServiceHandler {
         return killContainersResponse;
     }
 
+    public DownloadContainersResponse downloadContainers(DownloadContainersRequest downloadContainersRequest) {
+        String sessionId = downloadContainersRequest.getSessionId();
+        Containers.ContentType contentType = downloadContainersRequest.getContentType();
+        List<Integer> ranks = downloadContainersRequest.getRanks();
+        String compressMethod = downloadContainersRequest.getCompressMethod();
+        int level = downloadContainersRequest.getCompressLevel();
+        logger.info("downloading containers, sessionId: {}, ranks: ", sessionId, ranks.stream().map(Object::toString).collect(Collectors.joining(",")));
+
+        List<ContainerContent> contents = ranks.stream()
+                .map(rank -> {
+                    Path targetDir;
+                    if (contentType.equals(Containers.ContentType.ALL)) {
+                        targetDir = getContainerWorkspace(sessionId, rank);
+                    } else if (contentType.equals(Containers.ContentType.MODELS)) {
+                        targetDir = getContainerModelsDir(sessionId, rank);
+                    } else if (contentType.equals(Containers.ContentType.LOGS)) {
+                        targetDir = getContainerLogsDir(sessionId, rank);
+                    } else {
+                        throw new IllegalArgumentException("unsupported container content type: " + contentType);
+                    }
+                    if (compressMethod.equals(Dict.ZIP)) {
+                        if (Files.exists(targetDir)) {
+                            return new ContainerContent(rank, zip(targetDir, level), compressMethod);
+                        } else {
+                            return new ContainerContent(rank, new byte[0], compressMethod);
+                        }
+                    } else {
+                        throw new IllegalArgumentException("compress method not supported: " + compressMethod);
+                    }
+                }).collect(Collectors.toList());
+
+        return new DownloadContainersResponse(sessionId, contents);
+    }
+
+    private byte[] zip(Path path, int level) {
+        logger.info("zipping path: " + path.toString());
+        ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+        ZipOutputStream zipOutput = new ZipOutputStream(byteStream);
+        zipOutput.setLevel(level);
+        try {
+            Files.walk(path).forEach(subPath -> {
+                if (Files.isRegularFile(subPath)) {
+                    String name = path.relativize(subPath).toString();
+
+                    try {
+                        zipOutput.putNextEntry(new ZipEntry(name));
+                        FileInputStream inputStream = new FileInputStream(subPath.toFile());
+                        byte[] buffer = new byte[1024];
+                        int bytesRead = inputStream.read(buffer);
+                        while (bytesRead != -1) {
+                            zipOutput.write(buffer, 0, bytesRead);
+                            bytesRead = inputStream.read(buffer);
+                        }
+                        inputStream.close();
+
+                        zipOutput.closeEntry();
+                    } catch (Exception e) {
+                        logger.error("zip file failed: {}", e.getMessage());
+                    }
+                }
+            });
+        } catch (IOException e) {
+            logger.error("zip file failed: {}", e.getMessage());
+        } finally {
+            try {
+                zipOutput.close();
+            } catch (Exception e) {
+                logger.error("zip file failed: {}", e.getMessage());
+            }
+        }
+        logger.info("zipped path: " + path.toString());
+        return byteStream.toByteArray();
+    }
+
     private Path getContainerWorkspace(String sessionId, long rank) {
         return containersDataDir.resolve(sessionId).resolve(Long.toString(rank));
     }
 
+    private Path getContainerModelsDir(String sessionId, long rank) {
+        return getContainerWorkspace(sessionId, rank).resolve(Dict.MODELS);
+    }
+
+    private Path getContainerLogsDir(String sessionId, long rank) {
+        return getContainerWorkspace(sessionId, rank).resolve(Dict.LOGS);
+    }
 
 }
 

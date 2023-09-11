@@ -15,4 +15,5 @@ public interface ProcessorManager {
     StartContainersResponse startJobContainers(StartContainersRequest startContainersRequest);
     StopContainersResponse stopJobContainers (StopContainersRequest StopContainersRequest);
     KillContainersResponse killJobContainers (KillContainersRequest killContainersRequest);
+    DownloadContainersResponse downloadContainers(DownloadContainersRequest downloadContainersRequest);
 }

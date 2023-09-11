@@ -156,4 +156,13 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     }
 
 
+
+    //    CommandRouter.register_handler(serviceName = JobCommands.downloadJob.uriString,
+    //      args => JobServiceHandler.handleJobDownload(args(0))
+    //    )
+    //
+    //    CommandRouter.register_handler(serviceName = JobCommands.prepareJobDownload.uriString,
+    //      args => JobServiceHandler.prepareJobDownload(args(0))
+    //    )
+
 }

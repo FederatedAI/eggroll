@@ -131,6 +131,9 @@ public class Dict {
     public static final String EGGROLL_SESSION_PYTHON_PATH = "python.path";
     public static final String EGGROLL_SESSION_PYTHON_VENV = "python.venv";
 
+    public static final String MODELS = "models";
+    public static final String LOGS = "logs";
+    public static final String ZIP = "zip";
 
 
     public static final  String SCHEDULE_KEY = "schedule_key";

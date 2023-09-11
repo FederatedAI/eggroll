@@ -16,11 +16,17 @@ import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.cluster.ClusterResourceManager;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
+import com.webank.eggroll.clustermanager.dao.impl.SessionRanksService;
 import com.webank.eggroll.clustermanager.entity.SessionMain;
 
+import com.webank.eggroll.clustermanager.entity.SessionRanks;
+import com.webank.eggroll.core.meta.Containers;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.MutableTriple;
+import org.javatuples.Ennead;
+import org.javatuples.Quintet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +48,9 @@ public class JobServiceHandler {
     SessionMainService sessionMainService;
     @Inject
     ServerNodeService serverNodeService;
+
+    @Inject
+    SessionRanksService sessionRanksService;
 
     public void killJob(Context context , String sessionId) {
         log.info("killing job {}", sessionId);
@@ -321,4 +330,36 @@ public class JobServiceHandler {
 
         return sessionMainService.getSession(sessionId).getProcessors();
     }
+
+
+    public DownloadJobResponse handleJobDownload(DownloadJobRequest downloadJobRequest) {
+//        String sessionId = downloadJobRequest.getSessionId();
+//        Containers.ContentType contentType = downloadJobRequest.getContentType();
+//        String compressMethod = downloadJobRequest.getCompressMethod();
+//        List<Integer> ranks = downloadJobRequest.getRanks();
+//
+//        SessionRanks sessionRank = new SessionRanks();
+//        sessionRank.setSessionId(sessionId);
+//
+//        List<SessionRanks> SessionRanksList = sessionRanksService.list(sessionRank);
+//        Map<String,List<Quintet<String, String, Integer, Integer, Integer>>> ranksByNode = SessionRanksList.stream().map(sessionRanks -> {
+//            Long containerId = sessionRanks.getContainerId();
+//            Long serverNodeId = sessionRanks.getServerNodeId();
+//            Integer globalRank = sessionRanks.getGlobalRank();
+//            Integer localRank = sessionRanks.getLocalRank();
+//            int index = CollectionUtils.isEmpty(ranks) ? globalRank : ranks.indexOf(globalRank);
+//            List<Quintet<String, String, Integer, Integer, Integer>> list = new ArrayList<>();
+//            if (index >= 0) {
+//                Quintet quintet = new Quintet(containerId, serverNodeId, globalRank, localRank, index);
+//                list.add(quintet);
+//                return list;
+//            }
+//        }).collect(Collectors.groupingBy(Quintet::va));
+
+
+
+
+        return null;
+    }
+
 }

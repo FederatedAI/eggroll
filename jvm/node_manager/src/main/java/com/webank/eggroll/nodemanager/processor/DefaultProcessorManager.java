@@ -12,6 +12,7 @@ import com.eggroll.core.pojo.*;
 import com.eggroll.core.postprocessor.ApplicationStartedRunner;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.webank.eggroll.core.meta.Containers;
 import com.webank.eggroll.nodemanager.containers.ContainersServiceHandler;
 import com.webank.eggroll.nodemanager.service.ContainerService;
 import com.webank.eggroll.nodemanager.utils.ProcessUtils;
@@ -20,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.List;
 
 
 @Singleton
@@ -87,6 +89,12 @@ public class DefaultProcessorManager   implements ProcessorManager,ApplicationSt
     public KillContainersResponse killJobContainers(KillContainersRequest killContainersRequest) {
         return containersServiceHandler.killJobContainers(killContainersRequest);
     }
+
+    @Override
+    public DownloadContainersResponse downloadContainers(DownloadContainersRequest downloadContainersRequest){
+       return containersServiceHandler.downloadContainers(downloadContainersRequest);
+    }
+
 
 
     @Override
