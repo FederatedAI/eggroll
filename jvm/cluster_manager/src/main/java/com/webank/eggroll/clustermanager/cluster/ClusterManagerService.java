@@ -11,6 +11,7 @@ import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.*;
 import com.eggroll.core.postprocessor.ApplicationStartedRunner;
 import com.eggroll.core.utils.JsonUtil;
+import com.eggroll.core.utils.LockUtils;
 import com.webank.eggroll.clustermanager.dao.impl.NodeResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
@@ -36,6 +37,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 
@@ -66,13 +68,9 @@ public class ClusterManagerService implements ApplicationStartedRunner {
     @Inject
     SessionManager sessionManager;
 
-    @Inject
-    ClusterResourceManager clusterResourceManager;
-
-
-
-     Map<Long, ErNodeHeartbeat> nodeHeartbeatMap = new ConcurrentHashMap<>();
+    Map<Long, ErNodeHeartbeat> nodeHeartbeatMap = new ConcurrentHashMap<>();
     public static Map<Long, ErProcessor> residualHeartbeatMap = new ConcurrentHashMap<>();
+    ConcurrentHashMap<Long, ReentrantLock>  lockMap = new ConcurrentHashMap<>();
 
     public void addResidualHeartbeat(ErProcessor erProcessor){
         residualHeartbeatMap.put(erProcessor.getId(),erProcessor);
@@ -161,8 +159,8 @@ public class ClusterManagerService implements ApplicationStartedRunner {
 
     public ErNodeHeartbeat nodeHeartbeat(Context  context ,ErNodeHeartbeat nodeHeartbeat) {
         ErServerNode serverNode = nodeHeartbeat.getNode();
-
-        synchronized (serverNode.getId().toString().intern()) {
+        try{
+            LockUtils.lock(lockMap,serverNode.getId());
             if (serverNode.getId() == -1) {
                 ServerNode existNode = serverNodeService.getByEndPoint(serverNode.getEndpoint());
                 if (existNode == null) {
@@ -190,6 +188,8 @@ public class ClusterManagerService implements ApplicationStartedRunner {
             }
             nodeHeartbeatMap.put(serverNode.getId(), nodeHeartbeat);
             nodeHeartbeat.setNode(serverNode);
+        }finally {
+            LockUtils.unLock(lockMap,serverNode.getId());
         }
         return nodeHeartbeat;
     }
