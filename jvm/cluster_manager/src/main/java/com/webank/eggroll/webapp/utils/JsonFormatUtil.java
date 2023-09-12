@@ -1,11 +1,7 @@
-package com.webank.eggroll.webapplication.utils;
+package com.webank.eggroll.webapp.utils;
 
 import com.google.gson.Gson;
-import com.webank.eggroll.clustermanager.entity.ServerNode;
-import com.webank.eggroll.webapplication.model.CommonResponse;
 
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
