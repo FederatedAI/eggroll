@@ -33,7 +33,6 @@ from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, \
     ErTask, ErPair, ErPartition
 from eggroll.core.session import ErSession
 from eggroll.core.utils import generate_job_id, generate_task_id, get_runtime_storage
-from eggroll.core.utils import string_to_bytes, hash_code
 from eggroll.roll_pair import create_serdes, create_adapter
 from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
 from eggroll.roll_pair.utils.gc_utils import GcRecorder
@@ -318,7 +317,6 @@ class RollPair(object):
         self.functor_serdes = create_serdes(SerdesTypes.CLOUD_PICKLE)
         self.value_serdes = self.get_store_serdes()
         self.key_serdes = self.get_store_serdes()
-        # self.partitioner = partitioner(hash_code, self.__store._store_locator._total_partitions)
         import mmh3
         self.partitioner = partitioner(mmh3.hash, self.__store._store_locator._total_partitions)
         self.egg_router = default_egg_router

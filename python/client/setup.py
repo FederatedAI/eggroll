@@ -23,8 +23,6 @@ install_requires = [
     "click",
     "requests",
     "grpcio",
-    "numba",
-    "numpy",
     "protobuf",
     "ruamel.yaml"
 ]

@@ -25,9 +25,9 @@ import threading
 import time
 import mmh3
 from collections.abc import Iterable
+import random
 
 import grpc
-import numpy as np
 
 from eggroll.core.client import ClusterManagerClient, NodeManagerClient
 from eggroll.core.command.command_router import CommandRouter
@@ -44,7 +44,6 @@ from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc, deepspeed_do
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
     TransferService, GrpcDsDownloadServicer
 from eggroll.core.utils import _exception_logger, add_runtime_storage
-from eggroll.core.utils import hash_code
 from eggroll.core.utils import set_static_er_conf, get_static_er_conf
 from eggroll.roll_pair import create_adapter, create_serdes, create_functor
 from eggroll.roll_pair.task.storage import PutBatchTask
@@ -362,9 +361,9 @@ class EggPair(object):
                 fraction = create_functor(functors[0]._body)
                 seed = create_functor(functors[1]._body)
                 input_iterator.first()
-                random_state = np.random.RandomState(seed)
+                random_state = random.Random(seed)
                 for k, v in input_iterator:
-                    if random_state.rand() < fraction:
+                    if random_state.random() < fraction:
                         output_writebatch.put(k, v)
 
             self._run_unary(sample_wrapper, task)
