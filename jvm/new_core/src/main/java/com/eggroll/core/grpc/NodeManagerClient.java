@@ -98,17 +98,19 @@ public class NodeManagerClient {
     return response;
   }
 
+  public DownloadContainersResponse downloadContainers(Context context,DownloadContainersRequest downloadContainersRequest) {
+    byte[] responseData = commandClient.call(context, nodeManagerEndpoint, downloadContainers, downloadContainersRequest.serialize());
+    DownloadContainersResponse response = new DownloadContainersResponse();
+    response.deserialize(responseData);
+    return response;
+  }
+
+
+  //  def downloadContainers(downloadContainersRequest: DownloadContainersRequest): DownloadContainersResponse =
+//          commandClient.call(ContainerCommands.downloadContainers, downloadContainersRequest)
+
   //  def checkNodeProcess(processor: ErProcessor): ErProcessor =
 //  commandClient.call[ErProcessor](ResouceCommands.checkNodeProcess, processor)
-
-
-
-
-
-
-
-
-
 
 
 //

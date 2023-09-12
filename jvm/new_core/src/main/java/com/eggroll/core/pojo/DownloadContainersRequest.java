@@ -18,6 +18,14 @@ public class DownloadContainersRequest implements RpcMessage {
     private int compressLevel;
     private Containers.ContentType contentType;
 
+    public DownloadContainersRequest(String sessionId, String compressMethod, List<Integer> ranks, int compressLevel, Containers.ContentType contentType) {
+        this.sessionId = sessionId;
+        this.compressMethod = compressMethod;
+        this.ranks = ranks;
+        this.compressLevel = compressLevel;
+        this.contentType = contentType;
+    }
+
     public Containers.DownloadContainersRequest toProto() {
         Containers.DownloadContainersRequest.Builder builder = Containers.DownloadContainersRequest.newBuilder();
         if (this.sessionId != null) {

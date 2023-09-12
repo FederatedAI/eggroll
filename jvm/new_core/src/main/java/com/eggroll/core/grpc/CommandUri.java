@@ -30,6 +30,7 @@ public class CommandUri {
     public static final String startJobContainers = "v1/node-manager/container/startJobContainers";
     public static final String stopJobContainers = "v1/node-manager/container/stopJobContainers";
     public static final String killJobContainers = "v1/node-manager/container/killJobContainers";
+    public static final String downloadContainers = "v1/node-manager/container/downloadContainers";
 
     public static final String submitJob = "v1/cluster-manager/job/submitJob";
     public static final String queryJobStatus = "v1/cluster-manager/job/queryJobStatus";

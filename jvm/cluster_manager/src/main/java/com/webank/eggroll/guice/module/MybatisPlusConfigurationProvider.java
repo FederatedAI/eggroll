@@ -178,6 +178,8 @@ public class MybatisPlusConfigurationProvider implements Provider<Configuration>
         configuration.setLogImpl(Log4j2Impl.class);
        // configuration.setLogImpl(StdOutImpl.class);
 
+        configuration.setCacheEnabled(MetaInfo.EGGROLL_MYBATIS_cache_enabled);
+
         Set<Class<?>> classes  =getClasses(MetaInfo.EGGROLL_MYBATIS_MAPPER_PACKAGE);
 
         for(Class<?> clazz:classes){

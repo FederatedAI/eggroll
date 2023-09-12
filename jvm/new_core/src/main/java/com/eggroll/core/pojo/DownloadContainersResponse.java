@@ -2,6 +2,7 @@ package com.eggroll.core.pojo;
 
 import com.webank.eggroll.core.meta.Containers;
 import lombok.Data;
+import org.apache.commons.collections.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,25 +15,27 @@ public class DownloadContainersResponse implements RpcMessage {
     Logger log = LoggerFactory.getLogger(DownloadContainersResponse.class);
 
     private String sessionId;
-    private List<Containers.ContainerContent> containerContents;
+    private List<ContainerContent> containerContents;
 
 
     public DownloadContainersResponse() {
 
     }
 
-    public DownloadContainersResponse(String sessionId, List<ContainerContent> containerContentList) {
+    public DownloadContainersResponse(String sessionId, List<ContainerContent> containerContents) {
         this.sessionId = sessionId;
-        containerContents = new ArrayList<>();
-        containerContentList.forEach(containerContent -> {
-            containerContents.add(containerContent.toProto());
-        });
+        this.containerContents = containerContents;
     }
 
     public Containers.DownloadContainersResponse toProto() {
         Containers.DownloadContainersResponse.Builder builder = Containers.DownloadContainersResponse.newBuilder();
         builder.setSessionId(this.sessionId);
-        builder.addAllContainerContent(containerContents);
+
+        List<Containers.ContainerContent> list = new ArrayList<>();
+        containerContents.forEach(containerContent -> {
+            list.add(containerContent.toProto());
+        });
+        builder.addAllContainerContent(list);
         return builder.build();
     }
 
@@ -47,7 +50,15 @@ public class DownloadContainersResponse implements RpcMessage {
         try {
             Containers.DownloadContainersResponse response = Containers.DownloadContainersResponse.parseFrom(data);
             this.sessionId = response.getSessionId();
-            this.containerContents = response.getContainerContentList();
+            List<Containers.ContainerContent> containerContentList = response.getContainerContentList();
+            if (CollectionUtils.isNotEmpty(containerContentList)) {
+                List<ContainerContent> containerContentsList = new ArrayList<>();
+                containerContentList.forEach(containerContent -> {
+                    ContainerContent content = new ContainerContent(containerContent.getContent().toByteArray(),containerContent.getCompressMethod());
+                    containerContentsList.add(content);
+                });
+                this.containerContents = containerContentsList;
+            }
         } catch (Exception e) {
             log.error("deserialize error : ", e);
         }

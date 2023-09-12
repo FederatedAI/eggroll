@@ -83,6 +83,12 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
         return defaultProcessorManager.killJobContainers(killContainersRequest);
     }
 
+    @URI(value = downloadContainers)
+    public DownloadContainersResponse downloadContainers(Context context,DownloadContainersRequest downloadContainersRequest) {
+        return defaultProcessorManager.downloadContainers(downloadContainersRequest);
+    }
+
+
     @URI(value = nodeHeartbeat)
     public ErProcessor nodeHeartbeat(Context context ,ErProcessor processor) {
         return null;

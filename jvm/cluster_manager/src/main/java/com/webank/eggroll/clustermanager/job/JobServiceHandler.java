@@ -25,17 +25,13 @@ import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.MutableTriple;
-import org.javatuples.Ennead;
-import org.javatuples.Quintet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 
 @Singleton
@@ -52,7 +48,7 @@ public class JobServiceHandler {
     @Inject
     SessionRanksService sessionRanksService;
 
-    public void killJob(Context context , String sessionId) {
+    public void killJob(Context context, String sessionId) {
         log.info("killing job {}", sessionId);
         try {
             clusterResourceManager.lockSession(sessionId);
@@ -76,7 +72,7 @@ public class JobServiceHandler {
                 }
                 try {
                     killContainersRequest.setContainers(processorIdList);
-                    new NodeManagerClient(erServerNode.getEndpoint()).killJobContainers(context,killContainersRequest);
+                    new NodeManagerClient(erServerNode.getEndpoint()).killJobContainers(context, killContainersRequest);
                 } catch (Exception e) {
                     log.error("killContainers error : ", e);
                 }
@@ -89,7 +85,7 @@ public class JobServiceHandler {
     public SubmitJobResponse handleSubmit(SubmitJobRequest submitJobMeta) throws InterruptedException {
         if (JobProcessorTypes.DeepSpeed.name().equals(submitJobMeta.getJobType())) {
             return handleDeepspeedSubmit(submitJobMeta);
-        }else {
+        } else {
             throw new IllegalArgumentException("unsupported job type: " + submitJobMeta.getJobType());
         }
     }
@@ -104,32 +100,32 @@ public class JobServiceHandler {
         return queryJobStatusResponse;
     }
 
-    public QueryJobResponse handleJobQuery(QueryJobRequest queryJobRequest){
+    public QueryJobResponse handleJobQuery(QueryJobRequest queryJobRequest) {
         SessionMain sessionMain = sessionMainService.getById(queryJobRequest.getSessionId());
         QueryJobResponse queryJobResponse = new QueryJobResponse();
         queryJobResponse.setSessionId(queryJobRequest.getSessionId());
-        if(sessionMain != null){
+        if (sessionMain != null) {
             queryJobResponse.setStatus(sessionMain.getStatus());
         }
         ErSessionMeta erSession = sessionMainService.getSession(queryJobRequest.getSessionId());
-        if(erSession != null){
+        if (erSession != null) {
             queryJobResponse.setProcessors(erSession.getProcessors());
         }
         return queryJobResponse;
     }
 
 
-    public KillJobResponse handleJobKill(Context  context,KillJobRequest killJobRequest) {
+    public KillJobResponse handleJobKill(Context context, KillJobRequest killJobRequest) {
         String sessionId = killJobRequest.getSessionId();
-        killJob(context,sessionId);
+        killJob(context, sessionId);
         KillJobResponse response = new KillJobResponse();
         response.setSessionId(sessionId);
         return response;
     }
 
-    public StopJobResponse handleJobStop(Context context,StopJobRequest stopJobRequest) {
+    public StopJobResponse handleJobStop(Context context, StopJobRequest stopJobRequest) {
         String sessionId = stopJobRequest.getSessionId();
-        killJob(context,sessionId);
+        killJob(context, sessionId);
         StopJobResponse response = new StopJobResponse();
         response.setSessionId(sessionId);
         return response;
@@ -247,7 +243,7 @@ public class JobServiceHandler {
                     }
                     startDeepspeedContainerRequest.setDeepspeedConfigs(deepspeedConfigs);
                     startDeepspeedContainerRequest.setOptions(submitJobRequest.getOptions());
-                    nodeManagerClient.startJobContainers(new Context(),StartDeepspeedContainerRequest.toStartContainersRequest(startDeepspeedContainerRequest));
+                    nodeManagerClient.startJobContainers(new Context(), StartDeepspeedContainerRequest.toStartContainersRequest(startDeepspeedContainerRequest));
                 });
 
 
@@ -255,8 +251,8 @@ public class JobServiceHandler {
                 List<ErProcessor> activeProcessors = waitSubmittedContainers(sessionId, worldSize, startTimeout);
 
                 Map<Long, Map<String, String>> idToOptions = new HashMap<>();
-                dispatchedProcessorList.forEach(pair->{
-                    idToOptions.put(pair.getKey().getId(),pair.getKey().getOptions());
+                dispatchedProcessorList.forEach(pair -> {
+                    idToOptions.put(pair.getKey().getId(), pair.getKey().getOptions());
                 });
 
                 for (ErProcessor processor : activeProcessors) {
@@ -265,9 +261,9 @@ public class JobServiceHandler {
                 }
 
                 UpdateWrapper<SessionMain> updateWrapper = new UpdateWrapper<>();
-                updateWrapper.lambda().set(SessionMain::getStatus,SessionStatus.ACTIVE.name())
-                        .eq(SessionMain::getStatus,SessionStatus.NEW.name())
-                        .eq(SessionMain::getSessionId,sessionId);
+                updateWrapper.lambda().set(SessionMain::getStatus, SessionStatus.ACTIVE.name())
+                        .eq(SessionMain::getStatus, SessionStatus.NEW.name())
+                        .eq(SessionMain::getSessionId, sessionId);
                 sessionMainService.update(updateWrapper);
                 SubmitJobResponse submitJobResponse = new SubmitJobResponse();
                 submitJobResponse.setSessionId(sessionId);
@@ -278,7 +274,7 @@ public class JobServiceHandler {
                 throw new ErSessionException("kill session " + sessionId + " request was found");
             }
         } catch (Exception e) {
-            killJob(new Context(),sessionId);
+            killJob(new Context(), sessionId);
             throw e;
         } finally {
             clusterResourceManager.unlockSession(sessionId);
@@ -317,7 +313,7 @@ public class JobServiceHandler {
 
             if (activeCount < expectedWorldSize) {
                 try {
-                    killJob(new Context(),sessionId);
+                    killJob(new Context(), sessionId);
                 } catch (Exception e) {
                     log.error("failed to kill job " + sessionId, e);
                 }
@@ -332,34 +328,71 @@ public class JobServiceHandler {
     }
 
 
-    public DownloadJobResponse handleJobDownload(DownloadJobRequest downloadJobRequest) {
-//        String sessionId = downloadJobRequest.getSessionId();
-//        Containers.ContentType contentType = downloadJobRequest.getContentType();
-//        String compressMethod = downloadJobRequest.getCompressMethod();
-//        List<Integer> ranks = downloadJobRequest.getRanks();
-//
-//        SessionRanks sessionRank = new SessionRanks();
-//        sessionRank.setSessionId(sessionId);
-//
-//        List<SessionRanks> SessionRanksList = sessionRanksService.list(sessionRank);
-//        Map<String,List<Quintet<String, String, Integer, Integer, Integer>>> ranksByNode = SessionRanksList.stream().map(sessionRanks -> {
-//            Long containerId = sessionRanks.getContainerId();
-//            Long serverNodeId = sessionRanks.getServerNodeId();
-//            Integer globalRank = sessionRanks.getGlobalRank();
-//            Integer localRank = sessionRanks.getLocalRank();
-//            int index = CollectionUtils.isEmpty(ranks) ? globalRank : ranks.indexOf(globalRank);
-//            List<Quintet<String, String, Integer, Integer, Integer>> list = new ArrayList<>();
-//            if (index >= 0) {
-//                Quintet quintet = new Quintet(containerId, serverNodeId, globalRank, localRank, index);
-//                list.add(quintet);
-//                return list;
-//            }
-//        }).collect(Collectors.groupingBy(Quintet::va));
+    public DownloadJobResponse handleJobDownload(Context context,DownloadJobRequest downloadJobRequest) {
+
+        String sessionId = downloadJobRequest.getSessionId();
+        Containers.ContentType contentType = downloadJobRequest.getContentType();
+        String compressMethod = downloadJobRequest.getCompressMethod();
+        List<Integer> ranksList = downloadJobRequest.getRanks();
+        Integer compressLevel = downloadJobRequest.getCompressLevel();
+
+        SessionRanks sessionRank = new SessionRanks();
+        sessionRank.setSessionId(sessionId);
+
+        List<SessionRanks> sessionRanksList = sessionRanksService.list(sessionRank);
+
+        Map<Long, List<SessionRanksTemp>> rankMap = sessionRanksList.stream().flatMap(sessionRanks -> {
+            Long containerId = sessionRanks.getContainerId();
+            Long serverNodeId = sessionRanks.getServerNodeId();
+            Integer globalRank = sessionRanks.getGlobalRank();
+            Integer localRank = sessionRanks.getLocalRank();
+            int index = CollectionUtils.isEmpty(ranksList) ? globalRank : ranksList.indexOf(globalRank);
+            if (index >= 0) {
+                //  Some((nodeId, containerId, globalRank, localRank, index))
+                return Arrays.asList(new SessionRanksTemp(serverNodeId, containerId, globalRank, localRank, index)).stream();
+            } else {
+                return null;
+            }
+        }).collect(Collectors.groupingBy(SessionRanksTemp::getServerNodeId));
 
 
+        List<IndexContentsTemp> IndexContentsTempList = rankMap.entrySet().stream().flatMap(entry -> {
+            Long nodeId = entry.getKey();
+            List<SessionRanksTemp> ranks = entry.getValue();
+            ErServerNode erServerNode = serverNodeService.getByIdFromCache(nodeId);
+            List<Integer> indexes = ranks.stream().map(SessionRanksTemp::getIndex).collect(Collectors.toList());
+            List<Integer> globalRanks = ranks.stream().map(SessionRanksTemp::getGlobalRank).collect(Collectors.toList());
+            try {
+                NodeManagerClient nodeManagerClient = new NodeManagerClient(erServerNode.getEndpoint());
+                DownloadContainersRequest downloadContainersRequest =
+                        new DownloadContainersRequest(sessionId, compressMethod, globalRanks, compressLevel, contentType);
 
+                DownloadContainersResponse response = nodeManagerClient.downloadContainers(new Context(), downloadContainersRequest);
+                List<ContainerContent> containerContents = response.getContainerContents();
+                IndexContentsTemp indexContentsTemp = new IndexContentsTemp(indexes, containerContents);
+                return Arrays.asList(indexContentsTemp).stream();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+        }).collect(Collectors.toList());
 
-        return null;
+        List<IndexContentTemp> collect = IndexContentsTempList.stream().flatMap(indexContentsTemp -> {
+            List<ContainerContent> containerContents = indexContentsTemp.getContainerContents();
+            List<Integer> indexes = indexContentsTemp.getIndexes();
+            return IntStream.range(0, Math.min(containerContents.size(), indexes.size())).mapToObj(i -> {
+                return new IndexContentTemp(indexes.get(i), containerContents.get(i));
+            });
+        }).sorted((p1, p2) -> {
+            return p1.getIndex() - p2.getIndex();
+        }).collect(Collectors.toList());
+
+        List<ContainerContent> respContainerContents = collect.stream().map(IndexContentTemp::getContainerContent).collect(Collectors.toList());
+        DownloadJobResponse downloadJobResponse = new DownloadJobResponse(sessionId, respContainerContents);
+        return downloadJobResponse;
     }
+
+
+
 
 }

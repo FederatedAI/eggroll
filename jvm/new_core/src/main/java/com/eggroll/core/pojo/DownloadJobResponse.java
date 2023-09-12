@@ -19,6 +19,7 @@ public class DownloadJobResponse implements RpcMessage{
     private String sessionId;
     private List<ContainerContent> containerContents;
 
+
     public DownloadJobResponse(String sessionId, List<ContainerContent> containerContents) {
         this.sessionId = sessionId;
         this.containerContents = containerContents;
