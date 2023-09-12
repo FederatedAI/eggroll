@@ -1,11 +1,11 @@
-package com.webank.eggroll.webapplication.controller;
+package com.webank.eggroll.webapp.controller;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import com.webank.eggroll.clustermanager.entity.NodeResource;
-import com.webank.eggroll.webapplication.dao.NodeResourceDao;
-import com.webank.eggroll.webapplication.model.CommonResponse;
-import com.webank.eggroll.webapplication.utils.JsonFormatUtil;
+import com.webank.eggroll.clustermanager.entity.SessionMain;
+import com.webank.eggroll.webapp.dao.SessionMainDao;
+import com.webank.eggroll.webapp.model.CommonResponse;
+import com.webank.eggroll.webapp.utils.JsonFormatUtil;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -15,12 +15,11 @@ import java.io.IOException;
 import java.util.List;
 
 @Singleton
-public class NodeResourceController extends HttpServlet {
-    private NodeResourceDao resourceDao;
-
+public class SessionMainController extends HttpServlet {
+    private SessionMainDao sessionMainDao;
     @Inject
-    public NodeResourceController(NodeResourceDao resourceDao) {
-        this.resourceDao = resourceDao;
+    public SessionMainController(SessionMainDao sessionMainDao) {
+        this.sessionMainDao = sessionMainDao;
     }
 
     @Override
@@ -28,8 +27,8 @@ public class NodeResourceController extends HttpServlet {
         int page = Integer.parseInt(req.getParameter("page"));
         int pageSize = Integer.parseInt(req.getParameter("pageSize"));
 
-        CommonResponse<List<NodeResource>> response;
-        List<NodeResource> resources = resourceDao.getData(page, pageSize);
+        CommonResponse<List<SessionMain>> response;
+        List<SessionMain> resources = sessionMainDao.getData(page, pageSize);
         if (resources != null && !resources.isEmpty()) {
             // 获取数据成功
             response = CommonResponse.success(resources);

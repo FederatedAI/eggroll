@@ -1,11 +1,11 @@
-package com.webank.eggroll.webapplication.controller;
+package com.webank.eggroll.webapp.controller;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.entity.ServerNode;
-import com.webank.eggroll.webapplication.dao.ServerNodeDao;
-import com.webank.eggroll.webapplication.model.CommonResponse;
-import com.webank.eggroll.webapplication.utils.JsonFormatUtil;
+import com.webank.eggroll.webapp.dao.ServerNodeDao;
+import com.webank.eggroll.webapp.model.CommonResponse;
+import com.webank.eggroll.webapp.utils.JsonFormatUtil;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;

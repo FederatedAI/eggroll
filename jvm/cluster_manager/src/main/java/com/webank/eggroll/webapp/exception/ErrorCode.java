@@ -1,4 +1,4 @@
-package com.webank.eggroll.webapplication.exception;
+package com.webank.eggroll.webapp.exception;
 
 
 public class ErrorCode {
