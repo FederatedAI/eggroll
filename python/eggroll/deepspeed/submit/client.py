@@ -13,12 +13,16 @@ from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import SessionStatus
 from eggroll.core.proto import containers_pb2, deepspeed_pb2, deepspeed_download_pb2, meta_pb2, \
     extend_pb2_grpc, extend_pb2
+from eggroll.core.proto.command_pb2 import CommandRequest
+from eggroll.core.proto.deepspeed_download_pb2 import DsDownloadResponse
 from ..client import BaseClient
 from .commands import JobCommands
 from ..store.client import destroy
 from ...core.command.commands import SessionCommands
-
-
+# from eggroll.deepspeed.client import BaseClient
+# from eggroll.deepspeed.submit.commands import JobCommands
+# from eggroll.deepspeed.store.client import destroy
+# from eggroll.core.command.commands import SessionCommands
 class ContentType(enum.Enum):
     ALL = 0
     MODELS = 1
@@ -151,15 +155,17 @@ class DeepspeedJob:
             compress_level=compress_level,
             content_type=content_type.to_proto(),
         )
+
         prepare_download_job_response = self._get_client().do_sync_request(
             download_job_request, output_type=deepspeed_download_pb2.PrepareDownloadResponse, command_uri=JobCommands.PREPARE_DOWNLOAD_JOB
         )
 
 
-        # print(prepare_download_job_response)
+        print(prepare_download_job_response)
         download_session_id = prepare_download_job_response.session_id
         download_meta:dict =  json.loads(prepare_download_job_response.content)
-        zipped_container_content = []
+        # zipped_container_content = []
+        zipped_container_content_map = {}
         pool = ThreadPool()
         # pool.map(process, items)
         lock = threading.Lock()
@@ -170,45 +176,61 @@ class DeepspeedJob:
 
                 # element_data = download_meta[address]
             def  inner_handle_download(address):
+                    print(address)
                     element_data = download_meta[address]
+                    print(element_data)
                     ranks = list(map(lambda d:d[2],element_data))
+                    print(ranks)
                     indexes = list(map(lambda d: d[4], element_data))
+                    print(indexes)
                     ipport = address.split(":")
                     eggpair_client = self._get_clientv2(ipport[0],int(ipport[1]))
                     request = deepspeed_download_pb2.DsDownloadRequest(compress_level=compress_level,compress_method=compress_method,
                                                              ranks = ranks,content_type= content_type.to_proto(),
                                                              session_id= self.session_id)
-                    response = eggpair_client.do_download(request)
-                    if(response != None):
-                        temp_ziped = list(zip(indexes,response.container_content))
-                        try:
-                            lock.acquire()
-                            zipped_container_content.extend(temp_ziped)
-                        finally:
-                            lock.release()
+                    response = eggpair_client.do_download_stream(request)
+                    zipped_container_content_map.update(response)
+                    # if(response != None):
+                    #     temp_ziped = list(zip(indexes,response.container_content))
+                    #     try:
+                    #         lock.acquire()
+                    #         zipped_container_content_map.(temp_ziped)
+                    #     finally:
+                    #         lock.release()
 
-                    else:
-                        raise RuntimeError(f"download return None from {address}")
+                    # else:
+                    #     raise RuntimeError(f"download return None from {address}")
 
             pool.map(inner_handle_download, download_meta)
             pool.close()
             pool.join()
 
-            zipped_container_content.sort(key=lambda  x:x[0])
-            print(zipped_container_content)
-            final_content= list(map(lambda d:d[1],zipped_container_content))
+            # zipped_container_content.sort(key=lambda  x:x[0])
+            # final_content= list(map(lambda d:d[1],zipped_container_content))
+            # print("zipped_container_content_map",zipped_container_content_map)
+            return  zipped_container_content_map
+            # return deepspeed_pb2.DownloadJobResponse(session_id=self._session_id,container_content=final_content)
 
-            return deepspeed_pb2.DownloadJobResponse(session_id=self._session_id,container_content=final_content)
-            # print(final_content)
         finally:
-            self.close_session(session_id=download_session_id)
-            print("over")
+            try:
+                self.close_session(session_id=download_session_id)
+                print("over")
+            except Exception as e:
+                self.kill_session(session_id=download_session_id)
 
     def close_session(self,session_id):
         if session_id is not None:
             session = meta_pb2.SessionMeta(id=session_id)
             download_job_response = self._get_client().do_sync_request(
                 session, output_type=meta_pb2.SessionMeta, command_uri=SessionCommands.STOP_SESSION
+            )
+        print("close")
+
+    def kill_session(self,session_id):
+        if session_id is not None:
+            session = meta_pb2.SessionMeta(id=session_id)
+            download_job_response = self._get_client().do_sync_request(
+                session, output_type=meta_pb2.SessionMeta, command_uri=SessionCommands.KILL_SESSION
             )
         print("close")
 
@@ -249,6 +271,7 @@ class DeepspeedJob:
     ):
         # download_job_response = self.download_job(ranks, content_type, compress_method, compress_level)
         download_job_response = self.download_jobv2(ranks, content_type, compress_method, compress_level)
+
         # if ranks is None:
         #     ranks = range(len(download_job_response.container_content))
         # for rank, content in zip(ranks, download_job_response.container_content):
@@ -256,10 +279,16 @@ class DeepspeedJob:
         #     with open(path, "wb") as f:
         #         f.write(content.content)
 
-        for content in download_job_response.container_content:
-            path = rank_to_path(content.rank)
+        for key, value in download_job_response.items():
+            path = rank_to_path(key)
             with open(path, "wb") as f:
-                f.write(content.content)
+                f.write(value)
+
+
+        # for content in download_job_response.container_content:
+        #     path = rank_to_path(content.rank)
+        #     with open(path, "wb") as f:
+        #         f.write(content.content)
 
     def cleanup(self):
         try:
@@ -268,9 +297,10 @@ class DeepspeedJob:
             pass
 
     @staticmethod
-    def generator_yields(build):
-        while True:
+    def generator_yields(build, flag):
+        while len(flag):
             yield build
+            time.sleep(10)
 
     @staticmethod
     def writer(stream, logging=None):
@@ -285,22 +315,39 @@ class DeepspeedJob:
                     # logging(f"get log return code {res.code}")
                     pass
         except Exception as e:
-            logging(e)
+            pass
 
-    def cancel_stream(self, stream):
+    def cancel_stream(self, stream, flag):
         self.await_finished()
         time.sleep(5)
         stream.cancel()
+        try:
+            # control stream end
+            flag.pop()
+        except:
+            pass
 
     def write_logs_to(self, rank: str = "0", start_line: int = 0, log_type: str = "INFO", logging: object = None):
+        flag = [0]
         builds = self.generator_yields(extend_pb2.GetLogRequest(
-            sessionId=self.session_id, rank=rank, startLine=start_line, logType=log_type)
+            sessionId=self.session_id, rank=rank, startLine=start_line, logType=log_type),
+            flag
         )
         channel = self._get_client().channel_factory
         stub = extend_pb2_grpc.ExtendTransferServerStub(channel.create_channel(self._get_client().endpoint))
         stream = stub.getLog(builds)
         _writer = threading.Thread(target=self.writer, args=(stream, logging))
-        _cancel = threading.Thread(target=self.cancel_stream, args=stream)
+        _cancel = threading.Thread(target=self.cancel_stream, args=(stream, flag))
         _writer.start()
         _cancel.start()
         return _writer, _cancel
+
+
+if __name__== '__main__':
+    deepspeedJob = DeepspeedJob(session_id="deepspeed_session_20230705-175508-766715",host="localhost",port=4670)
+    deepspeedJob.download_job_to()
+    # print(DsDownloadResponse(session_id="xxxxxxx").SerializeToString())
+    # DsDownloadResponse.MergeFromString(b'\n\x07xxxxxxx')
+
+    # print(CommandRequest(uri="xxxx").SerializeToString())
+    # print(CommandRequest.MergeFrom(CommandRequest(uri="xxxx").SerializeToString()))
