@@ -15,7 +15,7 @@
     </filter-mapping>
 
     <listener>
-        <listener-class>com.webank.eggroll.webapplication.model.MyGuiceServletContextListener</listener-class>
+        <listener-class>com.webank.eggroll.webapp.model.MyGuiceServletContextListener</listener-class>
     </listener>
 
 </web-app>

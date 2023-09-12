@@ -2,6 +2,7 @@ package com.webank.eggroll.clustermanager.statemachine;
 
 
 import com.eggroll.core.context.Context;
+import com.eggroll.core.utils.LockUtils;
 import org.mybatis.guice.transactional.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,31 +50,6 @@ public abstract class AbstractStateMachine<T> {
 
     }
 
-
-
-
-
-    public void  tryLock( String key ){
-//        ReentrantLock lock;
-//        if (!lockMap.containsKey(key)) {
-//            lockMap.putIfAbsent(key, new ReentrantLock());
-//        }
-//        lock = lockMap.get(key);
-//       logger.info("lock key {}",key);
-//        lock.lock();
-    }
-
-    public void unLock(String key ){
-//        logger.info("unlock key {}",key);
-//        ReentrantLock  lock = lockMap.get(key);
-//        if(lock!=null){
-//            lock.unlock();
-//            lockMap.remove(key);
-//        }
-
-    }
-
-
     abstract  public String  getLockKey(Context context,T t);
     //abstract  protected T  doChangeStatus(Context context ,T t, String preStateParam, String desStateParam);
 //    abstract  public T prepare(T t);
@@ -98,7 +74,7 @@ public abstract class AbstractStateMachine<T> {
        // logger.info("choose state handler {} to work",handler);
         String  lockKey =  getLockKey(context,t);
         try{
-            tryLock(lockKey);
+            LockUtils.lock(lockMap,lockKey);
             T result= handler.prepare(context,t,preStateParam,desStateParam);
             if(!handler.isBreak(context)) {
                 result = transactionHandle(context,handler,result,preStateParam,desStateParam,callback);
@@ -115,7 +91,7 @@ public abstract class AbstractStateMachine<T> {
             e.printStackTrace();
            throw  new RuntimeException(e);
         } finally {
-            unLock(lockKey);
+            LockUtils.unLock(lockMap,lockKey);
         }
     }
 
