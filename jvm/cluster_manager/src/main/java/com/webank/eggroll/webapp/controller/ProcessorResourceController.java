@@ -1,13 +1,11 @@
-package com.webank.eggroll.webapplication.controller;
+package com.webank.eggroll.webapp.controller;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.entity.ProcessorResource;
-import com.webank.eggroll.clustermanager.entity.SessionProcessor;
-import com.webank.eggroll.webapplication.dao.ProcessorResourceDao;
-import com.webank.eggroll.webapplication.dao.SessionProcessorDao;
-import com.webank.eggroll.webapplication.model.CommonResponse;
-import com.webank.eggroll.webapplication.utils.JsonFormatUtil;
+import com.webank.eggroll.webapp.dao.ProcessorResourceDao;
+import com.webank.eggroll.webapp.model.CommonResponse;
+import com.webank.eggroll.webapp.utils.JsonFormatUtil;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -17,11 +15,12 @@ import java.io.IOException;
 import java.util.List;
 
 @Singleton
-public class SessionProcessorController extends HttpServlet {
-    private SessionProcessorDao resourceDao;
+public class ProcessorResourceController extends HttpServlet {
+
+    private ProcessorResourceDao resourceDao;
 
     @Inject
-    public SessionProcessorController(SessionProcessorDao resourceDao) {
+    public ProcessorResourceController(ProcessorResourceDao resourceDao) {
         this.resourceDao = resourceDao;
     }
 
@@ -30,8 +29,8 @@ public class SessionProcessorController extends HttpServlet {
         int page = Integer.parseInt(req.getParameter("page"));
         int pageSize = Integer.parseInt(req.getParameter("pageSize"));
 
-        CommonResponse<List<SessionProcessor>> response;
-        List<SessionProcessor> resources = resourceDao.getData(page, pageSize);
+        CommonResponse<List<ProcessorResource>> response;
+        List<ProcessorResource> resources = resourceDao.getData(page, pageSize);
         if (resources != null && !resources.isEmpty()) {
             // 获取数据成功
             response = CommonResponse.success(resources);
@@ -39,10 +38,8 @@ public class SessionProcessorController extends HttpServlet {
             // 获取数据失败或无数据
             response = CommonResponse.error("Failed to retrieve resources.");
         }
-
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
-
         // 将响应结果转换为 JSON 格式
         String json = JsonFormatUtil.toJson(response.getCode(),
                 response.getMsg(), response.getData());

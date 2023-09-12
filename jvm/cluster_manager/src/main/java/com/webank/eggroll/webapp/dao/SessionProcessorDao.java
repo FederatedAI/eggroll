@@ -1,6 +1,7 @@
-package com.webank.eggroll.webapplication.dao;
+package com.webank.eggroll.webapp.dao;
 
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.google.inject.Inject;
@@ -16,10 +17,11 @@ public class SessionProcessorDao {
     SessionProcessorService sessionProcessorService;
 
     public List<SessionProcessor> getData(int page, int pageSize) {
-        IPage pageStats = new Page();
+//        QueryWrapper<SessionProcessor> queryWrapper = new QueryWrapper<>();
+        IPage<SessionProcessor> pageStats = new Page<SessionProcessor>();
         pageStats.setSize(pageSize);
         pageStats.setCurrent(page);
-        List data = this.sessionProcessorService.list(pageStats);
+        List<SessionProcessor> data = this.sessionProcessorService.page(pageStats).getRecords();
         return data;
     }
 }

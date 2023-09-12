@@ -1,4 +1,4 @@
-package com.webank.eggroll.webapplication.dao;
+package com.webank.eggroll.webapp.dao;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -14,13 +14,10 @@ public class ProcessorResourceDao {
 
     public List<ProcessorResource> getData(int page, int pageSize) {
 
-        IPage pageStats = new Page();
+        IPage<ProcessorResource> pageStats = new Page<>();
         pageStats.setSize(pageSize);
         pageStats.setCurrent(page);
-
-        List data = this.processorResourceService.list(pageStats);
-
-        return data;
+        return this.processorResourceService.list(pageStats);
     }
 
 }
