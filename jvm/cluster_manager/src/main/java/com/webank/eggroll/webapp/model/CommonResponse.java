@@ -1,8 +1,8 @@
-package com.webank.eggroll.webapplication.model;
+package com.webank.eggroll.webapp.model;
 
 
-import com.webank.eggroll.webapplication.exception.CodeEnum;
-import com.webank.eggroll.webapplication.exception.ErrorCode;
+import com.webank.eggroll.webapp.exception.CodeEnum;
+import com.webank.eggroll.webapp.exception.ErrorCode;
 import lombok.Data;
 
 import java.util.Objects;

@@ -1,4 +1,4 @@
-package com.webank.eggroll.webapplication.dao;
+package com.webank.eggroll.webapp.dao;
 
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -13,10 +13,9 @@ public class SessionMainDao {
     @Inject
     SessionMainService sessionMainService;
     public List<SessionMain> getData(int page, int pageSize) {
-        IPage pageStats = new Page();
+        IPage<SessionMain> pageStats = new Page<>();
         pageStats.setSize(pageSize);
         pageStats.setCurrent(page);
-        List data = this.sessionMainService.list(pageStats);
-        return data;
+        return this.sessionMainService.list(pageStats);
     }
 }

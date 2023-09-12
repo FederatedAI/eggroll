@@ -1,11 +1,11 @@
-package com.webank.eggroll.webapplication;
+package com.webank.eggroll.webapp;
 
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.utils.CommandArgsUtils;
 import com.eggroll.core.utils.PropertiesUtil;
 import com.google.inject.servlet.GuiceFilter;
 //import com.webank.eggroll.webapplication.dao.ProcessorResourceDao;
-import com.webank.eggroll.webapplication.model.MyServletModule;
+import com.webank.eggroll.webapp.model.MyServletModule;
 import org.apache.commons.cli.CommandLine;
 import org.eclipse.jetty.server.Server;
 import com.google.inject.Guice;
