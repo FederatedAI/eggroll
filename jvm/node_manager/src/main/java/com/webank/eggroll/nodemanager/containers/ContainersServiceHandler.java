@@ -9,6 +9,7 @@ import com.eggroll.core.containers.container.WarpedDeepspeedContainerConfig;
 import com.eggroll.core.containers.meta.KillContainersResponse;
 import com.eggroll.core.containers.meta.StartContainersResponse;
 import com.eggroll.core.containers.meta.StopContainersResponse;
+import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.*;
 import com.google.inject.Singleton;
 import com.webank.eggroll.core.meta.Containers;

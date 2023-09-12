@@ -33,7 +33,7 @@ public class SessionCreateHandler  extends AbstractSessionStateHandler{
     }
 
     @Override
-    public synchronized ErSessionMeta handle(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam) {
+    public ErSessionMeta handle(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam) {
         logger.info("session create handle begin");
         erSessionMeta.setStatus(SessionStatus.NEW.name());
         ErSessionMeta   sessionInDb =  sessionMainService.getSession(erSessionMeta.getId(),true,true,false);
