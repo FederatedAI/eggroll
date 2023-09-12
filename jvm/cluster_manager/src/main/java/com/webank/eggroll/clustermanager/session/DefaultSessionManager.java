@@ -240,30 +240,30 @@ public class DefaultSessionManager implements SessionManager {
     }
 
     @Override
-    public synchronized ErSessionMeta stopSession(Context context, ErSessionMeta sessionMeta) {
+    public ErSessionMeta stopSession(Context context, ErSessionMeta sessionMeta) {
         return sessionStateMachine.changeStatus(context, sessionMeta, null, SessionStatus.CLOSED.name());
     }
 
     @Override
-    public synchronized ErSessionMeta killSession(Context context, String sessionId) {
+    public ErSessionMeta killSession(Context context, String sessionId) {
         ErSessionMeta sessionMeta = sessionMainService.getSession(sessionId);
         return sessionStateMachine.changeStatus(context, sessionMeta, null, SessionStatus.KILLED.name());
     }
 
     @Override
-    public synchronized ErSessionMeta killSession(Context context, ErSessionMeta sessionMeta) {
+    public ErSessionMeta killSession(Context context, ErSessionMeta sessionMeta) {
         return sessionStateMachine.changeStatus(context, sessionMeta, null, SessionStatus.KILLED.name());
 
     }
 
     @Override
-    public synchronized ErSessionMeta killSession(Context context, ErSessionMeta sessionMeta, String afterState) {
+    public ErSessionMeta killSession(Context context, ErSessionMeta sessionMeta, String afterState) {
         return sessionStateMachine.changeStatus(context, sessionMeta, null, afterState);
     }
 
 
     @Override
-    public synchronized ErSessionMeta killAllSessions(Context context, ErSessionMeta sessionMeta) {
+    public ErSessionMeta killAllSessions(Context context, ErSessionMeta sessionMeta) {
         QueryWrapper<SessionMain> queryWrapper = new QueryWrapper<>();
         queryWrapper.lambda().in(SessionMain::getStatus, Arrays.asList(SessionStatus.NEW.name(), SessionStatus.ACTIVE.name()));
         List<SessionMain> killList = sessionMainService.list(queryWrapper);

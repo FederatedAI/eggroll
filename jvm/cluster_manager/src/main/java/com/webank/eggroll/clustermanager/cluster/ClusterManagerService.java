@@ -11,6 +11,7 @@ import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.*;
 import com.eggroll.core.postprocessor.ApplicationStartedRunner;
 import com.eggroll.core.utils.JsonUtil;
+import com.eggroll.core.utils.LockUtils;
 import com.webank.eggroll.clustermanager.dao.impl.NodeResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
@@ -36,6 +37,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 
@@ -43,8 +45,7 @@ import java.util.stream.Collectors;
 @Singleton
 public class ClusterManagerService implements ApplicationStartedRunner {
 
-    Logger logger = LoggerFactory.getLogger(ClusterManagerService.class);
-
+    Logger log = LoggerFactory.getLogger(ClusterManagerService.class);
 
     @Inject
     ServerNodeService serverNodeService;
@@ -67,13 +68,9 @@ public class ClusterManagerService implements ApplicationStartedRunner {
     @Inject
     SessionManager sessionManager;
 
-    @Inject
-    ClusterResourceManager clusterResourceManager;
-
-    Logger log = LoggerFactory.getLogger(ClusterManagerService.class);
-
     Map<Long, ErNodeHeartbeat> nodeHeartbeatMap = new ConcurrentHashMap<>();
-    Map<Long, ErProcessor> residualHeartbeatMap = new ConcurrentHashMap<>();
+    public static Map<Long, ErProcessor> residualHeartbeatMap = new ConcurrentHashMap<>();
+    ConcurrentHashMap<Long, ReentrantLock>  lockMap = new ConcurrentHashMap<>();
 
     public void addResidualHeartbeat(ErProcessor erProcessor){
         residualHeartbeatMap.put(erProcessor.getId(),erProcessor);
@@ -90,57 +87,6 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         return result;
     }
 
-    /**
-     * 检查DB中状态为running的进程,如果DB中的状态和节点上对应进程的状态不一致，则表示该进程异常
-     */
-    @Schedule(cron= "0/10 * * * * ?")
-    public void checkDbRunningProcessor() {
-        try {
-            long now = System.currentTimeMillis();
-            ErProcessor erProcessor = new ErProcessor();
-            erProcessor.setStatus(ProcessorStatus.RUNNING.name());
-            List<ErProcessor> erProcessors = sessionProcessorService.doQueryProcessor(erProcessor);
-
-            // 根据节点分组
-            Map<Long, List<ErProcessor>> grouped = erProcessors.stream().collect(Collectors.groupingBy(ErProcessor::getServerNodeId));
-            Context  context = new Context();
-            grouped.forEach((serverNodeId, processorList) -> {
-                // 从缓存中拿出该节点的坐标信息，并建立该客户端连接
-                ErServerNode serverNode = serverNodeService.getByIdFromCache(serverNodeId);
-                if(serverNode!=null){
-                NodeManagerClient nodeManagerClient = new NodeManagerClient(serverNode.getEndpoint());
-                // 检查节点上每个进程的状态
-                for (ErProcessor processor : processorList) {
-                    ErProcessor result = nodeManagerClient.checkNodeProcess(context,processor);
-
-                    // 如果该节点上的进程状态为kill或者不存在
-                    if (result == null || ProcessorStatus.KILLED.name().equals(result.getStatus())) {
-
-//                        try {
-//                            Thread.sleep(10000);
-//                        } catch (InterruptedException e) {
-//                            e.printStackTrace();
-//                        }
-                        //
-                        SessionProcessor processorInDb = sessionProcessorService.getById(processor.getId());
-                        if (processorInDb != null) {
-                            if (ProcessorStatus.RUNNING.name().equals(processorInDb.getStatus())) {
-                                ErProcessor checkNodeProcessResult = nodeManagerClient.checkNodeProcess(context,processor);
-
-                                if (checkNodeProcessResult == null || ProcessorStatus.KILLED.name().equals(checkNodeProcessResult.getStatus())) {
-                                    processorStateMachine.changeStatus(new Context(), processor, null, ProcessorStatus.ERROR.name());
-                                }
-                            }
-                        }
-                    }
-                }
-                }
-            });
-        } catch (Exception e) {
-            log.error("checkDbRunningProcessor error :", e);
-        }
-    }
-
     public void killResidualProcessor(Context context,ErProcessor processor) {
         log.info("prepare to kill redidual processor {}", JsonUtil.object2Json(processor));
         ErServerNode serverNodeInDb = serverNodeService.getByIdFromCache(processor.getServerNodeId());
@@ -152,28 +98,6 @@ public class ClusterManagerService implements ApplicationStartedRunner {
                 nodeManagerClient.killContainers(context, erSessionMeta);
             }
 
-        }
-    }
-
-    /**
-     * 定时kill掉泄露的进程（收到了已经标记为关闭的心跳）
-     */
-    @Schedule(cron= "0/10 * * * * ?")
-    public void checkRedidualProcessor(){
-//        logger.info("check redidual proceesor begin");
-        try {
-            Context  context = new Context();
-            residualHeartbeatMap.forEach((k, v) -> {
-                try {
-                    killResidualProcessor(context,v);
-                    residualHeartbeatMap.remove(k);
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                    log.error("kill residual processor error: " + e.getMessage());
-                }
-            });
-        } catch (Throwable e) {
-            e.printStackTrace();
         }
     }
 
@@ -233,75 +157,10 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         log.debug("found all processor belongs to session " + session.getId() + " finished, update session status to `Finished`");
     }
 
-
-    @Schedule(cron= "0/5 * * * * ?")
-    public   void  sessionWatcherSchedule(){
-        try {
-
-            List<ErSessionMeta> sessions = sessionMainService.getSessionMainsByStatus(Arrays.asList(SessionStatus.ACTIVE.name(), SessionStatus.NEW.name()));
-
-            for (ErSessionMeta session : sessions) {
-                try {
-                    List<ErProcessor> sessionProcessors = sessionMainService.getSession(session.getId(),true,false,false).getProcessors();
-                    String ACTIVE = SessionStatus.ACTIVE.name();
-                    String NEW = SessionStatus.NEW.name();
-
-                    switch (session.getName()) {
-                        case "DeepSpeed":
-                            log.debug("watch deepspeed session: " + session.getId() + " " + session.getStatus());
-                            if (SessionStatus.ACTIVE.name().equals(session.getStatus())) {
-                                checkAndHandleDeepspeedActiveSession(new Context(),session, sessionProcessors);
-                            } else if (SessionStatus.NEW.name().equals(session.getStatus())) {
-                                checkAndHandleDeepspeedOutTimeSession(new Context(),session, sessionProcessors);
-                            }
-                            break;
-                        default:
-                            if (SessionStatus.ACTIVE.name().equals(session.getStatus())) {
-                                checkAndHandleEggpairActiveSession(session, sessionProcessors);
-                            } else if (SessionStatus.NEW.name().equals(session.getStatus())) {
-                                checkAndHandleEggpairOutTimeSession(session, sessionProcessors);
-                            }
-                            break;
-                    }
-                } catch (Throwable e) {
-                    log.error("session watcher handle session " + session.getId() + " error " + e.getMessage());
-                    e.printStackTrace();
-                }
-            }
-        } catch (Throwable e) {
-            log.error("session watcher handle error ", e);
-        }
-    }
-
-    @Schedule(cron="0/5 * * * * ?")
-    public void  checkNodeHeartbeat(){
-
-        long expire = MetaInfo.CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT *
-                MetaInfo.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL;
-        try {
-            long now = System.currentTimeMillis();
-            ErServerNode erServerNode = new ErServerNode();
-            erServerNode.setStatus(ServerNodeStatus.HEALTHY.name());
-            List<ErServerNode> nodes = serverNodeService.getListByErServerNode(erServerNode);
-
-            for (ErServerNode node : nodes) {
-                long interval = now - (node.getLastHeartBeat() != null ?
-                        node.getLastHeartBeat().getTime() : now);
-                if (interval > expire) {
-                    log.info("server node " + node + " change status to LOSS");
-                    node.setStatus(ServerNodeStatus.LOSS.name());
-                    updateNode(node, false, false);
-                }
-            }
-        } catch (Throwable e) {
-            log.error("handle node heart beat error: ", e);
-        }
-    }
-
     public ErNodeHeartbeat nodeHeartbeat(Context  context ,ErNodeHeartbeat nodeHeartbeat) {
         ErServerNode serverNode = nodeHeartbeat.getNode();
-
-        synchronized (serverNode.getId().toString().intern()) {
+        try{
+            LockUtils.lock(lockMap,serverNode.getId());
             if (serverNode.getId() == -1) {
                 ServerNode existNode = serverNodeService.getByEndPoint(serverNode.getEndpoint());
                 if (existNode == null) {
@@ -329,6 +188,8 @@ public class ClusterManagerService implements ApplicationStartedRunner {
             }
             nodeHeartbeatMap.put(serverNode.getId(), nodeHeartbeat);
             nodeHeartbeat.setNode(serverNode);
+        }finally {
+            LockUtils.unLock(lockMap,serverNode.getId());
         }
         return nodeHeartbeat;
     }
