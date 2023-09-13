@@ -12,6 +12,7 @@ import com.eggroll.core.exceptions.ErSessionException;
 import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.*;
 import com.eggroll.core.utils.JsonUtil;
+import com.google.gson.Gson;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.cluster.ClusterResourceManager;
@@ -396,10 +397,7 @@ public class JobServiceHandler {
 
 
     public PrepareJobDownloadResponse prepareJobDownload(Context context, PrepareJobDownloadRequest prepareRequest) {
-
         String sessionId = prepareRequest.getSessionId();
-        String contentType = prepareRequest.getContentType();
-        String compressMethod = prepareRequest.getCompressMethod();
         HashMap<Object, Object> contentMap = new HashMap<>();
         List<ErProcessor> processors = new ArrayList<>();
 
@@ -415,7 +413,6 @@ public class JobServiceHandler {
             Integer localRank = sessionRanks.getLocalRank();
             int index = CollectionUtils.isEmpty(ranksList) ? globalRank : ranksList.indexOf(globalRank);
             if (index >= 0) {
-                //  Some((nodeId, containerId, globalRank, localRank, index))
                 return Arrays.asList(new SessionRanksTemp(serverNodeId, containerId, globalRank, localRank, index)).stream();
             } else {
                 return null;
@@ -446,22 +443,34 @@ public class JobServiceHandler {
             }
         });
 
-
-        //     if(processors.length==0){
-        //      throw  new ErSessionException(s"can not find download rank info for session ${sessionId} ")
-        //    }
-        //    var  newSession = ClusterResourceManager.submitJodDownload(ResourceApplication(sessionId = "DS-DOWNLOAD-"+System.currentTimeMillis()+"-"+scala.util.Random.nextInt(100).toString,
-        //      processors=processors.toArray
-        //    ))
-        //    if(newSession.status!=SessionStatus.ACTIVE){
-        //      throw  new  ErSessionException("session status is "+newSession.status)
-        //    }
-
         if (CollectionUtils.isEmpty(processors)) {
-            throw  new ErSessionException("can not find download rank info for session " + sessionId);
+            throw new ErSessionException("can not find download rank info for session " + sessionId);
         }
 
-        return null;
+        String newSessionId = "DS-DOWNLOAD-" + System.currentTimeMillis() + "-" + new Random().nextInt(100);
+        ResourceApplication resourceApplication = new ResourceApplication();
+        resourceApplication.setSessionId(newSessionId);
+        resourceApplication.setProcessors(processors);
+
+        ErSessionMeta newErSessionMeta = clusterResourceManager.submitJodDownload(resourceApplication);
+
+        if (!SessionStatus.ACTIVE.name().equals(newErSessionMeta.getStatus())) {
+            throw new ErSessionException("session status is {}", newErSessionMeta.getStatus());
+        }
+
+        newErSessionMeta.getProcessors().forEach(p -> {
+            if (contentMap.containsKey(p.getServerNodeId())) {
+                contentMap.put(p.getTransferEndpoint().toString(), p.getServerNodeId());
+                contentMap.remove(p.getServerNodeId());
+            } else {
+                log.info("download cannot found node {}", p.getServerNodeId());
+            }
+        });
+
+        PrepareJobDownloadResponse response = new PrepareJobDownloadResponse();
+        response.setSessionId(newErSessionMeta.getId());
+        response.setContent(new Gson().toJson(contentMap));
+        return response;
     }
 
 

@@ -27,6 +27,17 @@ public class ErSessionMeta implements RpcMessage {
     private Date updateTime = null;
     private Map<String, String> options = new HashMap<>();
 
+    public ErSessionMeta() {
+
+    }
+
+    public ErSessionMeta(String id, String name, List<ErProcessor> processors, Integer totalProcCount, String status) {
+        this.id = id;
+        this.name = name;
+        this.processors = processors;
+        this.totalProcCount = totalProcCount;
+        this.status = status;
+    }
 
     public Meta.SessionMeta toProto() {
         Meta.SessionMeta.Builder builder = Meta.SessionMeta.newBuilder();
@@ -37,7 +48,7 @@ public class ErSessionMeta implements RpcMessage {
         }
         builder.setTag(this.tag);
         builder.addAllProcessors(this.processors.stream().map(ErProcessor::toProto).collect(Collectors.toList()));
-        if(options.size()>0)
+        if (options.size() > 0)
             builder.putAllOptions(this.options);
         return builder.build();
     }

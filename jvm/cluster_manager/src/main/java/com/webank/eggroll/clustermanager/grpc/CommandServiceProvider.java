@@ -161,13 +161,9 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
         return jobServiceHandler.handleJobDownload(context,request);
     }
 
-
-    //    CommandRouter.register_handler(serviceName = JobCommands.downloadJob.uriString,
-    //      args => JobServiceHandler.handleJobDownload(args(0))
-    //    )
-    //
-    //    CommandRouter.register_handler(serviceName = JobCommands.prepareJobDownload.uriString,
-    //      args => JobServiceHandler.prepareJobDownload(args(0))
-    //    )
+    @URI(value = prepareJobDownload)
+    public PrepareJobDownloadResponse prepareJobDownload(Context context ,PrepareJobDownloadRequest request) throws InterruptedException {
+        return jobServiceHandler.prepareJobDownload(context,request);
+    }
 
 }

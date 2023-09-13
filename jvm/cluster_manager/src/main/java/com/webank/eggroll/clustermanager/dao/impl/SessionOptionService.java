@@ -9,6 +9,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.mapper.SessionOptionMapper;
+import com.webank.eggroll.clustermanager.entity.SessionMain;
 import com.webank.eggroll.clustermanager.entity.SessionOption;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import org.apache.commons.lang3.StringUtils;
@@ -33,4 +34,10 @@ public class SessionOptionService extends EggRollBaseServiceImpl<SessionOptionMa
                 .eq(SessionOption::getSessionId, sessionId));
     }
 
+
+    public void removeBySessionId(String sessionId) {
+        QueryWrapper<SessionOption> removeWrapper = new QueryWrapper<>();
+        removeWrapper.lambda().eq(SessionOption::getSessionId,sessionId);
+        this.remove(removeWrapper);
+    }
 }

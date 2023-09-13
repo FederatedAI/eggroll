@@ -18,21 +18,22 @@ public abstract class AbstractStateMachine<T> {
 
     Logger logger = LoggerFactory.getLogger(AbstractStateMachine.class);
     public static final String IGNORE = "IGNORE";
-    ConcurrentHashMap<String,ReentrantLock>  lockMap = new ConcurrentHashMap<>();
-    ConcurrentHashMap<String,StateHandler<T>>  statueChangeHandlerMap = new ConcurrentHashMap<>();
-    ThreadPoolExecutor   asynThreadPool =   new ThreadPoolExecutor(5,5,1, TimeUnit.SECONDS,new LinkedBlockingDeque<>(10));
+    ConcurrentHashMap<String, ReentrantLock> lockMap = new ConcurrentHashMap<>();
+    ConcurrentHashMap<String, StateHandler<T>> statueChangeHandlerMap = new ConcurrentHashMap<>();
+    ThreadPoolExecutor asynThreadPool = new ThreadPoolExecutor(5, 5, 1, TimeUnit.SECONDS, new LinkedBlockingDeque<>(10));
 
-    public AbstractStateMachine(){
+    public AbstractStateMachine() {
 
     }
-    abstract String  buildStateChangeLine(Context context , T t, String preStateParam, String desStateParam);
 
-    protected  void registeStateHander(String  statusLine,StateHandler<T> handler){
+    abstract String buildStateChangeLine(Context context, T t, String preStateParam, String desStateParam);
 
-        if(statueChangeHandlerMap.containsKey(statusLine)){
-            throw  new RuntimeException("duplicate state handler "+statusLine);
+    protected void registeStateHander(String statusLine, StateHandler<T> handler) {
+
+        if (statueChangeHandlerMap.containsKey(statusLine)) {
+            throw new RuntimeException("duplicate state handler " + statusLine);
         }
-        statueChangeHandlerMap.put(statusLine,handler);
+        statueChangeHandlerMap.put(statusLine, handler);
 
 //        Method[]  methods =  this.getClass().getMethods();
 //        for (Method method : methods) {
@@ -50,35 +51,35 @@ public abstract class AbstractStateMachine<T> {
 
     }
 
-    abstract  public String  getLockKey(Context context,T t);
+    abstract public String getLockKey(Context context, T t);
     //abstract  protected T  doChangeStatus(Context context ,T t, String preStateParam, String desStateParam);
 //    abstract  public T prepare(T t);
 
-    public  T   changeStatus(Context context , T t, String preStateParam, String desStateParam){
-        return    changeStatus( context ,  t,  preStateParam,  desStateParam ,null);
+    public T changeStatus(Context context, T t, String preStateParam, String desStateParam) {
+        return changeStatus(context, t, preStateParam, desStateParam, null);
     }
 
 
-    public  T   changeStatus(Context context , T t, String preStateParam, String desStateParam ,Callback<T> callback){
-        String statusLine = buildStateChangeLine(context,t,preStateParam,desStateParam);
+    public T changeStatus(Context context, T t, String preStateParam, String desStateParam, Callback<T> callback) {
+        String statusLine = buildStateChangeLine(context, t, preStateParam, desStateParam);
 
-        StateHandler<T> handler =  statueChangeHandlerMap.get(statusLine);
-       // logger.info("========status line {} {}",statusLine,handler);
-        if(handler==null){
-           handler =  statueChangeHandlerMap.get(IGNORE);
+        StateHandler<T> handler = statueChangeHandlerMap.get(statusLine);
+        // logger.info("========status line {} {}",statusLine,handler);
+        if (handler == null) {
+            handler = statueChangeHandlerMap.get(IGNORE);
         }
-        if(handler==null){
-            logger.error("wrong status line {} ",statusLine);
-            throw  new RuntimeException("no status handler found for "+statusLine);
+        if (handler == null) {
+            logger.error("wrong status line {} ", statusLine);
+            throw new RuntimeException("no status handler found for " + statusLine);
         }
-       // logger.info("choose state handler {} to work",handler);
-        String  lockKey =  getLockKey(context,t);
-        try{
-            LockUtils.lock(lockMap,lockKey);
-            T result= handler.prepare(context,t,preStateParam,desStateParam);
-            if(!handler.isBreak(context)) {
-                result = transactionHandle(context,handler,result,preStateParam,desStateParam,callback);
-                if(!handler.isBreak(context)) {
+        // logger.info("choose state handler {} to work",handler);
+        String lockKey = getLockKey(context, t);
+        try {
+            LockUtils.lock(lockMap, lockKey);
+            T result = handler.prepare(context, t, preStateParam, desStateParam);
+            if (!handler.isBreak(context)) {
+                result = transactionHandle(context, handler, result, preStateParam, desStateParam, callback);
+                if (!handler.isBreak(context)) {
                     if (handler.needAsynPostHandle(context)) {
                         T finalResult = result;
                         StateHandler<T> finalHandler = handler;
@@ -89,16 +90,16 @@ public abstract class AbstractStateMachine<T> {
             return result;
         } catch (Exception e) {
             e.printStackTrace();
-           throw  new RuntimeException(e);
+            throw new RuntimeException(e);
         } finally {
-            LockUtils.unLock(lockMap,lockKey);
+            LockUtils.unLock(lockMap, lockKey);
         }
     }
 
     @Transactional
-    private  T  transactionHandle(Context  context,StateHandler<T> handler ,T result,String preStateParam,String desStateParam,Callback<T> callback){
+    private T transactionHandle(Context context, StateHandler<T> handler, T result, String preStateParam, String desStateParam, Callback<T> callback) {
         result = handler.handle(context, result, preStateParam, desStateParam);
-        if(callback!=null) {
+        if (callback != null) {
             callback.callback(context, result);
         }
         return result;

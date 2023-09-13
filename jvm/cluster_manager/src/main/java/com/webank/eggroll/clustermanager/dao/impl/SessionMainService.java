@@ -14,6 +14,8 @@ import com.webank.eggroll.clustermanager.entity.SessionMain;
 import com.webank.eggroll.clustermanager.entity.SessionOption;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import com.webank.eggroll.clustermanager.entity.SessionRanks;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.tuple.MutableTriple;
 import org.mybatis.guice.transactional.Transactional;
 import org.slf4j.Logger;
@@ -28,14 +30,14 @@ import java.util.stream.Collectors;
 
 
 @Singleton
-public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper, SessionMain>{
+public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper, SessionMain> {
     Logger logger = LoggerFactory.getLogger(SessionMainService.class);
 
     @Inject
-    SessionOptionService  sessionOptionService;
+    SessionOptionService sessionOptionService;
 
     @Inject
-    ProcessorService   processorService;
+    ProcessorService processorService;
 
     @Inject
     SessionProcessorService sessionProcessorService;
@@ -43,23 +45,23 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
     @Inject
     SessionRanksService sessionRanksService;
 
-    public boolean  updateSessionMainActiveCount(String sessionId){
-        List<ErProcessor> processors =  processorService.getProcessorBySession(sessionId,false);
-        logger.info("=============  {}",processors);
-        long  activeCount =0;
-        for(int i=0;i<processors.size();i++){
+    public boolean updateSessionMainActiveCount(String sessionId) {
+        List<ErProcessor> processors = processorService.getProcessorBySession(sessionId, false);
+        logger.info("=============  {}", processors);
+        long activeCount = 0;
+        for (int i = 0; i < processors.size(); i++) {
             ErProcessor p = processors.get(i);
-            if(p.getStatus().equals(ProcessorStatus.RUNNING.name())){
-                activeCount=activeCount+1;
+            if (p.getStatus().equals(ProcessorStatus.RUNNING.name())) {
+                activeCount = activeCount + 1;
             }
         }
-        logger.info("total {} active {}",processors.size(),activeCount);
+        logger.info("total {} active {}", processors.size(), activeCount);
         UpdateWrapper<SessionMain> updateWrapper = new UpdateWrapper<>();
         updateWrapper.lambda()
-                .set(SessionMain::getActiveProcCount,activeCount)
-                .eq(SessionMain::getSessionId,sessionId);
+                .set(SessionMain::getActiveProcCount, activeCount)
+                .eq(SessionMain::getSessionId, sessionId);
         this.update(updateWrapper);
-        return processors.size()!=0&&processors.size()==activeCount;
+        return processors.size() != 0 && processors.size() == activeCount;
     }
 
 
@@ -82,15 +84,15 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
         return session;
     }
 
-    public ErSessionMeta getSession(String sessionId,boolean  withProcessor,boolean withOption,boolean  withResource){
-        ErSessionMeta  erSessionMeta = null;
-        SessionMain  sessionMain = this.getById(sessionId);
-        if(sessionMain!=null) {
+    public ErSessionMeta getSession(String sessionId, boolean withProcessor, boolean withOption, boolean withResource) {
+        ErSessionMeta erSessionMeta = null;
+        SessionMain sessionMain = this.getById(sessionId);
+        if (sessionMain != null) {
             erSessionMeta = sessionMain.toErSessionMeta();
-            if(withProcessor) {
-                erSessionMeta.setProcessors(processorService.getProcessorBySession(sessionId,withResource));
+            if (withProcessor) {
+                erSessionMeta.setProcessors(processorService.getProcessorBySession(sessionId, withResource));
             }
-            if(withOption) {
+            if (withOption) {
                 List<SessionOption> result = sessionOptionService.getSessionOptions(sessionId);
                 Map<String, String> optionMap = Maps.newHashMap();
                 result.forEach(sessionOption -> {
@@ -99,12 +101,12 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
                 erSessionMeta.setOptions(optionMap);
             }
         }
-        return  erSessionMeta;
+        return erSessionMeta;
     }
 
-    public ErSessionMeta getSessionMain(String sessionId){
+    public ErSessionMeta getSessionMain(String sessionId) {
         SessionMain sessionMain = this.getById(sessionId);
-        if(sessionMain!=null)
+        if (sessionMain != null)
             return sessionMain.toErSessionMeta();
         else
             return null;
@@ -113,20 +115,20 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
     @Transactional
     public void updateSessionMain(ErSessionMeta sessionMeta, Consumer<ErSessionMeta> afterCall) {
         UpdateWrapper<SessionMain> updateWrapper = new UpdateWrapper<>();
-        updateWrapper.lambda().set(SessionMain::getName,sessionMeta.getName())
-                .set(SessionMain::getStatus,sessionMeta.getStatus())
-                .set(SessionMain::getTag,sessionMeta.getTag())
-                .set(SessionMain::getActiveProcCount,sessionMeta.getActiveProcCount())
-                .eq(SessionMain::getSessionId,sessionMeta.getId());
+        updateWrapper.lambda().set(SessionMain::getName, sessionMeta.getName())
+                .set(SessionMain::getStatus, sessionMeta.getStatus())
+                .set(SessionMain::getTag, sessionMeta.getTag())
+                .set(SessionMain::getActiveProcCount, sessionMeta.getActiveProcCount())
+                .eq(SessionMain::getSessionId, sessionMeta.getId());
         this.update(updateWrapper);
-        if(afterCall!=null){
+        if (afterCall != null) {
             afterCall.accept(sessionMeta);
         }
     }
 
-    public List<ErSessionMeta> getSessionMainsByStatus(List<String> status){
+    public List<ErSessionMeta> getSessionMainsByStatus(List<String> status) {
         QueryWrapper<SessionMain> queryWrapper = new QueryWrapper<>();
-        queryWrapper.lambda().in(SessionMain::getStatus,status);
+        queryWrapper.lambda().in(SessionMain::getStatus, status);
         List<SessionMain> essionMainList = this.list(queryWrapper);
         List<ErSessionMeta> result = new ArrayList<>();
         for (SessionMain sessionMain : essionMainList) {
@@ -135,8 +137,44 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
         return result;
     }
 
+
     @Transactional
-    public void registerRanks(List<MutableTriple<Long, ErServerNode, DeepspeedContainerConfig>> configs, String sesssionId){
+    public void register(ErSessionMeta sessionMeta, Boolean replace) {
+        String sessionId = sessionMeta.getId();
+        Map<String, String> options = sessionMeta.getOptions();
+        List<ErProcessor> processors = sessionMeta.getProcessors();
+
+        if (replace) {
+            this.removeById(sessionId);
+            sessionOptionService.removeBySessionId(sessionId);
+            sessionProcessorService.removeBySessionId(sessionId);
+        }
+
+        SessionMain sessionMain = new SessionMain(sessionId, sessionMeta.getName(), sessionMeta.getStatus(),
+                sessionMeta.getTag(), sessionMeta.getTotalProcCount());
+
+        this.save(sessionMain);
+
+        if (MapUtils.isNotEmpty(options)) {
+            List<SessionOption> optionList = new ArrayList<>();
+            options.entrySet().forEach(entry -> {
+                optionList.add(new SessionOption(sessionId,entry.getKey(),entry.getValue()));
+            });
+            sessionOptionService.saveBatch(optionList);
+        }
+
+        if (CollectionUtils.isNotEmpty(processors)) {
+            List<SessionProcessor> processorList = new ArrayList<>();
+            processors.forEach(erProcessor -> {
+                processorList.add(new SessionProcessor(sessionId,erProcessor.getServerNodeId().intValue(),erProcessor.getProcessorType(),
+                        erProcessor.getStatus(),erProcessor.getTag(),erProcessor.getCommandEndpoint().toString(),erProcessor.getTransferEndpoint().toString()));
+            });
+            sessionProcessorService.saveBatch(processorList);
+        }
+    }
+
+    @Transactional
+    public void registerRanks(List<MutableTriple<Long, ErServerNode, DeepspeedContainerConfig>> configs, String sesssionId) {
         for (MutableTriple<Long, ErServerNode, DeepspeedContainerConfig> config : configs) {
             SessionRanks sessionRanks = new SessionRanks();
             sessionRanks.setSessionId(sesssionId);
