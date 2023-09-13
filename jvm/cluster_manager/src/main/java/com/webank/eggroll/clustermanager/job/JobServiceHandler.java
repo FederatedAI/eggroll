@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.constant.ProcessorStatus;
+import com.eggroll.core.constant.ProcessorType;
 import com.eggroll.core.constant.ResourceStatus;
 import com.eggroll.core.constant.SessionStatus;
 import com.eggroll.core.context.Context;
@@ -17,6 +18,7 @@ import com.webank.eggroll.clustermanager.cluster.ClusterResourceManager;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionRanksService;
+import com.webank.eggroll.clustermanager.entity.ServerNode;
 import com.webank.eggroll.clustermanager.entity.SessionMain;
 
 import com.webank.eggroll.clustermanager.entity.SessionRanks;
@@ -328,7 +330,7 @@ public class JobServiceHandler {
     }
 
 
-    public DownloadJobResponse handleJobDownload(Context context,DownloadJobRequest downloadJobRequest) {
+    public DownloadJobResponse handleJobDownload(Context context, DownloadJobRequest downloadJobRequest) {
 
         String sessionId = downloadJobRequest.getSessionId();
         Containers.ContentType contentType = downloadJobRequest.getContentType();
@@ -393,6 +395,74 @@ public class JobServiceHandler {
     }
 
 
+    public PrepareJobDownloadResponse prepareJobDownload(Context context, PrepareJobDownloadRequest prepareRequest) {
+
+        String sessionId = prepareRequest.getSessionId();
+        String contentType = prepareRequest.getContentType();
+        String compressMethod = prepareRequest.getCompressMethod();
+        HashMap<Object, Object> contentMap = new HashMap<>();
+        List<ErProcessor> processors = new ArrayList<>();
+
+        SessionRanks sessionRank = new SessionRanks();
+        sessionRank.setSessionId(sessionId);
+        List<SessionRanks> sessionRanksList = sessionRanksService.list(sessionRank);
+        List<Integer> ranksList = prepareRequest.getRanks();
+
+        Map<Long, List<SessionRanksTemp>> nodeIdMeta = sessionRanksList.stream().flatMap(sessionRanks -> {
+            Long containerId = sessionRanks.getContainerId();
+            Long serverNodeId = sessionRanks.getServerNodeId();
+            Integer globalRank = sessionRanks.getGlobalRank();
+            Integer localRank = sessionRanks.getLocalRank();
+            int index = CollectionUtils.isEmpty(ranksList) ? globalRank : ranksList.indexOf(globalRank);
+            if (index >= 0) {
+                //  Some((nodeId, containerId, globalRank, localRank, index))
+                return Arrays.asList(new SessionRanksTemp(serverNodeId, containerId, globalRank, localRank, index)).stream();
+            } else {
+                return null;
+            }
+        }).collect(Collectors.groupingBy(SessionRanksTemp::getServerNodeId));
+
+        nodeIdMeta.entrySet().forEach(t -> {
+            Long serverNodeId = t.getKey();
+            List<SessionRanksTemp> sessionRanks = t.getValue();
+            HashMap<String, String> options = new HashMap<>();
+            ServerNode serverNodeQuery = new ServerNode();
+            serverNodeQuery.setServerNodeId(serverNodeId);
+
+            ServerNode serverNodeInDb = serverNodeService.get(serverNodeQuery);
+            if (null != serverNodeInDb) {
+                options.put(Dict.IP, serverNodeInDb.getHost());
+                options.put(Dict.PORT, serverNodeInDb.getPort().toString());
+
+                contentMap.put(serverNodeInDb.getServerNodeId().toString(), sessionRanks);
+                ErProcessor erProcessor = new ErProcessor();
+                erProcessor.setSessionId(sessionId);
+                erProcessor.setServerNodeId(serverNodeId);
+                erProcessor.setProcessorType(ProcessorType.egg_pair.name());
+                erProcessor.setName(Dict.DS_DOWNLOAD);
+                erProcessor.setStatus(ProcessorStatus.NEW.name());
+                erProcessor.setOptions(options);
+                processors.add(erProcessor);
+            }
+        });
+
+
+        //     if(processors.length==0){
+        //      throw  new ErSessionException(s"can not find download rank info for session ${sessionId} ")
+        //    }
+        //    var  newSession = ClusterResourceManager.submitJodDownload(ResourceApplication(sessionId = "DS-DOWNLOAD-"+System.currentTimeMillis()+"-"+scala.util.Random.nextInt(100).toString,
+        //      processors=processors.toArray
+        //    ))
+        //    if(newSession.status!=SessionStatus.ACTIVE){
+        //      throw  new  ErSessionException("session status is "+newSession.status)
+        //    }
+
+        if (CollectionUtils.isEmpty(processors)) {
+            throw  new ErSessionException("can not find download rank info for session " + sessionId);
+        }
+
+        return null;
+    }
 
 
 }

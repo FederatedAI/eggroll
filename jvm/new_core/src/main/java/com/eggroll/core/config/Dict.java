@@ -134,6 +134,9 @@ public class Dict {
     public static final String MODELS = "models";
     public static final String LOGS = "logs";
     public static final String ZIP = "zip";
+    public static final String IP = "ip";
+    public static final String PORT = "port";
+    public static final String DS_DOWNLOAD = "DS-DOWNLOAD";
 
 
     public static final  String SCHEDULE_KEY = "schedule_key";
