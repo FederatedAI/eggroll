@@ -1,8 +1,10 @@
 package com.webank.eggroll.clustermanager.dao.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.eggroll.core.pojo.ErSessionMeta;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.mapper.SessionProcessorMapper;
+import com.webank.eggroll.clustermanager.entity.SessionOption;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import com.eggroll.core.pojo.ErEndpoint;
 import com.eggroll.core.pojo.ErProcessor;
@@ -46,5 +48,34 @@ public class SessionProcessorService extends EggRollBaseServiceImpl<SessionProce
             erProcessors.add(rs.toErProcessor());
         }
         return erProcessors;
+    }
+
+    public boolean removeBySessionId(String sessionId) {
+        QueryWrapper<SessionProcessor> removeWrapper = new QueryWrapper<>();
+        removeWrapper.lambda().eq(SessionProcessor::getSessionId, sessionId);
+        return this.remove(removeWrapper);
+    }
+
+    public boolean batchUpdateBySessionId(ErSessionMeta erSessionMeta, String sessionId) {
+        if (!StringUtils.isNotBlank(sessionId)) {
+            return true;
+        }
+
+        QueryWrapper<SessionProcessor> queryWrapper = new QueryWrapper<>();
+        queryWrapper.lambda().eq(SessionProcessor::getSessionId, sessionId);
+
+        List<SessionProcessor> processorList = this.list(queryWrapper);
+        String status = erSessionMeta.getStatus();
+        String tag = erSessionMeta.getTag();
+        processorList.forEach(processor -> {
+            if (StringUtils.isNotBlank(status)) {
+                processor.setStatus(status);
+            }
+            if (StringUtils.isNotBlank(tag)) {
+                processor.setTag(tag);
+            }
+            this.updateById(processor);
+        });
+        return true;
     }
 }

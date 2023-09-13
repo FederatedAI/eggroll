@@ -58,6 +58,18 @@ public class SessionProcessor {
         this.updatedAt = erProcessor.getUpdatedAt();
     }
 
+
+    public SessionProcessor(String sessionId, Integer serverNodeId, String processorType, String status, String tag, String commandEndpoint, String transferEndpoint) {
+        this.sessionId = sessionId;
+        this.serverNodeId = serverNodeId;
+        this.processorType = processorType;
+        this.status = status;
+        this.tag = tag;
+        this.commandEndpoint = commandEndpoint;
+        this.transferEndpoint = transferEndpoint;
+        this.processorOption = processorOption;
+    }
+
     public SessionProcessor(Long processorId, String sessionId, Integer serverNodeId, String processorType, String status, String tag, String commandEndpoint, String transferEndpoint, String processorOption, Integer pid, Date createdAt, Date updatedAt) {
         this.processorId = processorId;
         this.sessionId = sessionId;

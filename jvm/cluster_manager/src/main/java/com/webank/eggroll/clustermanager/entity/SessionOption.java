@@ -20,6 +20,12 @@ public class SessionOption {
 
     private Date updatedAt;
 
+    public SessionOption(String sessionId, String name, String data) {
+        this.sessionId = sessionId;
+        this.name = name;
+        this.data = data;
+    }
+
     public SessionOption(Long sessionOptionId, String sessionId, String name, String data, Date createdAt, Date updatedAt) {
         this.sessionOptionId = sessionOptionId;
         this.sessionId = sessionId;

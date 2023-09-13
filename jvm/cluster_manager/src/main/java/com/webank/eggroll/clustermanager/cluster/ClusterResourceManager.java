@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.constant.*;
+import com.eggroll.core.context.Context;
+import com.eggroll.core.exceptions.ErSessionException;
+import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.*;
 import com.eggroll.core.postprocessor.ApplicationStartedRunner;
 import com.eggroll.core.utils.JsonUtil;
@@ -11,19 +14,20 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import com.webank.eggroll.clustermanager.dao.impl.NodeResourceService;
-import com.webank.eggroll.clustermanager.dao.impl.ProcessorResourceService;
-import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
-import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
+import com.webank.eggroll.clustermanager.dao.impl.*;
 import com.webank.eggroll.clustermanager.entity.ProcessorResource;
 import com.webank.eggroll.clustermanager.schedule.ClusterManagerTask;
 import com.webank.eggroll.clustermanager.schedule.Schedule;
 
+import com.webank.eggroll.clustermanager.session.SessionManager;
 import lombok.Data;
+import org.apache.commons.beanutils.BeanUtils;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -44,11 +48,15 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
     @Inject
     SessionMainService sessionMainService;
     @Inject
+    SessionProcessorService sessionProcessorService;
+    @Inject
     ServerNodeService serverNodeService;
     @Inject
     NodeResourceService nodeResourceService;
     @Inject
     ProcessorResourceService processorResourceService;
+    @Inject
+    SessionManager sessionManager;
 
 
     BlockingQueue<Long> nodeResourceUpdateQueue = new ArrayBlockingQueue(100);
@@ -356,9 +364,9 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
     public ResourceApplication remainMostFirstDispatch(List<ErServerNode> serverNodes, ResourceApplication resourceApplication) {
         List<ErProcessor> requiredProcessors = resourceApplication.getProcessors();
         List<ErServerNode> sortedNodes = serverNodes.stream().sorted(Comparator.comparingLong(node -> getFirstUnAllocatedResource(node, resourceApplication))).collect(Collectors.toList());
-        List<MutablePair<ErServerNode,ErResource>> nodeResourceTupes = new ArrayList<>();
+        List<MutablePair<ErServerNode, ErResource>> nodeResourceTupes = new ArrayList<>();
         for (ErServerNode sortedNode : sortedNodes) {
-            nodeResourceTupes.add(new MutablePair<>(sortedNode,sortedNode.getResources().get(0)));
+            nodeResourceTupes.add(new MutablePair<>(sortedNode, sortedNode.getResources().get(0)));
         }
         Map<ErServerNode, Long> sortMap = new HashMap<>();
         for (ErServerNode node : sortedNodes) {
@@ -514,17 +522,88 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
         applicationQueue.getBroker().put(resourceRequest);
     }
 
-//    private ResourceApplication singleNodeFirstDispatch(List<ErServerNode> serverNodes, ResourceApplication resourceApplication) {
-//        List<ErProcessor> requiredProcessors = resourceApplication.getProcessors();
-//        List<ErServerNode> nodeList = serverNodes.stream().sorted(Comparator.comparingLong(node -> getFirstUnAllocatedResource(node, resourceApplication))).collect(Collectors.toList());
-//        Map<ErServerNode, Long> sortMap = new HashMap<>();
-//        for (ErServerNode node : nodeList) {
-//            sortMap.put(node, getFirstUnAllocatedResource(node, resourceApplication));
-//        }
-//
-//        Map<ErServerNode, List<ErProcessor>> nodeToProcessors = new HashMap<>();
-//        return resourceApplication;
-//    }
+    public ErSessionMeta submitJodDownload(ResourceApplication resourceApplication) {
+        String sessionId = resourceApplication.getSessionId();
+        List<ErProcessor> processors = resourceApplication.getProcessors();
+        Integer totalProcCount = CollectionUtils.isEmpty(processors) ? 0 : processors.size();
+
+        try {
+            lockSession(sessionId);
+            try {
+                ErSessionMeta session = sessionMainService.getSessionMain(sessionId);
+                if (null == session) {
+                    ErSessionMeta registerInfo = new ErSessionMeta(sessionId, resourceApplication.getSessionName(), processors, totalProcCount, SessionStatus.NEW.name());
+                    sessionMainService.register(registerInfo, true);
+                }
+                log.info("register session over");
+            } catch (Exception e) {
+                throw new ErSessionException("session is already created");
+            }
+
+            ErSessionMeta erSessionInDb = sessionMainService.getSession(sessionId);
+
+            processors.forEach(processor -> {
+                ErSessionMeta erSessionMeta = new ErSessionMeta();
+                Map<String, String> newOptions = new HashMap<>(processor.getOptions());
+                try {
+                    BeanUtils.copyProperties(erSessionMeta, erSessionInDb);
+                    erSessionMeta.setOptions(newOptions);
+                    String host = processor.getOptions().get(Dict.IP);
+                    Integer port = Integer.valueOf(processor.getOptions().get(Dict.PORT));
+                    ErEndpoint nodeManagerEndpoint = new ErEndpoint(host, port);
+                    NodeManagerClient nodeManagerClient = new NodeManagerClient(nodeManagerEndpoint);
+                    nodeManagerClient.startContainers(new Context(), erSessionMeta);
+                } catch (Exception e) {
+                    log.error("start container error {}", e.getMessage());
+                    e.printStackTrace();
+                    return;
+                }
+            });
+
+            long startTimeout = System.currentTimeMillis() + MetaInfo.EGGROLL_SESSION_START_TIMEOUT_MS;
+            boolean isStarted = false;
+
+            while (System.currentTimeMillis() <= startTimeout) {
+                ErSessionMeta lastSession = sessionMainService.getSession(sessionId);
+                if (lastSession.getActiveProcCount() < resourceApplication.getProcessors().size()) {
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                } else {
+                    isStarted = true;
+                    break;
+                }
+            }
+
+            if (!isStarted) {
+                sessionManager.killSession(new Context(), erSessionInDb, SessionStatus.ERROR.name());
+                throw new ErSessionException("create download session failed");
+            }
+
+            ErSessionMeta erSessionMetaUpdate = new ErSessionMeta();
+            try {
+                BeanUtils.copyProperties(erSessionMetaUpdate, erSessionInDb);
+                erSessionMetaUpdate.setStatus(SessionStatus.ACTIVE.name());
+                erSessionMetaUpdate.setActiveProcCount(totalProcCount);
+            } catch (InvocationTargetException | IllegalAccessException e) {
+                throw new ErSessionException("session copyProperties  failed");
+            }
+
+            sessionMainService.updateSessionMain(erSessionMetaUpdate, sessionMeta -> {
+                if (SessionStatus.KILLED.name().equals(sessionMeta.getStatus())) {
+                    sessionProcessorService.batchUpdateBySessionId(sessionMeta, sessionId);
+                }
+            });
+            return sessionMainService.getSession(sessionId);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            unlockSession(sessionId);
+        }
+        return null;
+    }
 
 
     public void lockSession(String sessionId) {

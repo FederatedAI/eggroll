@@ -29,6 +29,14 @@ public class SessionMain {
 
     private Date updatedAt;
 
+    public SessionMain(String sessionId, String name, String status, String tag, Integer totalProcCount) {
+        this.sessionId = sessionId;
+        this.name = name;
+        this.status = status;
+        this.tag = tag;
+        this.totalProcCount = totalProcCount;
+    }
+
     public SessionMain(String sessionId, String name, String status, String tag, Integer totalProcCount, Integer activeProcCount, Date createdAt, Date updatedAt) {
         this.sessionId = sessionId;
         this.name = name;
