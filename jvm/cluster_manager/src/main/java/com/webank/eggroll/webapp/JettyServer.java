@@ -3,14 +3,13 @@ package com.webank.eggroll.webapp;
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.utils.CommandArgsUtils;
 import com.eggroll.core.utils.PropertiesUtil;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 import com.google.inject.servlet.GuiceFilter;
-//import com.webank.eggroll.webapplication.dao.ProcessorResourceDao;
+import com.google.inject.servlet.GuiceServletContextListener;
 import com.webank.eggroll.webapp.model.MyServletModule;
 import org.apache.commons.cli.CommandLine;
 import org.eclipse.jetty.server.Server;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.google.inject.servlet.GuiceServletContextListener;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 
@@ -25,9 +24,7 @@ public class JettyServer {
         //MetaInfo init
         System.setProperty("module", "cluster-manager");
         CommandLine cm = CommandArgsUtils.parseArgs(args);
-//this.sessionId= cmd.getOptionValue('s')
-        String confPath = cm. getOptionValue('c', "./conf/eggroll.properties");
-//        Logger.info("load config file (}", confPath);
+        String confPath = cm.getOptionValue('c', "./conf/eggroll.properties");
         File file = new File(confPath);
         String absolutePath = file.getAbsolutePath();
         MetaInfo.STATIC_CONF_PATH = absolutePath;
