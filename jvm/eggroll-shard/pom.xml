@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.webank.eggroll</groupId>
         <artifactId>eggroll-all</artifactId>
-        <version>2.5.2</version>
+        <version>3.0.0-beta</version>
     </parent>
 
     <artifactId>eggroll-shard</artifactId>
