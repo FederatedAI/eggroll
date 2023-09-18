@@ -10,9 +10,13 @@ import com.eggroll.core.containers.meta.KillContainersResponse;
 import com.eggroll.core.containers.meta.StartContainersResponse;
 import com.eggroll.core.containers.meta.StopContainersResponse;
 import com.eggroll.core.context.Context;
+import com.eggroll.core.exceptions.PathNotExistException;
 import com.eggroll.core.pojo.*;
 import com.google.inject.Singleton;
 import com.webank.eggroll.core.meta.Containers;
+import com.webank.eggroll.core.transfer.Extend;
+import com.webank.eggroll.nodemanager.extend.LogStreamHolder;
+import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -235,6 +239,30 @@ public class ContainersServiceHandler {
 
     private Path getContainerLogsDir(String sessionId, long rank) {
         return getContainerWorkspace(sessionId, rank).resolve(Dict.LOGS);
+    }
+
+
+    public static LogStreamHolder createLogStream(Extend.GetLogRequest request, StreamObserver<Extend.GetLogResponse> responseObserver) throws PathNotExistException {
+        String sessionId = request.getSessionId();
+        long line = request.getStartLine() > 0 ? request.getStartLine() : 0;
+        int rank = Integer.valueOf(request.getRank());
+
+        // 获取日志文件路径
+        Path path = getContainerLogsDir(sessionId, rank);
+        path = path.resolve(request.getLogType() != null ? request.getLogType() : "INFO").resolve("log");
+
+        if (!path.toFile().exists()) {
+            throw new PathNotExistException("Can not find file " + path);
+        }
+
+        String command = "tail -F -n " + line + " " + path.toString();
+        return new LogStreamHolder(System.currentTimeMillis(), command, responseObserver, "running");
+    }
+
+    private static Path getContainerLogsDir(String sessionId, int rank) {
+        // TODO: 根据 sessionId 和 rank 获取日志文件所在目录的逻辑
+        // 返回对应的日志文件路径（Path 类型）
+        return Paths.get("");
     }
 
 }

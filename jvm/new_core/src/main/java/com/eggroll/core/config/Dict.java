@@ -2,6 +2,12 @@ package com.eggroll.core.config;
 
 public class Dict {
 
+
+    public static final String SERDES_TYPE_PICKLE = "PICKLE";
+    public static final String SERDES_TYPE_PROTOBUF = "PROTOBUF";
+    public static final String SERDES_TYPE_CLOUD_EMPTY = "EMPTY";
+
+
     public static final String KEY_SERVER_NODE_ID= "serverNodeId";
     public static final String KEY_CLUSTER_ID= "clusterId";
     public static final String KEY_UPDATE_TIME= "updateTime";

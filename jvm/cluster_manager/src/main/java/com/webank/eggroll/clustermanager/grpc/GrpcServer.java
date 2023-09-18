@@ -10,6 +10,7 @@ import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.webank.eggroll.clustermanager.extend.ClusterExtendTransferService;
 import io.grpc.BindableService;
 import io.grpc.Server;
 import io.grpc.ServerInterceptors;
@@ -43,6 +44,10 @@ public class GrpcServer implements ApplicationStartedRunner {
 
     @Inject
     CommandServiceProvider  commandServiceProvider;
+
+
+    @Inject
+    ClusterExtendTransferService clusterExtendTransferService;
 
     public Server createServer(String host,
                         int port,
@@ -142,7 +147,7 @@ public class GrpcServer implements ApplicationStartedRunner {
     @Override
     public void run(String[] args) throws Exception{
 
-        Server  server =  createServer("0.0.0.0",MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT, Lists.newArrayList(commandServiceProvider),Lists.newArrayList(), Maps.newHashMap());
+        Server  server =  createServer("0.0.0.0",MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT, Lists.newArrayList(commandServiceProvider,clusterExtendTransferService),Lists.newArrayList(), Maps.newHashMap());
         server.start();
     }
 }
