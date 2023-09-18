@@ -11,6 +11,7 @@ import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.webank.eggroll.nodemanager.extend.NodeExtendTransferService;
 import io.grpc.BindableService;
 import io.grpc.Server;
 import io.grpc.ServerInterceptors;
@@ -38,8 +39,11 @@ public class GrpcServer implements ApplicationStartedRunner {
     @Inject
     CommandServiceProvider commandServiceProvider;
 
+    @Inject
+    NodeExtendTransferService nodeExtendTransferService;
+
     public void start() throws Exception {
-        Server server = createServer("0.0.0.0", MetaInfo.CONFKEY_NODE_MANAGER_PORT, Lists.newArrayList(commandServiceProvider), Lists.newArrayList(), Maps.newHashMap());
+        Server server = createServer("0.0.0.0", MetaInfo.CONFKEY_NODE_MANAGER_PORT, Lists.newArrayList(commandServiceProvider,nodeExtendTransferService), Lists.newArrayList(), Maps.newHashMap());
         server.start();
     }
 
