@@ -1,5 +1,6 @@
 package com.webank.eggroll.nodemanager.grpc;
 
+import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.containers.meta.KillContainersResponse;
 import com.eggroll.core.containers.meta.StartContainersResponse;
 import com.eggroll.core.containers.meta.StopContainersResponse;
@@ -9,6 +10,7 @@ import com.eggroll.core.grpc.Dispatcher;
 import com.eggroll.core.invoke.InvokeInfo;
 import com.eggroll.core.pojo.*;
 import com.eggroll.core.grpc.URI;
+import com.eggroll.core.utils.NetUtils;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.protobuf.ByteString;
@@ -60,6 +62,9 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
 
     @URI(value = eggpairHeartbeat)
     public ErProcessor heartbeat(Context context,ErProcessor processor) {
+        String nodeHost = MetaInfo.CONFKEY_NODE_MANAGER_HOST == null ? NetUtils.getLocalHost() : MetaInfo.CONFKEY_NODE_MANAGER_HOST;
+        processor.getCommandEndpoint().setHost(nodeHost);
+        processor.getTransferEndpoint().setHost(nodeHost);
         return defaultProcessorManager.heartbeat(context, processor);
     }
 
