@@ -6,9 +6,8 @@ import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErProcessor;
 import com.google.inject.Inject;
-import com.webank.eggroll.clustermanager.dao.impl.ProcessorService;
+import com.webank.eggroll.clustermanager.dao.impl.SessionProcessorService;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,7 +20,7 @@ public abstract class  AbstractProcessorStateHandler  implements   StateHandler<
     ResourceStateMechine  resourceStateMechine;
 
     @Inject
-    ProcessorService processorService;
+    SessionProcessorService sessionProcessorService;
 
 
     @Override
@@ -29,7 +28,7 @@ public abstract class  AbstractProcessorStateHandler  implements   StateHandler<
         if( context.getData(Dict.PROCESSOR_IN_DB)!=null){
             return (ErProcessor) context.getData(Dict.PROCESSOR_IN_DB);
         }else{
-            SessionProcessor  sessionProcessor = this.processorService.getById(data.getId());
+            SessionProcessor  sessionProcessor = sessionProcessorService.getById(data.getId());
             if(sessionProcessor!=null){
                 return sessionProcessor.toErProcessor();
             }else
@@ -64,7 +63,7 @@ public abstract class  AbstractProcessorStateHandler  implements   StateHandler<
 
         }
 
-        processorService.update(lambdaUpdateWrapper);
+        sessionProcessorService.update(lambdaUpdateWrapper);
     }
 
 
