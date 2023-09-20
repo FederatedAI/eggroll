@@ -1,9 +1,13 @@
 package com.webank.eggroll.clustermanager.dao.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.eggroll.core.pojo.ErResource;
 import com.eggroll.core.pojo.ErSessionMeta;
+import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.mapper.SessionProcessorMapper;
+import com.webank.eggroll.clustermanager.entity.ProcessorResource;
 import com.webank.eggroll.clustermanager.entity.SessionOption;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import com.eggroll.core.pojo.ErEndpoint;
@@ -14,10 +18,14 @@ import org.apache.commons.lang3.StringUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 
 @Singleton
 public class SessionProcessorService extends EggRollBaseServiceImpl<SessionProcessorMapper, SessionProcessor> {
+
+    @Inject
+    ProcessorResourceService processorResourceService;
 
     public List<ErProcessor> doQueryProcessor(ErProcessor erProcessor) {
         return doQueryProcessor(erProcessor, null);
@@ -77,5 +85,23 @@ public class SessionProcessorService extends EggRollBaseServiceImpl<SessionProce
             this.updateById(processor);
         });
         return true;
+    }
+
+    public List<ErProcessor> getProcessorBySession(String sessionId, boolean withResource) {
+        processorResourceService.list();
+        List<ErProcessor> processors = this.list(new LambdaQueryWrapper<SessionProcessor>().eq(SessionProcessor::getSessionId, sessionId))
+                .stream().map((x) -> {
+                    return x.toErProcessor();
+                }).collect(Collectors.toList());
+        if (withResource) {
+            processors.forEach(erProcessor -> {
+                List<ProcessorResource> resourceList = processorResourceService.list(new LambdaQueryWrapper<ProcessorResource>().eq(ProcessorResource::getProcessorId, erProcessor.getId()));
+                List<ErResource> changedList = resourceList.stream().map(processorResource -> {
+                    return processorResource.toErResource();
+                }).collect(Collectors.toList());
+                erProcessor.setResources(changedList);
+            });
+        }
+        return processors;
     }
 }
