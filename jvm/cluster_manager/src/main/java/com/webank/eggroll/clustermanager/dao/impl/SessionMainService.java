@@ -37,16 +37,13 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
     SessionOptionService sessionOptionService;
 
     @Inject
-    ProcessorService processorService;
-
-    @Inject
     SessionProcessorService sessionProcessorService;
 
     @Inject
     SessionRanksService sessionRanksService;
 
     public boolean updateSessionMainActiveCount(String sessionId) {
-        List<ErProcessor> processors = processorService.getProcessorBySession(sessionId, false);
+        List<ErProcessor> processors = sessionProcessorService.getProcessorBySession(sessionId, false);
         logger.info("=============  {}", processors);
         long activeCount = 0;
         for (int i = 0; i < processors.size(); i++) {
@@ -79,8 +76,10 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
             procs.add(processor.toErProcessor());
         }
         ErSessionMeta session = this.getSessionMain(sessionId);
-        session.setOptions(opts);
-        session.setProcessors(procs);
+        if(session !=null){
+            session.setOptions(opts);
+            session.setProcessors(procs);
+        }
         return session;
     }
 
@@ -90,7 +89,7 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
         if (sessionMain != null) {
             erSessionMeta = sessionMain.toErSessionMeta();
             if (withProcessor) {
-                erSessionMeta.setProcessors(processorService.getProcessorBySession(sessionId, withResource));
+                erSessionMeta.setProcessors(sessionProcessorService.getProcessorBySession(sessionId, withResource));
             }
             if (withOption) {
                 List<SessionOption> result = sessionOptionService.getSessionOptions(sessionId);

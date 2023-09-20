@@ -17,12 +17,11 @@ public class MyServletModule extends ServletModule {
         bind(SessionMainController.class).in(Singleton.class);
         bind(SessionProcessorController.class).in(Singleton.class);
 
-
         //配置url
-        serve("/processorresource").with(ProcessorResourceController.class);
-        serve("/servernode").with(ServerNodeController.class);
-        serve("/noderesource").with(NodeResourceController.class);
-        serve("/sessionmain").with(SessionMainController.class);
-        serve("/sessionprocessor").with(SessionProcessorController.class);
+        serve("/eggroll/processorresource").with(ProcessorResourceController.class);
+        serve("/eggroll/servernode").with(ServerNodeController.class);
+        serve("/eggroll/noderesource").with(NodeResourceController.class);
+        serve("/eggroll/sessionmain").with(SessionMainController.class);
+        serve("/eggroll/sessionprocessor").with(SessionProcessorController.class);
     }
 }
