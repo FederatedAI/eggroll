@@ -9,7 +9,9 @@ import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErServerNode;
 import com.eggroll.core.pojo.ErSessionMeta;
+import com.google.common.collect.Lists;
 import com.webank.eggroll.clustermanager.cluster.ClusterManagerService;
+import com.webank.eggroll.clustermanager.cluster.ClusterResourceManager;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionProcessorService;
@@ -20,9 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Singleton
@@ -45,6 +45,9 @@ public class Tasks {
 
     @Inject
     ProcessorStateMachine processorStateMachine;
+
+    @Inject
+    ClusterResourceManager clusterResourceManager;
 
 
     /**
@@ -187,5 +190,49 @@ public class Tasks {
         }
     }
 
+
+//    @Schedule(cron = "0/1 * * * * ?")
+
+    /**
+     * 统计集群中各个节点的资源情况
+     */
+    public void countNodeResource() {
+        try {
+            List<Long> nodeList = Lists.newArrayList();
+            clusterResourceManager.getNodeResourceUpdateQueue().drainTo(nodeList);
+            Set<Long> nodeSet = new HashSet<>();
+            nodeSet.addAll(nodeList);
+            for (Long nodeId : nodeSet) {
+                clusterResourceManager.countAndUpdateNodeResourceInner(nodeId);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+//    @Schedule(cron = "0 0 0 0 1 ?")
+    public void lockClean() {
+        log.info("lock clean thread , prepare to run");
+        long now = System.currentTimeMillis();
+        clusterResourceManager.getSessionLockMap().forEach((k, v) -> {
+            try {
+                ErSessionMeta es = sessionMainService.getSessionMain(k);
+                if (es.getUpdateTime() != null) {
+                    long updateTime = es.getUpdateTime().getTime();
+                    if (now - updateTime > MetaInfo.EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL
+                            && (SessionStatus.KILLED.name().equals(es.getStatus())
+                            || SessionStatus.ERROR.name().equals(es.getStatus())
+                            || SessionStatus.CLOSED.name().equals(es.getStatus())
+                            || SessionStatus.FINISHED.name().equals(es.getStatus()))) {
+                        clusterResourceManager.getSessionLockMap().remove(es.getId());
+                        clusterResourceManager.getKillJobMap().remove(es.getId());
+                    }
+                }
+            } catch (Throwable e) {
+                log.error("lock clean error: " + e.getMessage());
+                // e.printStackTrace();
+            }
+        });
+    }
 
 }

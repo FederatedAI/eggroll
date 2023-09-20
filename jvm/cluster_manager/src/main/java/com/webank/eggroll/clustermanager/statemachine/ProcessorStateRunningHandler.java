@@ -8,8 +8,8 @@ import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErSessionMeta;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import com.webank.eggroll.clustermanager.dao.impl.ProcessorService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
+import com.webank.eggroll.clustermanager.dao.impl.SessionProcessorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,7 +21,7 @@ public class ProcessorStateRunningHandler   extends  AbstractProcessorStateHandl
     @Inject
     SessionMainService  sessionMainService;
     @Inject
-    ProcessorService  processorService;
+    SessionProcessorService sessionProcessorService;
     @Inject
     SessionStateMachine  sessionStateMachine;
 
@@ -39,7 +39,7 @@ public class ProcessorStateRunningHandler   extends  AbstractProcessorStateHandl
             resourceStateMechine.changeStatus(context,data, ResourceStatus.PRE_ALLOCATED.getValue(),ResourceStatus.ALLOCATE_FAILED.getValue());
         }
 
-        return processorService.getById(data.getId()).toErProcessor();
+        return sessionProcessorService.getById(data.getId()).toErProcessor();
     }
 
     public void asynPostHandle(Context context, ErProcessor data, String preStateParam, String desStateParam){
