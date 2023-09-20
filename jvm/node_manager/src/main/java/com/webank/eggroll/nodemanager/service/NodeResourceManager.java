@@ -158,7 +158,7 @@ public class NodeResourceManager implements ApplicationStartedRunner {
     public List<Integer> gpuProcessorUsed() {
         List<Integer> pids = new ArrayList<>();
         if (Shell.LINUX) {
-
+            pids = sysInfo.countGpuProcessors();
         }
         return pids;
     }
@@ -224,6 +224,7 @@ public class NodeResourceManager implements ApplicationStartedRunner {
             ErEndpoint endpoint = new ErEndpoint(nodeHost, nodePort);
             ErServerNode erServerNode = new ErServerNode(NodeManagerMeta.serverNodeId, Dict.NODE_MANAGER, endpoint, NodeManagerMeta.status);
             ErNodeHeartbeat nodeHeartbeat = new ErNodeHeartbeat(seq, queryNodeResource(erServerNode));
+            nodeHeartbeat.setGpuProcessors(gpuProcessorUsed());
             return nodeHeartbeat;
         }
 

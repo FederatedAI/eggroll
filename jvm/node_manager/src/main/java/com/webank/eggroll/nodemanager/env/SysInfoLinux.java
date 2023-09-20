@@ -3,6 +3,7 @@
 package com.webank.eggroll.nodemanager.env;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
 import com.google.inject.Singleton;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -15,6 +16,7 @@ import java.nio.charset.Charset;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 //@Singleton
 public class SysInfoLinux extends SysInfo {
@@ -147,7 +149,6 @@ public class SysInfoLinux extends SysInfo {
         String gpus = null;
         int result = 0;
         try {
-
             String[] cmd = new String[]{"/bin/sh", "-c", "nvidia-smi --query-gpu=name --format=csv, noheader"};
             ShellCommandExecutor shellExecutorClk = new ShellCommandExecutor(cmd);
 //    name
@@ -174,10 +175,9 @@ public class SysInfoLinux extends SysInfo {
             shellExecutorClk.execute();
             String cmdReturnString = shellExecutorClk.getOutput();
             if (StringUtils.isNoneEmpty(cmdReturnString)) {
-                String[] split = cmdReturnString.split("\n");
-
+                String[] processors = cmdReturnString.split("\n");
+                pids = Arrays.stream(processors).map(Integer::parseInt).collect(Collectors.toList());
             }
-
         } catch (Exception ignore) {
             return pids;
         }
