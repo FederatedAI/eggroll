@@ -33,7 +33,7 @@ public class JettyServer {
 
 //==========
         Injector injector = Guice.createInjector(new MyServletModule());
-        Server server = new Server(8080);
+        Server server = new Server(8083);
         ServletContextHandler context = new ServletContextHandler();
         context.addEventListener(new GuiceServletContextListener() {
             @Override
