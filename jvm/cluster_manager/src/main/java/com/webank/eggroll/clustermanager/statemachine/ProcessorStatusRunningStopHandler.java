@@ -5,7 +5,7 @@ import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErProcessor;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import com.webank.eggroll.clustermanager.dao.impl.ProcessorService;
+import com.webank.eggroll.clustermanager.dao.impl.SessionProcessorService;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 
 
@@ -17,7 +17,7 @@ public class ProcessorStatusRunningStopHandler  extends  AbstractProcessorStateH
     ResourceStateMechine  resourceStateMachine ;
 
     @Inject
-    ProcessorService processorService;
+    SessionProcessorService sessionProcessorService;
 
     @Override
     public ErProcessor prepare(Context context, ErProcessor data, String preStateParam, String desStateParam) {
@@ -50,7 +50,7 @@ public class ProcessorStatusRunningStopHandler  extends  AbstractProcessorStateH
                     resourceStateMachine.changeStatus(context, data, ResourceStatus.PRE_ALLOCATED.getValue(), ResourceStatus.ALLOCATED.getValue());
                 }
 
-        SessionProcessor  result =  this.processorService.getById(data.getId());
+        SessionProcessor  result =  sessionProcessorService.getById(data.getId());
         if(result==null){
             throw  new RuntimeException("");
         }

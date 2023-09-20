@@ -5,7 +5,7 @@ import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErProcessor;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import com.webank.eggroll.clustermanager.dao.impl.ProcessorService;
+import com.webank.eggroll.clustermanager.dao.impl.SessionProcessorService;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
 public class ProcessorStateMachine extends  AbstractStateMachine<ErProcessor> {
     Logger logger = LoggerFactory.getLogger(ProcessorStateMachine.class);
     @Inject
-    ProcessorService  processorService;
+    SessionProcessorService sessionProcessorService;
     @Inject
     ResourceStateMechine  resourceStateMechine;
     @Inject
@@ -33,7 +33,7 @@ public class ProcessorStateMachine extends  AbstractStateMachine<ErProcessor> {
     @Override
     String buildStateChangeLine(Context context, ErProcessor erProcessor, String preStateParam, String desStateParam) {
         String  line= "";
-        SessionProcessor processorInDb = processorService.getById(erProcessor.getId());
+        SessionProcessor processorInDb = sessionProcessorService.getById(erProcessor.getId());
         if(processorInDb!=null){
             context.putData(Dict.PROCESSOR_IN_DB,processorInDb.toErProcessor());
         }
