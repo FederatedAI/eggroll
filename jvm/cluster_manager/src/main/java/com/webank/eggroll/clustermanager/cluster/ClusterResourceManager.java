@@ -187,14 +187,12 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                         if (killJobMap.containsKey(resourceApplication.getSessionId())) {
                             log.error("session " + resourceApplication.getSessionId() + " is already canceled, drop it");
                             applicationQueue.getBroker().remove();
-                            flag = false;
                             break;
                         }
                         if (resourceApplication.getWaitingCount().get() == 0) {
                             //过期资源申请
                             log.error("expired resource request: " + resourceApplication + " !!!");
                             applicationQueue.getBroker().remove();
-                            flag = false;
                             break;
                         }
                         int tryCount = 0;
