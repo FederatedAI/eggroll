@@ -1,12 +1,17 @@
 package com.webank.eggroll.webapp.model;
 
+import com.eggroll.core.config.MetaInfo;
 import com.google.inject.Singleton;
 import com.google.inject.servlet.ServletModule;
+import com.webank.eggroll.clustermanager.register.ZooKeeperRegistration;
 import com.webank.eggroll.guice.module.ClusterModule;
 import com.webank.eggroll.webapp.controller.*;
 import com.webank.eggroll.webapp.service.ZookeeperQueryService;
 
 public class MyServletModule extends ServletModule {
+
+    private static final int port = MetaInfo.ZOOKEEPER_SERVER_PORT;
+    private static final String host = MetaInfo.ZOOKEEPER_SERVER_HOST;
     @Override
     protected void configureServlets() {
         super.configureServlets();
@@ -18,8 +23,9 @@ public class MyServletModule extends ServletModule {
         bind(SessionMainController.class).in(Singleton.class);
         bind(SessionProcessorController.class).in(Singleton.class);
         bind(ZookeeperQueryResource.class).in(Singleton.class);
-//        // 绑定ZookeeperQueryService
-//        bind(ZookeeperQueryService.class).toInstance(new ZookeeperQueryService("localhost:2181"));
+        // 绑定ZookeeperQueryService,并从配置文件读取zk服务器地址，创建连接实例
+        String url =  ZooKeeperRegistration.generateZkUrl(host,port);
+        bind(ZookeeperQueryService.class).toInstance(new ZookeeperQueryService(url)); //"localhost:2181"
 
         //配置url
         serve("/eggroll/processorresource").with(ProcessorResourceController.class);
