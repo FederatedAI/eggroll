@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.mapper.Mapper;
 import com.eggroll.core.constant.ProcessorStatus;
+import com.eggroll.core.constant.SessionStatus;
+import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.*;
 import com.google.common.collect.Maps;
 import com.google.inject.Inject;
@@ -14,6 +16,8 @@ import com.webank.eggroll.clustermanager.entity.SessionMain;
 import com.webank.eggroll.clustermanager.entity.SessionOption;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import com.webank.eggroll.clustermanager.entity.SessionRanks;
+import com.webank.eggroll.clustermanager.statemachine.SessionStateMachine;
+import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.tuple.MutableTriple;
@@ -41,6 +45,9 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
 
     @Inject
     SessionRanksService sessionRanksService;
+
+    @Inject
+    SessionStateMachine sessionStateMachine;
 
     public boolean updateSessionMainActiveCount(String sessionId) {
         List<ErProcessor> processors = sessionProcessorService.getProcessorBySession(sessionId, false);
@@ -183,6 +190,41 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
             sessionRanks.setLocalRank(config.getRight().getLocalRank());
             sessionRanksService.save(sessionRanks);
         }
+    }
+
+    @Transactional
+    public void registerWithResource(ErSessionMeta erSessionMeta){
+        this.removeById(erSessionMeta.getId());
+        sessionOptionService.remove(new QueryWrapper<SessionOption>().lambda().eq(SessionOption::getSessionId,erSessionMeta.getId()));
+        sessionProcessorService.remove(new QueryWrapper<SessionProcessor>().lambda().eq(SessionProcessor::getSessionId,erSessionMeta.getId()));
+
+        SessionMain sessionMain = new SessionMain();
+        sessionMain.setSessionId(erSessionMeta.getId());
+        sessionMain.setName(erSessionMeta.getName());
+        sessionMain.setStatus(erSessionMeta.getStatus());
+        sessionMain.setTag(erSessionMeta.getTag());
+        sessionMain.setTotalProcCount(erSessionMeta.getTotalProcCount());
+        sessionMain.setActiveProcCount(0);
+        this.save(sessionMain);
+
+        Map<String, String> opts = erSessionMeta.getOptions();
+        if(opts!=null){
+            opts.forEach((k,v)->{
+                SessionOption sessionOption = new SessionOption();
+                sessionOption.setSessionId(erSessionMeta.getId());
+                sessionOption.setName(k);
+                sessionOption.setData(v);
+                sessionOptionService.save(sessionOption);
+            });
+        }
+
+        final List<ErProcessor> procs = erSessionMeta.getProcessors();
+        if(procs!=null){
+            for (ErProcessor proc : procs) {
+                sessionStateMachine.changeStatus(new Context(), erSessionMeta, null, SessionStatus.NEW.name());
+            }
+        }
+
     }
 
 }
