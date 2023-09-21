@@ -17,8 +17,6 @@ import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.impl.*;
 import com.webank.eggroll.clustermanager.entity.ProcessorResource;
 import com.webank.eggroll.clustermanager.schedule.ClusterManagerTask;
-import com.webank.eggroll.clustermanager.schedule.Schedule;
-
 import com.webank.eggroll.clustermanager.session.SessionManager;
 import lombok.Data;
 import org.apache.commons.beanutils.BeanUtils;
@@ -65,7 +63,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
         this.nodeResourceUpdateQueue.add(serverNodeId);
     }
 
-    private void countAndUpdateNodeResourceInner(Long serverNodeId) {
+    public void countAndUpdateNodeResourceInner(Long serverNodeId) {
 
         List<ProcessorResource> resourceList = this.processorResourceService.list(new LambdaQueryWrapper<ProcessorResource>()
                 .eq(ProcessorResource::getServerNodeId, serverNodeId).in(ProcessorResource::getResourceType, Lists.newArrayList(ResourceStatus.ALLOCATED.getValue(), ResourceStatus.PRE_ALLOCATED.getValue())));
@@ -255,8 +253,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                         erSessionMeta.setTotalProcCount(dispatchedProcessors.size());
                         erSessionMeta.setStatus(SessionStatus.NEW.name());
 
-                        // TODO: 2023/8/13  暂时屏蔽
-                        //   sessionMetaDao.registerWithResource(erSessionMeta);
+                        sessionMainService.registerWithResource(erSessionMeta);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     } finally {
