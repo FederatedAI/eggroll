@@ -223,8 +223,8 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
         final List<ErProcessor> procs = erSessionMeta.getProcessors();
         if(procs!=null){
             Context context = new Context();
+            context.putData(Dict.KEY_PROCESSOR_TYPE,ProcessorType.DeepSpeed.name());
             for (ErProcessor proc : procs) {
-                context.putData(Dict.KEY_PROCESSOR_TYPE,ProcessorType.DeepSpeed.name());
                 sessionStateMachine.changeStatus(new Context(), erSessionMeta, null, SessionStatus.NEW.name());
             }
         }
