@@ -3,7 +3,9 @@ package com.webank.eggroll.clustermanager.dao.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.mapper.Mapper;
+import com.eggroll.core.config.Dict;
 import com.eggroll.core.constant.ProcessorStatus;
+import com.eggroll.core.constant.ProcessorType;
 import com.eggroll.core.constant.SessionStatus;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.*;
@@ -220,7 +222,9 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
 
         final List<ErProcessor> procs = erSessionMeta.getProcessors();
         if(procs!=null){
+            Context context = new Context();
             for (ErProcessor proc : procs) {
+                context.putData(Dict.KEY_PROCESSOR_TYPE,ProcessorType.DeepSpeed.name());
                 sessionStateMachine.changeStatus(new Context(), erSessionMeta, null, SessionStatus.NEW.name());
             }
         }
