@@ -6,11 +6,15 @@ import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+
 @Data
 public class ErNodeHeartbeat implements RpcMessage {
     Logger log = LoggerFactory.getLogger(ErNodeHeartbeat.class);
     private long id;
     private ErServerNode node;
+    private List<Integer> gpuProcessors;
+    private List<Integer> cpuProcessors;
 
     public ErNodeHeartbeat() {
         this.id = -1;
@@ -32,6 +36,8 @@ public class ErNodeHeartbeat implements RpcMessage {
     public Meta.NodeHeartbeat toProto() {
         Meta.NodeHeartbeat.Builder builder = Meta.NodeHeartbeat.newBuilder();
         builder.setId(this.id)
+                .addAllGpuProcessors(gpuProcessors)
+                .addAllCpuProcessors(cpuProcessors)
                 .setNode(this.node.toProto());
         return builder.build();
     }
@@ -55,6 +61,8 @@ public class ErNodeHeartbeat implements RpcMessage {
             ErServerNode erServerNode = new ErServerNode();
             erServerNode.deserialize(nodeHeartbeat.getNode().toByteArray());
             this.node = erServerNode;
+            this.gpuProcessors = nodeHeartbeat.getGpuProcessorsList();
+            this.cpuProcessors = nodeHeartbeat.getCpuProcessorsList();
         } catch (Exception e) {
             log.error("deserialize error : ", e);
         }
