@@ -86,7 +86,7 @@ public class JobServiceHandler {
     }
 
     public SubmitJobResponse handleSubmit(SubmitJobRequest submitJobMeta) throws InterruptedException {
-        if (JobProcessorTypes.DeepSpeed.name().equals(submitJobMeta.getJobType())) {
+        if (JobProcessorTypes.DeepSpeed.getName().equals(submitJobMeta.getJobType())) {
             return handleDeepspeedSubmit(submitJobMeta);
         } else {
             throw new IllegalArgumentException("unsupported job type: " + submitJobMeta.getJobType());
@@ -142,7 +142,7 @@ public class JobServiceHandler {
         List<ErProcessor> prepareProcessors = new ArrayList<>();
         for (int i = 0; i < worldSize; i++) {
             ErProcessor erProcessor = new ErProcessor();
-            erProcessor.setProcessorType(JobProcessorTypes.DeepSpeed.name());
+            erProcessor.setProcessorType(JobProcessorTypes.DeepSpeed.getName());
             erProcessor.setStatus(ProcessorStatus.NEW.name());
 
             ErResource erResource = new ErResource();

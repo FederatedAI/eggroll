@@ -86,7 +86,7 @@ public class ContainersServiceHandler {
 
     public StartContainersResponse startJobContainers(StartContainersRequest startContainersRequest) {
         if (startContainersRequest.getJobType() != null) {
-            if (startContainersRequest.getJobType().equals(JobProcessorTypes.DeepSpeed.name())) {
+            if (startContainersRequest.getJobType().equals(JobProcessorTypes.DeepSpeed.getName())) {
                 StartDeepspeedContainerRequest startDeepspeedContainerRequest =
                         StartDeepspeedContainerRequest.fromStartContainersRequest(startContainersRequest);
                 return startDeepspeedContainers(startDeepspeedContainerRequest);

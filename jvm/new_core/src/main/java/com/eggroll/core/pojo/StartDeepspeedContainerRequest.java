@@ -56,7 +56,7 @@ public class StartDeepspeedContainerRequest {
         StartContainersRequest dst = new StartContainersRequest();
         dst.sessionId = src.sessionId;
         dst.name = src.name;
-        dst.jobType = JobProcessorTypes.DeepSpeed.name();
+        dst.jobType = JobProcessorTypes.DeepSpeed.getName();
         dst.commandArguments = src.commandArguments;
         dst.environmentVariables = new HashMap<>(src.environmentVariables);
         dst.files = new HashMap<>(src.files);

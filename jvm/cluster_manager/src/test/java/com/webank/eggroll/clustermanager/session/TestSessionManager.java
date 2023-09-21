@@ -61,7 +61,7 @@ public class TestSessionManager {
         getOrCreateSessionMeta.setTotalProcCount(4);
         ClusterManagerClient clusterManagerClient = new ClusterManagerClient(endpoint);
         ErSessionMeta result = clusterManagerClient.getSession(new Context(),getOrCreateSessionMeta);
-        logger.info("====================>result.id = {} , result.status = {}" ,result.getId(),result.getStatus());
+//        logger.info("====================>result.id = {} , result.status = {}" ,result.getId(),result.getStatus());
     }
 
     @Test
@@ -75,7 +75,7 @@ public class TestSessionManager {
         getOrCreateSessionMeta.setTotalProcCount(4);
         ClusterManagerClient clusterManagerClient = new ClusterManagerClient(endpoint);
         ErSessionMeta result = clusterManagerClient.killSession(new Context (),getOrCreateSessionMeta);
-        logger.info("====================>result.id = {} , result.status = {}" ,result.getId(),result.getStatus());
+//        logger.info("====================>result.id = {} , result.status = {}" ,result.getId(),result.getStatus());
     }
 
     @Test
@@ -89,6 +89,6 @@ public class TestSessionManager {
         getOrCreateSessionMeta.setTotalProcCount(4);
         ClusterManagerClient clusterManagerClient = new ClusterManagerClient(endpoint);
         ErSessionMeta result = clusterManagerClient.killAllSession(new Context(),getOrCreateSessionMeta);
-        logger.info("====================>result.id = {} , result.status = {}" ,result.getId(),result.getStatus());
+//        logger.info("====================>result.id = {} , result.status = {}" ,result.getId(),result.getStatus());
     }
 }
