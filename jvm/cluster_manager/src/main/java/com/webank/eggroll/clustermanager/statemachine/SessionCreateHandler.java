@@ -18,17 +18,18 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 
 @Singleton
-public class SessionCreateHandler  extends AbstractSessionStateHandler{
+public class SessionCreateHandler extends AbstractSessionStateHandler {
     Logger logger = LoggerFactory.getLogger(SessionCreateHandler.class);
+
     @Override
-    public ErSessionMeta prepare(Context context, ErSessionMeta data , String preStateParam, String desStateParam) {
-        logger.info("session create prepare {}",data);
-        ErServerNode   serverNode = new  ErServerNode();
+    public ErSessionMeta prepare(Context context, ErSessionMeta data, String preStateParam, String desStateParam) {
+        logger.info("session create prepare {}", data);
+        ErServerNode serverNode = new ErServerNode();
         serverNode.setStatus(ServerNodeStatus.HEALTHY.name());
         serverNode.setNodeType(ServerNodeTypes.NODE_MANAGER.name());
-        List<ErServerNode>  serverNodes = serverNodeService.getListByErServerNode(serverNode);
-        logger.info("session create , health node {}",serverNodes);
-        context.putData(Dict.SERVER_NODES,serverNodes);
+        List<ErServerNode> serverNodes = serverNodeService.getListByErServerNode(serverNode);
+        logger.info("session create , health node {}", serverNodes);
+        context.putData(Dict.SERVER_NODES, serverNodes);
         return data;
     }
 
@@ -36,63 +37,73 @@ public class SessionCreateHandler  extends AbstractSessionStateHandler{
     public ErSessionMeta handle(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam) {
         logger.info("session create handle begin");
         erSessionMeta.setStatus(SessionStatus.NEW.name());
-        ErSessionMeta   sessionInDb =  sessionMainService.getSession(erSessionMeta.getId(),true,true,false);
-        if(sessionInDb!=null)
-            return  sessionInDb;
+        ErSessionMeta sessionInDb = sessionMainService.getSession(erSessionMeta.getId(), true, true, false);
+        if (sessionInDb != null)
+            return sessionInDb;
         // TODO: 2023/8/3
-        List<ErServerNode> serverNodeList =(List<ErServerNode>)  context.getData(Dict.SERVER_NODES);
-        if(CollectionUtils.isEmpty(serverNodeList)){
-            throw  new RuntimeException("no health server node");
+        List<ErServerNode> serverNodeList = (List<ErServerNode>) context.getData(Dict.SERVER_NODES);
+        if (CollectionUtils.isEmpty(serverNodeList)) {
+            throw new RuntimeException("no health server node");
         }
-        List<ErProcessor>  processors = Lists.newArrayList();
+        List<ErProcessor> processors = Lists.newArrayList();
         Integer eggsPerNode = MetaInfo.CONFKEY_SESSION_PROCESSORS_PER_NODE;
-        if(erSessionMeta.getOptions().get("eggroll.session.processors.per.node")!=null){
-            eggsPerNode =  Integer.parseInt(erSessionMeta.getOptions().get("eggroll.session.processors.per.node"));
+        if (erSessionMeta.getOptions().get("eggroll.session.processors.per.node") != null) {
+            eggsPerNode = Integer.parseInt(erSessionMeta.getOptions().get("eggroll.session.processors.per.node"));
         }
 
-        logger.info("server node list {}",serverNodeList);
-        logger.info("session meta {}",erSessionMeta);
-        logger.info("eggsPerNode {}",eggsPerNode);
-        for(ErServerNode  erServerNode:serverNodeList) {
-            for(int i=0;i<eggsPerNode;i++){
-                ErProcessor  processor= new ErProcessor();
-                processor.setServerNodeId(erServerNode.getId());
-                processor.setSessionId(erSessionMeta.getId());
-                processor.setProcessorType(context.getData(Dict.KEY_PROCESSOR_TYPE)==null? ProcessorType.egg_pair.name():context.getData(Dict.KEY_PROCESSOR_TYPE).toString());
-                processor.setStatus(ProcessorStatus.NEW.name());
-                processor.setCommandEndpoint(new ErEndpoint(erServerNode.getEndpoint().getHost(),0));
-                processors.add(processor);
+        logger.info("server node list {}", serverNodeList);
+        logger.info("session meta {}", erSessionMeta);
+        logger.info("eggsPerNode {}", eggsPerNode);
+        if (!ProcessorType.DeepSpeed.name().equals(context.getData(Dict.KEY_PROCESSOR_TYPE))) {
+            for (ErServerNode erServerNode : serverNodeList) {
+                for (int i = 0; i < eggsPerNode; i++) {
+                    ErProcessor processor = new ErProcessor();
+                    processor.setServerNodeId(erServerNode.getId());
+                    processor.setSessionId(erSessionMeta.getId());
+                    processor.setProcessorType(context.getData(Dict.KEY_PROCESSOR_TYPE) == null ? ProcessorType.egg_pair.name() : context.getData(Dict.KEY_PROCESSOR_TYPE).toString());
+                    processor.setStatus(ProcessorStatus.NEW.name());
+                    processor.setCommandEndpoint(new ErEndpoint(erServerNode.getEndpoint().getHost(), 0));
+                    processor.setOptions(erSessionMeta.getOptions());
+                    processors.add(processor);
+                }
+                erSessionMeta.setProcessors(processors);
             }
-            erSessionMeta.setProcessors(processors);
-        };
-        doInserSession(context,erSessionMeta);
+
+        } else {
+            for (ErProcessor processor : erSessionMeta.getProcessors()) {
+                processor.setSessionId(erSessionMeta.getId());
+            }
+        }
+        doInserSession(context, erSessionMeta);
 
         this.openAsynPostHandle(context);
-        return  erSessionMeta;
+        return erSessionMeta;
     }
 
 
     @Override
     public void asynPostHandle(Context context, ErSessionMeta data, String preStateParam, String desStateParam) {
+        if (ProcessorType.DeepSpeed.name().equals(context.getData(Dict.KEY_PROCESSOR_TYPE))) {
+            return;
+        }
         logger.info("create session  asyn post handle begin");
-       List<ErServerNode> serverNodes = (List<ErServerNode>)context.getData(Dict.SERVER_NODES);
+        List<ErServerNode> serverNodes = (List<ErServerNode>) context.getData(Dict.SERVER_NODES);
 
-        serverNodes.parallelStream().forEach(node->{
-            ErSessionMeta  sendSession =new ErSessionMeta();
+        serverNodes.parallelStream().forEach(node -> {
+            ErSessionMeta sendSession = new ErSessionMeta();
 
-                //BeanUtils.copyProperties(data, sendSession);
-                List<ErProcessor>  processors = Lists.newArrayList();
-                data.getProcessors().forEach(erProcessor -> {
-                    if(erProcessor.getServerNodeId()==node.getId())
-                        processors.add(erProcessor);
-                });
-                sendSession.setId(data.getId());
-                logger.info("==============processor {}",processors);
-                sendSession.setProcessors(processors);
-                NodeManagerClient nodeManagerClient = new  NodeManagerClient(node.getEndpoint());
-                //sendSession.getOptions().put("eggroll.resourcemanager.server.node.id",Long.toString(node.getId()));
-                nodeManagerClient.startContainers(context,sendSession);
-
+            //BeanUtils.copyProperties(data, sendSession);
+            List<ErProcessor> processors = Lists.newArrayList();
+            data.getProcessors().forEach(erProcessor -> {
+                if (erProcessor.getServerNodeId().equals(node.getId()))
+                    processors.add(erProcessor);
+            });
+            sendSession.setId(data.getId());
+            logger.info("==============processor {}", processors);
+            sendSession.setProcessors(processors);
+            NodeManagerClient nodeManagerClient = new NodeManagerClient(node.getEndpoint());
+            //sendSession.getOptions().put("eggroll.resourcemanager.server.node.id",Long.toString(node.getId()));
+            nodeManagerClient.startContainers(context, sendSession);
         });
 
     }

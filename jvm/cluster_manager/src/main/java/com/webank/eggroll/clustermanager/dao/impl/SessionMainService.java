@@ -1,5 +1,6 @@
 package com.webank.eggroll.clustermanager.dao.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.mapper.Mapper;
@@ -77,15 +78,13 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
         List<SessionOption> optList = sessionOptionService.list(sessionOption);
         Map<String, String> opts = optList.stream().collect(Collectors.toMap(SessionOption::getName, SessionOption::getData));
 
-        SessionProcessor sessionProcessor = new SessionProcessor();
-        sessionProcessor.setSessionId(sessionId);
-        List<SessionProcessor> processorList = sessionProcessorService.list(sessionProcessor);
+        List<SessionProcessor> processorList = sessionProcessorService.list(new LambdaQueryWrapper<SessionProcessor>().eq(SessionProcessor::getSessionId,sessionId));
         List<ErProcessor> procs = new ArrayList<>();
         for (SessionProcessor processor : processorList) {
             procs.add(processor.toErProcessor());
         }
         ErSessionMeta session = this.getSessionMain(sessionId);
-        if(session !=null){
+        if (session != null) {
             session.setOptions(opts);
             session.setProcessors(procs);
         }
@@ -166,7 +165,7 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
         if (MapUtils.isNotEmpty(options)) {
             List<SessionOption> optionList = new ArrayList<>();
             options.entrySet().forEach(entry -> {
-                optionList.add(new SessionOption(sessionId,entry.getKey(),entry.getValue()));
+                optionList.add(new SessionOption(sessionId, entry.getKey(), entry.getValue()));
             });
             sessionOptionService.saveBatch(optionList);
         }
@@ -174,8 +173,8 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
         if (CollectionUtils.isNotEmpty(processors)) {
             List<SessionProcessor> processorList = new ArrayList<>();
             processors.forEach(erProcessor -> {
-                processorList.add(new SessionProcessor(sessionId,erProcessor.getServerNodeId().intValue(),erProcessor.getProcessorType(),
-                        erProcessor.getStatus(),erProcessor.getTag(),erProcessor.getCommandEndpoint().toString(),erProcessor.getTransferEndpoint().toString()));
+                processorList.add(new SessionProcessor(sessionId, erProcessor.getServerNodeId().intValue(), erProcessor.getProcessorType(),
+                        erProcessor.getStatus(), erProcessor.getTag(), erProcessor.getCommandEndpoint().toString(), erProcessor.getTransferEndpoint().toString()));
             });
             sessionProcessorService.saveBatch(processorList);
         }
@@ -195,7 +194,7 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
     }
 
     @Transactional
-    public void registerWithResource(ErSessionMeta erSessionMeta){
+    public void registerWithResource(ErSessionMeta erSessionMeta) {
 //        this.removeById(erSessionMeta.getId());
 //        sessionOptionService.remove(new QueryWrapper<SessionOption>().lambda().eq(SessionOption::getSessionId,erSessionMeta.getId()));
 //        sessionProcessorService.remove(new QueryWrapper<SessionProcessor>().lambda().eq(SessionProcessor::getSessionId,erSessionMeta.getId()));
@@ -219,16 +218,9 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
 //                sessionOptionService.save(sessionOption);
 //            });
 //        }
-
-        final List<ErProcessor> procs = erSessionMeta.getProcessors();
-        if(procs!=null){
-            Context context = new Context();
-            context.putData(Dict.KEY_PROCESSOR_TYPE,ProcessorType.DeepSpeed.name());
-            for (ErProcessor proc : procs) {
-                sessionStateMachine.changeStatus(context, erSessionMeta, null, SessionStatus.NEW.name());
-            }
-        }
-
+        Context context = new Context();
+        context.putData(Dict.KEY_PROCESSOR_TYPE, ProcessorType.DeepSpeed.name());
+        sessionStateMachine.changeStatus(context, erSessionMeta, null, SessionStatus.NEW.name());
     }
 
 }
