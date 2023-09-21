@@ -356,63 +356,200 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
         return result;
     }
 
-    public ResourceApplication remainMostFirstDispatch(List<ErServerNode> serverNodes, ResourceApplication resourceApplication) {
+//    public ResourceApplication remainMostFirstDispatch(List<ErServerNode> serverNodes, ResourceApplication resourceApplication) {
+//        List<ErProcessor> requiredProcessors = resourceApplication.getProcessors();
+//        List<ErServerNode> sortedNodes = serverNodes.stream().sorted(Comparator.comparingLong(node -> getFirstUnAllocatedResource(node, resourceApplication))).collect(Collectors.toList());
+//        List<MutablePair<ErServerNode, ErResource>> nodeResourceTupes = new ArrayList<>();
+//        for (ErServerNode sortedNode : sortedNodes) {
+//            nodeResourceTupes.add(new MutablePair<>(sortedNode, sortedNode.getResources().get(0)));
+//        }
+//        Map<ErServerNode, Long> sortMap = new HashMap<>();
+//        for (ErServerNode node : sortedNodes) {
+//            sortMap.put(node, getFirstUnAllocatedResource(node, resourceApplication));
+//        }
+//        Map<ErServerNode, List<ErProcessor>> nodeToProcessors = new HashMap<>();
+//
+//        for (int index = 0; index < requiredProcessors.size(); index++) {
+//            ErProcessor requiredProcessor = requiredProcessors.get(index);
+//            ErServerNode node = nodeResourceTupes.get(0).getKey();
+//
+//            int nextGpuIndex = -1;
+//            List<ErResource> newResources = new ArrayList<>();
+//            for (ErResource r : requiredProcessor.getResources()) {
+//                if (Dict.VGPU_CORE.equals(r.getResourceType())) {
+//                    List<ErResource> gpuResourcesInNodeArray = node.getResources().stream()
+//                            .filter(res -> Dict.VGPU_CORE.equals(res.getResourceType()))
+//                            .collect(Collectors.toList());
+//                    if (!gpuResourcesInNodeArray.isEmpty()) {
+//                        ErResource gpuResourcesInNode = gpuResourcesInNodeArray.get(0);
+//
+//                        List<String> extentionCache = new ArrayList<>();
+//                        if (gpuResourcesInNode.getExtention() != null) {
+//                            extentionCache = Arrays.asList(gpuResourcesInNode.getExtention().split(","));
+//                        }
+//                        nextGpuIndex = getNextGpuIndex(gpuResourcesInNode.getTotal(), extentionCache);
+//                        extentionCache.add(String.valueOf(nextGpuIndex));
+//                        r.setExtention(String.valueOf(nextGpuIndex));
+//                    }
+//                }
+//                newResources.add(r);
+//            }
+//            String host = node.getEndpoint().getHost();
+//            requiredProcessor.setServerNodeId(node.getId());
+//            requiredProcessor.setCommandEndpoint(new ErEndpoint(host, 0));
+//            requiredProcessor.setResources(newResources);
+//            Map<String, String> optionsMap = new HashMap<>();
+//            optionsMap.put("cudaVisibleDevices", nextGpuIndex + "");
+//            requiredProcessor.setOptions(optionsMap);
+//            nodeToProcessors.computeIfAbsent(node, k -> new ArrayList<>()).add(requiredProcessor);
+//        }
+//
+//        nodeToProcessors.forEach((node, processors) -> {
+//            for (ErProcessor processor : processors) {
+//                resourceApplication.getResourceDispatch().add(new MutablePair<>(processor, node));
+//            }
+//        });
+//
+//        return resourceApplication;
+//
+//    }
+    private void remainMostFirstDispatch(List<ErServerNode> serverNodes, ResourceApplication resourceApplication) throws InvocationTargetException, IllegalAccessException {
         List<ErProcessor> requiredProcessors = resourceApplication.getProcessors();
         List<ErServerNode> sortedNodes = serverNodes.stream().sorted(Comparator.comparingLong(node -> getFirstUnAllocatedResource(node, resourceApplication))).collect(Collectors.toList());
-        List<MutablePair<ErServerNode, ErResource>> nodeResourceTupes = new ArrayList<>();
+        List<MutablePair<ErServerNode, Long>> nodeResourceTupes = new ArrayList<>();
         for (ErServerNode sortedNode : sortedNodes) {
-            nodeResourceTupes.add(new MutablePair<>(sortedNode, sortedNode.getResources().get(0)));
+            nodeResourceTupes.add(new MutablePair<>(sortedNode, sortedNode.getResources().get(0).getUnAllocatedResource()));
         }
-        Map<ErServerNode, Long> sortMap = new HashMap<>();
-        for (ErServerNode node : sortedNodes) {
-            sortMap.put(node, getFirstUnAllocatedResource(node, resourceApplication));
-        }
+
+        List<String> allocatedGpuIndex = new ArrayList<>();
         Map<ErServerNode, List<ErProcessor>> nodeToProcessors = new HashMap<>();
 
         for (int index = 0; index < requiredProcessors.size(); index++) {
-            ErProcessor requiredProcessor = requiredProcessors.get(index);
-            ErServerNode node = nodeResourceTupes.get(0).getKey();
+
+            ErProcessor requiredProcessor = resourceApplication.getProcessors().get(index);
+
+            MutablePair<ErServerNode, Long> nodeTupe = nodeResourceTupes.get(0);
+            ErServerNode node = nodeTupe.getLeft();
 
             int nextGpuIndex = -1;
             List<ErResource> newResources = new ArrayList<>();
             for (ErResource r : requiredProcessor.getResources()) {
-                if (Dict.VGPU_CORE.equals(r.getResourceType())) {
-                    List<ErResource> gpuResourcesInNodeArray = node.getResources().stream()
-                            .filter(res -> Dict.VGPU_CORE.equals(res.getResourceType()))
+                ErResource changedResource = r;
+                if (r.getResourceType().equals(Dict.VGPU_CORE)) {
+                    List<ErResource> gpuResourcesInNodeList = node.getResources().stream()
+                            .filter(res -> res.getResourceType().equals(Dict.VGPU_CORE))
                             .collect(Collectors.toList());
-                    if (!gpuResourcesInNodeArray.isEmpty()) {
-                        ErResource gpuResourcesInNode = gpuResourcesInNodeArray.get(0);
+
+                    if (!gpuResourcesInNodeList.isEmpty()) {
+                        ErResource gpuResourcesInNode = gpuResourcesInNodeList.get(0);
 
                         List<String> extentionCache = new ArrayList<>();
                         if (gpuResourcesInNode.getExtention() != null) {
-                            extentionCache = Arrays.asList(gpuResourcesInNode.getExtention().split(","));
+                            extentionCache.addAll(Arrays.asList(gpuResourcesInNode.getExtention().split(",")));
                         }
+
                         nextGpuIndex = getNextGpuIndex(gpuResourcesInNode.getTotal(), extentionCache);
                         extentionCache.add(String.valueOf(nextGpuIndex));
-                        r.setExtention(String.valueOf(nextGpuIndex));
+                        ErResource newChangedResource = new ErResource();
+                        BeanUtils.copyProperties(newChangedResource,changedResource);
+                        newChangedResource.setExtention(String.valueOf(nextGpuIndex));
+                        changedResource = newChangedResource;
                     }
                 }
-                newResources.add(r);
+                newResources.add(changedResource);
             }
-            String host = node.getEndpoint().getHost();
-            requiredProcessor.setServerNodeId(node.getId());
-            requiredProcessor.setCommandEndpoint(new ErEndpoint(host, 0));
-            requiredProcessor.setResources(newResources);
-            Map<String, String> optionsMap = new HashMap<>();
-            optionsMap.put("cudaVisibleDevices", nextGpuIndex + "");
-            requiredProcessor.setOptions(optionsMap);
+
+            nodeResourceTupes = new ArrayList<>(nodeResourceTupes.subList(1, nodeResourceTupes.size()));
+            int globalRank = index;
+            int localRank = nodeToProcessors.getOrDefault(node, new ArrayList<>()).size();
+            ErProcessor newRequiredProcessor = new ErProcessor();
+            BeanUtils.copyProperties(newRequiredProcessor,requiredProcessor);
+            newRequiredProcessor.setServerNodeId(node.getId());
+            newRequiredProcessor.setCommandEndpoint(new ErEndpoint(node.getEndpoint().getHost(), 0));
+            newRequiredProcessor.setResources(newResources);
+            newRequiredProcessor.getOptions().put("cudaVisibleDevices",String.valueOf(nextGpuIndex));
+            requiredProcessor = newRequiredProcessor;
+
             nodeToProcessors.computeIfAbsent(node, k -> new ArrayList<>()).add(requiredProcessor);
         }
 
-        nodeToProcessors.forEach((node, processors) -> {
-            for (ErProcessor processor : processors) {
-                resourceApplication.getResourceDispatch().add(new MutablePair<>(processor, node));
-            }
-        });
-
-        return resourceApplication;
-
+        List<MutablePair<ErProcessor, ErServerNode>> result = nodeToProcessors.entrySet().stream()
+                .flatMap(entry -> entry.getValue().stream().map(p -> new MutablePair<>(p, entry.getKey())))
+                .collect(Collectors.toList());
+        resourceApplication.getResourceDispatch().addAll(result);
     }
+
+//    private ResourceApplication singleNodeFirstDispatch(List<ErServerNode> serverNodes, ResourceApplication resourceApplication) throws InvocationTargetException, IllegalAccessException {
+//        List<ErProcessor> requiredProcessors = resourceApplication.getProcessors();
+//        List<MutablePair<ErServerNode, Integer>> nodeResourceTupes = serverNodes.stream()
+//                .map(n -> new MutablePair(n, n.getResources().stream()
+//                        .filter(r -> r.getResourceType().equals(resourceApplication.getSortByResourceType()))
+//                        .map(ErResource::getUnAllocatedResource)
+//                        .findFirst()
+//                        .orElse(0L)))
+//                .sorted(Comparator.comparingLong(node -> getFirstUnAllocatedResource((ErServerNode)node.getLeft(), resourceApplication)))
+//                .collect(Collectors.toCollection(ArrayList::new));
+//
+//        List<ErServerNode> nodeList = new ArrayList<>();
+//        nodeResourceTupes.forEach(t -> {
+//            for (int index = 0; index < t.getRight(); index++) {
+//                nodeList.add(t.getLeft());
+//            }
+//        });
+//
+//        Map<ErServerNode, List<ErProcessor>> nodeToProcessors = new HashMap<>();
+//
+//        for (int index = 0; index < requiredProcessors.size(); index++) {
+//
+//            ErProcessor requiredProcessor = resourceApplication.getProcessors().get(index);
+//            ErServerNode node = nodeList.get(index);
+//
+//            int nextGpuIndex = -1;
+//            List<ErResource> newResources = new ArrayList<>();
+//            for (ErResource r : requiredProcessor.getResources()) {
+//                ErResource changedResource = r;
+//                if (r.getResourceType().equals(Dict.VGPU_CORE) ) {
+//                    List<ErResource> gpuResourcesInNodeList = node.getResources().stream()
+//                            .filter(res -> res.getResourceType().equals(Dict.VGPU_CORE))
+//                            .collect(Collectors.toList());
+//
+//                    if (!gpuResourcesInNodeList.isEmpty()) {
+//                        ErResource gpuResourcesInNode = gpuResourcesInNodeList.get(0);
+//
+//                        List<String> extentionCache = new ArrayList<>();
+//                        if (gpuResourcesInNode.getExtention() != null) {
+//                            extentionCache.addAll(Arrays.asList(gpuResourcesInNode.getExtention().split(",")));
+//                        }
+//
+//                        nextGpuIndex = getNextGpuIndex(gpuResourcesInNode.getTotal(), extentionCache);
+//                        extentionCache.add(String.valueOf(nextGpuIndex));
+//                        ErResource newChangedResource = new ErResource();
+//                        BeanUtils.copyProperties(newChangedResource,changedResource);
+//                        newChangedResource.setExtention(String.valueOf(nextGpuIndex));
+//                        changedResource = newChangedResource;
+//                    }
+//                }
+//                newResources.add(changedResource);
+//            }
+//
+//            ErProcessor newRequiredProcessor = new ErProcessor();
+//            BeanUtils.copyProperties(newRequiredProcessor,requiredProcessor);
+//            newRequiredProcessor.setServerNodeId(node.getId());
+//            newRequiredProcessor.setCommandEndpoint(new ErEndpoint(node.getEndpoint().getHost(), 0));
+//            newRequiredProcessor.setResources(newResources);
+//            newRequiredProcessor.getOptions().put("cudaVisibleDevices",String.valueOf(nextGpuIndex));
+//            requiredProcessor = newRequiredProcessor;
+//
+//            nodeToProcessors.computeIfAbsent(node, k -> new ArrayList<>()).add(requiredProcessor);
+//        }
+//
+//        List<MutablePair<ErProcessor, ErServerNode>> result = nodeToProcessors.entrySet().stream()
+//                .flatMap(entry -> entry.getValue().stream().map(p -> new MutablePair<>(p, entry.getKey())))
+//                .collect(Collectors.toList());
+//
+//        resourceApplication.getResourceDispatch().addAll(result);
+//        return resourceApplication;
+//    }
 
     private Long getFirstUnAllocatedResource(ErServerNode serverNode, ResourceApplication resourceApplication) {
         for (ErResource resource : serverNode.getResources()) {
