@@ -19,6 +19,7 @@ import java.util.EnumSet;
 import java.util.Properties;
 
 public class JettyServer {
+    private static final int serverPort = MetaInfo.JETTY_SERVER_PORT;
     public static void main(String[] args) throws Exception {
 
         //MetaInfo init
@@ -33,7 +34,8 @@ public class JettyServer {
 
 //==========
         Injector injector = Guice.createInjector(new MyServletModule());
-        Server server = new Server(8083);
+        //从配置文件获取jetty创建的端口
+        Server server = new Server(serverPort);
         ServletContextHandler context = new ServletContextHandler();
         context.addEventListener(new GuiceServletContextListener() {
             @Override
