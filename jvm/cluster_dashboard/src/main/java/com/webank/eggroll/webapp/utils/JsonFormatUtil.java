@@ -24,4 +24,19 @@ public class JsonFormatUtil {
         return gson.toJson(resultMap);
     }
 
+    public static <T> String toJson(int code, String msg, T data) {
+        Map<String, Object> resultMap = new HashMap<>();
+        resultMap.put("code", code);
+        resultMap.put("msg", msg);
+        if (data == null){
+            resultMap.put("data", new ArrayList());
+            resultMap.put("total", 0);
+        }else {
+            resultMap.put("data", data);
+            resultMap.put("total", 1);
+        }
+        Gson gson = new Gson();
+        return gson.toJson(resultMap);
+    }
+
 }
