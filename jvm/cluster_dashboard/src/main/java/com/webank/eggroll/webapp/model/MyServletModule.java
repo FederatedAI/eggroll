@@ -23,6 +23,7 @@ public class MyServletModule extends ServletModule {
         bind(SessionMainController.class).in(Singleton.class);
         bind(SessionProcessorController.class).in(Singleton.class);
         bind(ZookeeperQueryResource.class).in(Singleton.class);
+        bind(LoginController.class).in(Singleton.class);
         // 绑定ZookeeperQueryService,并从配置文件读取zk服务器地址，创建连接实例
         String url =  ZooKeeperRegistration.generateZkUrl(host,port);
         bind(ZookeeperQueryService.class).toInstance(new ZookeeperQueryService(url)); //"localhost:2181"
@@ -34,5 +35,6 @@ public class MyServletModule extends ServletModule {
         serve("/eggroll/sessionmain").with(SessionMainController.class);
         serve("/eggroll/sessionprocessor").with(SessionProcessorController.class);
         serve("/eggroll/zookeeper-query").with(ZookeeperQueryResource.class);
+        serve("/eggroll/login").with(LoginController.class);
     }
 }
