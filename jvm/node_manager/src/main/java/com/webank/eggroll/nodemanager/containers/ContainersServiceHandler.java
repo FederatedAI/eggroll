@@ -106,9 +106,9 @@ public class ContainersServiceHandler {
         startDeepspeedContainerRequest.getDeepspeedConfigs().forEach((containerId, deepspeedConfig) -> {
             WarpedDeepspeedContainerConfig warpedDeepspeedContainerConfig =
                     new WarpedDeepspeedContainerConfig(deepspeedConfig);
-            DeepSpeedContainer container = null;
+//            DeepSpeedContainer container = null;
             try {
-                container = new DeepSpeedContainer(
+                DeepSpeedContainer container = new DeepSpeedContainer(
                         sessionId,
                         containerId,
                         warpedDeepspeedContainerConfig,
@@ -119,12 +119,15 @@ public class ContainersServiceHandler {
                         startDeepspeedContainerRequest.getZippedFiles(),
                         startDeepspeedContainerRequest.getOptions()
                 );
+
+                containersManager.addContainer(containerId, container);
+                containersManager.startContainer(containerId);
             } catch (Exception e) {
                 e.printStackTrace();
             }
+//            containersManager.addContainer(containerId, container);
+//            containersManager.startContainer(containerId);
 
-            containersManager.addContainer(containerId, container);
-            containersManager.startContainer(containerId);
             logger.info("(sessionId=" + sessionId + ") deepspeed container started: " + containerId);
         });
 

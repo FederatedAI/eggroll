@@ -17,16 +17,21 @@ import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionProcessorService;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import com.webank.eggroll.clustermanager.statemachine.ProcessorStateMachine;
+import org.apache.ibatis.session.Configuration;
+import org.mybatis.guice.configuration.ConfigurationSettingListener;
+import org.mybatis.guice.configuration.settings.ConfigurationSetting;
+import org.mybatis.guice.configuration.settings.MapperConfigurationSetting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import javax.inject.Provider;
 import javax.inject.Singleton;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Singleton
-public class Tasks {
+public class Tasks implements Provider<Configuration>, ConfigurationSettingListener{
 
     Logger log = LoggerFactory.getLogger(Tasks.class);
 
@@ -51,7 +56,8 @@ public class Tasks {
 
 
     /**
-     * 检查DB中状态为running的进程,如果DB中记录的进程状态和节点上对应进程的状态不一致，
+     * 检查DB中状态为running的进程,分别到到节点中查找是否存在以及状态。
+     * 然后对账。
      * 则表示该进程异常
      */
     @Schedule(cron = "0/10 * * * * ?")
@@ -235,4 +241,18 @@ public class Tasks {
         });
     }
 
+    @Override
+    public Configuration get() {
+        return null;
+    }
+
+    @Override
+    public void addConfigurationSetting(ConfigurationSetting configurationSetting) {
+
+    }
+
+    @Override
+    public void addMapperConfigurationSetting(MapperConfigurationSetting mapperConfigurationSetting) {
+
+    }
 }
