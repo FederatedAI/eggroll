@@ -154,6 +154,15 @@ public class NodeResourceManager implements ApplicationStartedRunner {
 
     }
 
+
+    public List<Integer> gpuProcessorUsed() {
+        List<Integer> pids = new ArrayList<>();
+        if (Shell.LINUX) {
+            pids = sysInfo.countGpuProcessors();
+        }
+        return pids;
+    }
+
     public ErServerNode queryNodeResource(ErServerNode erServerNode){
         ErServerNode newErServerNode = new ErServerNode();
         try {
@@ -210,11 +219,12 @@ public class NodeResourceManager implements ApplicationStartedRunner {
     class HeartBeatThread extends Thread {
         Thread currentGrpcThread = null;
         public ErNodeHeartbeat generateNodeBeat(Long seq) {
-            String nodeHost = MetaInfo.CONFKEY_NODE_MANAGER_HOST == null ? NetUtils.getLocalHost() : MetaInfo.CONFKEY_NODE_MANAGER_HOST;
+            String nodeHost = MetaInfo.CONFKEY_NODE_MANAGER_HOST == null ? NetUtils.getLocalIp() : MetaInfo.CONFKEY_NODE_MANAGER_HOST;
             int nodePort = MetaInfo.CONFKEY_NODE_MANAGER_PORT;
             ErEndpoint endpoint = new ErEndpoint(nodeHost, nodePort);
             ErServerNode erServerNode = new ErServerNode(NodeManagerMeta.serverNodeId, Dict.NODE_MANAGER, endpoint, NodeManagerMeta.status);
             ErNodeHeartbeat nodeHeartbeat = new ErNodeHeartbeat(seq, queryNodeResource(erServerNode));
+            nodeHeartbeat.setGpuProcessors(gpuProcessorUsed());
             return nodeHeartbeat;
         }
 
