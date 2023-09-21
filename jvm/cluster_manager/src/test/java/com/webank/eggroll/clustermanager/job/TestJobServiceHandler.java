@@ -32,9 +32,9 @@ public class TestJobServiceHandler {
     @Test
     public void testSubmitJob() throws InterruptedException {
         SubmitJobRequest request = new SubmitJobRequest();
-        request.setJobType(JobProcessorTypes.DeepSpeed.name());
+        request.setJobType(JobProcessorTypes.DeepSpeed.getName());
         request.setSessionId("testSubmit_"+ System.currentTimeMillis());
-        request.setWorldSize(10);
+        request.setWorldSize(2);
         request.setName("TestSubmit");
         request.setCommandArguments(new ArrayList<>());
         request.setEnvironmentVariables(new HashMap<>());

@@ -59,7 +59,7 @@ public class ContainerServiceTest {
     @Test
     public void testStartJobContainers() {
         StartContainersRequest startContainersRequest = new StartContainersRequest();
-        startContainersRequest.setJobType(JobProcessorTypes.DeepSpeed.name());
+        startContainersRequest.setJobType(JobProcessorTypes.DeepSpeed.getName());
         startContainersRequest.setSessionId("testSessionId");
         startContainersRequest.setName("testSessionName");
 
