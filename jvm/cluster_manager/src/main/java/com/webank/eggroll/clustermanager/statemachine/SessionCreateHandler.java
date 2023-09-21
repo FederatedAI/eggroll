@@ -58,7 +58,7 @@ public class SessionCreateHandler  extends AbstractSessionStateHandler{
                 ErProcessor  processor= new ErProcessor();
                 processor.setServerNodeId(erServerNode.getId());
                 processor.setSessionId(erSessionMeta.getId());
-                processor.setProcessorType(ProcessorType.egg_pair.name());
+                processor.setProcessorType(context.getData(Dict.KEY_PROCESSOR_TYPE)==null? ProcessorType.egg_pair.name():context.getData(Dict.KEY_PROCESSOR_TYPE).toString());
                 processor.setStatus(ProcessorStatus.NEW.name());
                 processor.setCommandEndpoint(new ErEndpoint(erServerNode.getEndpoint().getHost(),0));
                 processors.add(processor);
