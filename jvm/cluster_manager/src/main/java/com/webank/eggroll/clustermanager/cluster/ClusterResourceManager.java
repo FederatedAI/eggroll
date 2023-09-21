@@ -65,7 +65,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
         this.nodeResourceUpdateQueue.add(serverNodeId);
     }
 
-    private void countAndUpdateNodeResourceInner(Long serverNodeId) {
+    public void countAndUpdateNodeResourceInner(Long serverNodeId) {
 
         List<ProcessorResource> resourceList = this.processorResourceService.list(new LambdaQueryWrapper<ProcessorResource>()
                 .eq(ProcessorResource::getServerNodeId, serverNodeId).in(ProcessorResource::getResourceType, Lists.newArrayList(ResourceStatus.ALLOCATED.getValue(), ResourceStatus.PRE_ALLOCATED.getValue())));
