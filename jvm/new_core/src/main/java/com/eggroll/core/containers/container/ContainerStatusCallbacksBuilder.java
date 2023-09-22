@@ -37,7 +37,8 @@ public class ContainerStatusCallbacksBuilder {
                 System.out.println(status);
             }
         };
-        return withCallback(ContainerStatus.Pending, (a,s,d)-> System.out.println("containerStatusCallback = " + a));
+        return withCallback(ContainerStatus.Pending,
+                (a,s,d)-> System.out.println("containerStatusCallback = " + a));
     }
 //
 //    public ContainerStatusCallbacksBuilder withStartedCallback(ContainerTrait callback) {

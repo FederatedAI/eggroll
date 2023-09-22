@@ -84,7 +84,6 @@ public class ContainerLifecycleHandler {
             } else {
                 setStatus(ContainerStatus.Success, Optional.empty());
             }
-
         });
     }
 
