@@ -24,7 +24,7 @@ public class LoginController extends HttpServlet{
     }
 
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 
         //从MetaInfo里面获取用户名和密码，然后封装到用户实体类里面
         UserInfo userInfo = new UserInfo();
