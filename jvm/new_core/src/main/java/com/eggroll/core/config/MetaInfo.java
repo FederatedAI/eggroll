@@ -33,9 +33,9 @@ public class MetaInfo {
     static Logger logger = LoggerFactory.getLogger(MetaInfo.class);
 
     @Config(confKey = "eggroll.security.login.username")
-    public static final String USERNAME = "";
+    public static String USERNAME ;
     @Config(confKey = "eggroll.security.login.password")
-    public static final String PASSWORD = "";
+    public static  String PASSWORD = "";
 
     @Config(confKey = "eggroll.zookeeper.register.host")
     public static String ZOOKEEPER_HOST = "";
