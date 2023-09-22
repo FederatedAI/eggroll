@@ -12,6 +12,7 @@ import com.eggroll.core.containers.meta.StopContainersResponse;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.exceptions.PathNotExistException;
 import com.eggroll.core.pojo.*;
+import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.core.meta.Containers;
 import com.webank.eggroll.core.transfer.Extend;
@@ -29,6 +30,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -38,51 +41,31 @@ public class ContainersServiceHandler {
 
     Logger logger = LoggerFactory.getLogger(ContainersServiceHandler.class);
 
-    private ExecutorService executor;
+    private ExecutorService executor = Executors.newWorkStealingPool();
 
     private ContainersManager containersManager = ContainersManager.builder().build(executor);
 
     private StartDeepspeedContainerRequest startDeepspeedContainerRequest;
 
-
-    private Path providedContainersDataDir;
-
     private Path containersDataDir = null;
 
-    private synchronized Path getContainersDataDir() {
-        if (containersDataDir == null) {
-            String providedDataDir = providedContainersDataDir != null ? String.valueOf(providedContainersDataDir) : null;
-            if (providedDataDir == null) {
-                String pathStr = MetaInfo.CONFKEY_NODE_MANAGER_CONTAINERS_DATA_DIR;
-
-                if (pathStr == null || pathStr.isEmpty()) {
-                    throw new IllegalArgumentException("container data dir not set");
-                }
-                Path path = Paths.get(pathStr);
-                if (!Files.exists(path)) {
-                    try {
-                        Files.createDirectory(path);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-                containersDataDir = path;
-            } else {
-                containersDataDir = Paths.get(providedDataDir);
+//    @Inject
+    public ContainersServiceHandler() {
+        System.out.println("here=============ContainersServiceHandler  init");
+        String pathStr = MetaInfo.CONFKEY_NODE_MANAGER_CONTAINERS_DATA_DIR;
+        if (pathStr == null || pathStr.isEmpty()) {
+            throw new IllegalArgumentException("container data dir not set");
+        }
+        Path path = Paths.get(pathStr);
+        if (!Files.exists(path)) {
+            try {
+                Files.createDirectory(path);
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
-        return containersDataDir;
+        this.containersDataDir = path;
     }
-
-    public ContainersServiceHandler() {
-
-    }
-
-    public ContainersServiceHandler(ExecutorService executorService, Path providedContainersDataDir) {
-        this.executor = executorService;
-        this.providedContainersDataDir = providedContainersDataDir;
-    }
-
 
     public StartContainersResponse startJobContainers(StartContainersRequest startContainersRequest) {
         if (startContainersRequest.getJobType() != null) {
@@ -233,7 +216,7 @@ public class ContainersServiceHandler {
     }
 
     private Path getContainerWorkspace(String sessionId, long rank) {
-        return getContainersDataDir().resolve(sessionId).resolve(Long.toString(rank));
+        return this.containersDataDir.resolve(sessionId).resolve(Long.toString(rank));
     }
 
     private Path getContainerModelsDir(String sessionId, long rank) {

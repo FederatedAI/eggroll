@@ -1,5 +1,8 @@
 package com.eggroll.core.containers.container;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.lang.InterruptedException;
@@ -11,6 +14,8 @@ import java.util.Map;
 import java.util.Optional;
 
 public class ProcessContainer implements ContainerTrait {
+
+    Logger logger = LoggerFactory.getLogger(ProcessContainer.class);
     private Process process;
     private final List<String> command;
     private final Path cwd;
@@ -30,6 +35,9 @@ public class ProcessContainer implements ContainerTrait {
         this.stdErrFile = stdErrFile;
         this.workingDirectoryPreparer = workingDirectoryPreparer;
         this.processorId = processorId;
+        if (this.workingDirectoryPreparer != null) {
+            workingDirectoryPreparer.setWorkingDir(cwd);
+        }
     }
 
     public void preStart() {
@@ -40,14 +48,10 @@ public class ProcessContainer implements ContainerTrait {
 
     public boolean start() {
         preStart();
-        if (workingDirectoryPreparer == null) {
-            workingDirectoryPreparer.setWorkingDir(cwd);
-        }
         Boolean output = null;
         try {
             workingDirectoryPreparer.prepare();
-
-            System.out.println("============== command " + command);
+            logger.info("ProcessContainer start command : {}",command);
             ProcessBuilder processBuilder = new ProcessBuilder(command);
             processBuilder.directory(cwd.toFile());
             if (stdOutFile!=null){

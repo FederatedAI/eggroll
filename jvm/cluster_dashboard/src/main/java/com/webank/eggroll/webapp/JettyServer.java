@@ -11,9 +11,13 @@ import com.webank.eggroll.clustermanager.session.SessionManager;
 import com.webank.eggroll.webapp.model.MyServletModule;
 import org.apache.commons.cli.CommandLine;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.session.DefaultSessionCache;
+import org.eclipse.jetty.server.session.DefaultSessionIdManager;
+import org.eclipse.jetty.server.session.NullSessionDataStore;
 import org.eclipse.jetty.server.session.SessionHandler;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletContextHandler;
+
 
 import javax.servlet.DispatcherType;
 import java.io.File;
@@ -34,15 +38,22 @@ public class JettyServer {
         Properties environment = PropertiesUtil.getProperties(confPath);
         MetaInfo.init(environment);
 
-//==========
         Injector injector = Guice.createInjector(new MyServletModule());
-        //从配置文件获取jetty创建的端口MetaInfo.JETTY_SERVER_PORT
         Server server = new Server(8083);
-        ServletContextHandler context = new ServletContextHandler();
+        // 创建SessionHandler
         SessionHandler sessionHandler = new SessionHandler();
-        // 配置 SessionManager，可以选择不同的实现
+        // 创建一个默认的SessionCache
+          DefaultSessionCache sessionCache = new DefaultSessionCache(sessionHandler);
+        // 创建一个默认的SessionIdManager
+        DefaultSessionIdManager sessionIdManager = new DefaultSessionIdManager(server);
+        // 设置SessionIdManager
+        server.setSessionIdManager(sessionIdManager);
+        // 设置SessionCache
+        sessionCache.setSessionDataStore(new NullSessionDataStore());
+        // 设置SessionHandler的SessionCache
+        sessionHandler.setSessionCache(sessionCache);
 
-        context.setSessionHandler(sessionHandler);
+        ServletContextHandler context = new ServletContextHandler();
         context.addEventListener(new GuiceServletContextListener() {
             @Override
             protected Injector getInjector() {
@@ -52,7 +63,8 @@ public class JettyServer {
         FilterHolder guiceFilter = context.addFilter(GuiceFilter.class, "/*", EnumSet.allOf(DispatcherType.class));
         guiceFilter.setInitParameter("injectorFactory", "com.google.inject.servlet.GuiceServletContextListener");
         guiceFilter.setInitParameter("modules", MyServletModule.class.getName());
-
+        // 设置SessionHandler为ContextHandler的处理程序
+        context.setSessionHandler(sessionHandler);
         server.setHandler(context);
         server.start();
         server.join();
