@@ -53,7 +53,7 @@ public class ContainersServiceHandler {
         if (containersDataDir == null) {
             String providedDataDir = providedContainersDataDir != null ? String.valueOf(providedContainersDataDir) : null;
             if (providedDataDir == null) {
-                String pathStr = StaticErConf.getString(MetaInfo.CONFKEY_NODE_MANAGER_CONTAINERS_DATA_DIR, "");
+                String pathStr = MetaInfo.CONFKEY_NODE_MANAGER_CONTAINERS_DATA_DIR;
 
                 if (pathStr == null || pathStr.isEmpty()) {
                     throw new IllegalArgumentException("container data dir not set");
@@ -233,7 +233,7 @@ public class ContainersServiceHandler {
     }
 
     private Path getContainerWorkspace(String sessionId, long rank) {
-        return containersDataDir.resolve(sessionId).resolve(Long.toString(rank));
+        return getContainersDataDir().resolve(sessionId).resolve(Long.toString(rank));
     }
 
     private Path getContainerModelsDir(String sessionId, long rank) {
