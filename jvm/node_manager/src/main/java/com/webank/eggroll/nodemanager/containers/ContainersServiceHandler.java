@@ -49,9 +49,7 @@ public class ContainersServiceHandler {
 
     private Path containersDataDir = null;
 
-//    @Inject
-    public ContainersServiceHandler() {
-        System.out.println("here=============ContainersServiceHandler  init");
+    public Path getContainersDataDir() {
         String pathStr = MetaInfo.CONFKEY_NODE_MANAGER_CONTAINERS_DATA_DIR;
         if (pathStr == null || pathStr.isEmpty()) {
             throw new IllegalArgumentException("container data dir not set");
@@ -65,6 +63,7 @@ public class ContainersServiceHandler {
             }
         }
         this.containersDataDir = path;
+        return path;
     }
 
     public StartContainersResponse startJobContainers(StartContainersRequest startContainersRequest) {
@@ -216,7 +215,7 @@ public class ContainersServiceHandler {
     }
 
     private Path getContainerWorkspace(String sessionId, long rank) {
-        return this.containersDataDir.resolve(sessionId).resolve(Long.toString(rank));
+        return this.getContainersDataDir().resolve(sessionId).resolve(Long.toString(rank));
     }
 
     private Path getContainerModelsDir(String sessionId, long rank) {
