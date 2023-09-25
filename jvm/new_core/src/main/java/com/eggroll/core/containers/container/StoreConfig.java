@@ -12,8 +12,8 @@ public class StoreConfig {
     private String prefix;
 
     public StoreConfig(String storeHost, Integer storePort, String storePrefix) {
-        this.host = host;
-        this.port = port;
-        this.prefix = prefix;
+        this.host = storeHost;
+        this.port = storePort;
+        this.prefix = storePrefix;
     }
 }

@@ -2,6 +2,8 @@ package com.eggroll.core.containers.container;
 
 import com.eggroll.core.pojo.DeepspeedContainerConfig;
 import com.eggroll.core.pojo.StaticErConf;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.List;
@@ -19,6 +21,7 @@ public class WarpedDeepspeedContainerConfig {
     private int rank;
     private StoreConfig storeConfig;
     private String backend;
+    Logger logger = LoggerFactory.getLogger(WarpedDeepspeedContainerConfig.class);
 
     public WarpedDeepspeedContainerConfig(List<Integer> cudaVisibleDevices, int worldSize, int crossRank, int crossSize,
                                           int localSize, int localRank, int rank, StoreConfig storeConfig,
