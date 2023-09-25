@@ -1,6 +1,5 @@
 package com.webank.eggroll.webapp.service;
 
-import com.webank.eggroll.webapp.entity.UserCredentials;
 import com.webank.eggroll.webapp.entity.UserInfo;
 import com.webank.eggroll.webapp.utils.RequestUtils;
 
@@ -13,7 +12,7 @@ public class LoginService {
 
     public boolean login(UserInfo userInfo, HttpServletRequest req){
         try {
-            UserCredentials userCredentials = RequestUtils.extractUserCredentials(req);
+            UserInfo userCredentials = RequestUtils.extractUserCredentials(req);
             String username = userCredentials.getUsername();
             String password = userCredentials.getPassword();
             if (username == null || password == null) {
