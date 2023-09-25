@@ -68,7 +68,9 @@ public class WarpedDeepspeedContainerConfig {
     public Map<String, String> getEggrollCustomizedEnvironments() {
         Map<String, String> envMap = new HashMap<>();
         envMap.put("EGGROLL_DEEPSPEED_STORE_HOST", storeConfig.getHost());
-        envMap.put("EGGROLL_DEEPSPEED_STORE_PORT", Integer.toString(storeConfig.getPort()));
+        if (storeConfig.getPort() != null){
+            envMap.put("EGGROLL_DEEPSPEED_STORE_PORT", Integer.toString(storeConfig.getPort()));
+        }
         envMap.put("EGGROLL_DEEPSPEED_STORE_PREFIX", storeConfig.getPrefix());
         envMap.put("EGGROLL_DEEPSPEED_BACKEND", getBackend());
         return envMap;
