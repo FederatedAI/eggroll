@@ -17,7 +17,7 @@ public class ContainerLifecycleHandler {
     private List<Container.ContainerStatusCallback> callbacks;
     private ExecutorService executor;
     private Future<Void> watcher;
-    private ContainerStatus status;
+    private ContainerStatus status = ContainerStatus.Pending;
 
     public ContainerLifecycleHandler(ContainerTrait container,
                                      List<Container.ContainerStatusCallback> callbacks,
