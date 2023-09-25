@@ -4,8 +4,9 @@ package com.webank.eggroll.webapp.exception;
 
 
 public enum ErrorCode {
-    SUCCESS(0, "success"),
+    SUCCESS(0, "SUCCESS"),
     SYS_ERROR(10010, "SYS_ERROR"),
+    FAILED(10011, "USERNAME_OR_PASSWORD_ERROR"),
     // 其他的状态码可以写在这里
     ;
     public static final int WARN = 300;
