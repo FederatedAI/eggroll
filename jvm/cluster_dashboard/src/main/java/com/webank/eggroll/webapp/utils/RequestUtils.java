@@ -2,7 +2,7 @@ package com.webank.eggroll.webapp.utils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.webank.eggroll.webapp.entity.UserCredentials;
+import com.webank.eggroll.webapp.entity.UserInfo;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.BufferedReader;
@@ -10,7 +10,7 @@ import java.io.IOException;
 
 public class RequestUtils {
 
-    public static UserCredentials extractUserCredentials(HttpServletRequest request) throws IOException {
+    public static UserInfo extractUserCredentials(HttpServletRequest request) throws IOException {
         StringBuilder requestBody = new StringBuilder();
         String line;
 
@@ -28,6 +28,6 @@ public class RequestUtils {
         String username = jsonNode.get("username").asText();
         String password = jsonNode.get("password").asText();
 
-        return new UserCredentials(username, password);
+        return new UserInfo(username, password);
     }
 }

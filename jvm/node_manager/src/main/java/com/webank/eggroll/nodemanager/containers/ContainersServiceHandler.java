@@ -105,6 +105,7 @@ public class ContainersServiceHandler {
                 containersManager.addContainer(containerId, container);
                 containersManager.startContainer(containerId);
             } catch (Exception e) {
+                logger.error(" starting deepspeed containers failed: {}",e.getMessage());
                 e.printStackTrace();
             }
 //            containersManager.addContainer(containerId, container);
