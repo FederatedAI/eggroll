@@ -55,14 +55,20 @@ public class ProcessContainer implements ContainerTrait {
             ProcessBuilder processBuilder = new ProcessBuilder(command);
             processBuilder.directory(cwd.toFile());
             if (stdOutFile!=null){
-                File p = cwd.resolve(stdOutFile).toFile();
-                p.getParentFile().mkdirs();
-                processBuilder.redirectOutput(p);
+                File logFile = cwd.resolve(stdOutFile).toFile();
+                logFile.getParentFile().mkdirs();
+                if(!logFile.exists()){
+                    logFile.createNewFile();
+                }
+                processBuilder.redirectOutput(logFile);
             }
             if (stdOutFile!=null){
-                File p = cwd.resolve(stdOutFile).toFile();
-                p.getParentFile().mkdirs();
-                processBuilder.redirectError(p);
+                File logFile = cwd.resolve(stdOutFile).toFile();
+                logFile.getParentFile().mkdirs();
+                if(!logFile.exists()){
+                    logFile.createNewFile();
+                }
+                processBuilder.redirectError(logFile);
             }
 
             Map<String, String> environment = processBuilder.environment();
@@ -70,7 +76,7 @@ public class ProcessContainer implements ContainerTrait {
             process = processBuilder.start();
             output = process.isAlive();
         }catch (Exception e){
-            e.printStackTrace();
+            logger.error("start processContainer error : ",e);
         } finally {
             try {
                 workingDirectoryPreparer.cleanup();
