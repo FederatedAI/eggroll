@@ -7,22 +7,16 @@ import com.eggroll.core.containers.meta.StopContainersResponse;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.grpc.AbstractCommandServiceProvider;
 import com.eggroll.core.grpc.Dispatcher;
+import com.eggroll.core.grpc.URI;
 import com.eggroll.core.invoke.InvokeInfo;
 import com.eggroll.core.pojo.*;
-import com.eggroll.core.grpc.URI;
 import com.eggroll.core.utils.NetUtils;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import com.google.protobuf.ByteString;
-import com.webank.eggroll.core.command.Command;
-import com.webank.eggroll.core.command.CommandServiceGrpc;
 import com.webank.eggroll.nodemanager.processor.DefaultProcessorManager;
-import io.grpc.stub.StreamObserver;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.eggroll.core.grpc.CommandUri.*;

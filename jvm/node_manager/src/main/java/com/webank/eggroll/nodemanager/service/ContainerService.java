@@ -4,7 +4,6 @@ import com.eggroll.core.config.Dict;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErSessionMeta;
-import com.eggroll.core.pojo.RuntimeErConf;
 import com.eggroll.core.utils.JsonUtil;
 import com.google.inject.Singleton;
 import com.webank.eggroll.nodemanager.meta.NodeManagerMeta;

@@ -7,7 +7,6 @@ import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.*;
 import com.eggroll.core.utils.PropertiesUtil;
 import com.google.inject.Guice;
-import com.google.inject.Inject;
 import com.google.inject.Injector;
 import com.webank.eggroll.guice.module.NodeModule;
 import com.webank.eggroll.nodemanager.processor.DefaultProcessorManager;
