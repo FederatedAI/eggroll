@@ -1,13 +1,7 @@
 package com.eggroll.core.containers.container;
 
 
-import com.eggroll.core.config.ErConf;
-import com.eggroll.core.pojo.StaticErConf;
-
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
-import java.util.function.Supplier;
 
 public class Container {
 
