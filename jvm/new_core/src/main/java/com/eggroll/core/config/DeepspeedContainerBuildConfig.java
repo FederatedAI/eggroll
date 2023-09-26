@@ -54,7 +54,8 @@ public class DeepspeedContainerBuildConfig {
         this.conf = new PythonContainerRuntimeConfig(options);
         this.pythonExec = conf.getPythonExec(Container.ContainerKey.DEEPSPEED_PYTHON_EXEC);
 
-        this.runScript = ("import runpy;\n" +
+
+        this.runScript = String.format("import runpy;\n" +
                 "import pprint;\n" +
                 "import os;\n" +
                 "import sys;\n" +
@@ -74,8 +75,10 @@ public class DeepspeedContainerBuildConfig {
                 "    print(\"===========init deepspeed failed=============\")\n" +
                 "    traceback.print_exc(file=sys.stdout)\n" +
                 "    raise e\n" +
-                "runpy.run_path(\"${conf.getString(ContainerKey.DEEPSPEED_SCRIPT_PATH)}\", run_name='__main__')\n" +
-                "\n").getBytes();
+                "runpy.run_path(\"%s\", run_name='__main__')\n" +
+                "\n", MetaInfo.EGGROLL_CONTAINER_DEEPSPEED_SCRIPT_PATH).getBytes();
+
+
         this.scriptPath = "_boost.py";
 
         this.workingDir = containerWorkspace.toAbsolutePath();
