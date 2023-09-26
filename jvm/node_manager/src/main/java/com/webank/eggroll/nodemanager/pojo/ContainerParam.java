@@ -1,10 +1,6 @@
 package com.webank.eggroll.nodemanager.pojo;
 
-import com.eggroll.core.config.Dict;
 import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.constant.ProcessorType;
-import com.eggroll.core.pojo.RuntimeErConf;
-import com.webank.eggroll.core.meta.Meta;
 import com.webank.eggroll.nodemanager.meta.NodeManagerMeta;
 import lombok.Data;
 

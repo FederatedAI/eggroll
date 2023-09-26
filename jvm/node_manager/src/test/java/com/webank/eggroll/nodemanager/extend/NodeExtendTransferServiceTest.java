@@ -8,9 +8,6 @@ import io.grpc.ManagedChannel;
 import io.grpc.stub.StreamObserver;
 import org.junit.Test;
 
-import java.sql.SQLOutput;
-import java.util.concurrent.CountDownLatch;
-
 public class NodeExtendTransferServiceTest {
 
 
