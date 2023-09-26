@@ -1,7 +1,7 @@
 package com.eggroll.core.containers.container;
 
+import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.pojo.DeepspeedContainerConfig;
-import com.eggroll.core.pojo.StaticErConf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,8 +52,7 @@ public class WarpedDeepspeedContainerConfig {
         this.backend = deepspeedContainerConfig.getBackend();
     }
     private String getBackend() {
-        return Optional.ofNullable(backend).orElse(
-                StaticErConf.getString(Container.ContainerKey.DEEPSPEED_TORCH_DISTRIBUTED_BACKEND, "nccl"));
+        return Optional.ofNullable(backend).orElse(MetaInfo.EGGROLL_CONTAINER_DEEPSPEED_TORCH_DISTRIBUTED_BACKEND);
     }
 
     public Map<String, String> getPytorchDistributedEnvironments() {

@@ -126,7 +126,7 @@ public class Dict {
     // NodeManagerConfKeys
     public static final String CONFKEY_NODE_MANAGER_HOST = "eggroll.resourcemanager.nodemanager.host";
     public static final String CONFKEY_NODE_MANAGER_PORT = "eggroll.resourcemanager.nodemanager.port";
-
+    public static final String DEEPSPEED_PYTHON_EXEC = "eggroll.container.deepspeed.python.exec";
     // ClusterManagerConfKeys
     public static final String CONFKEY_CLUSTER_MANAGER_HOST = "eggroll.resourcemanager.clustermanager.host";
     public static final String CONFKEY_CLUSTER_MANAGER_PORT = "eggroll.resourcemanager.clustermanager.port";
