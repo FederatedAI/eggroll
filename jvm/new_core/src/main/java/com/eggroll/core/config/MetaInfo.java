@@ -319,9 +319,20 @@ public class MetaInfo {
     public static Boolean EGGROLL_GRPC_REQUEST_PRINT=false;
 
 
+    // deepspeed config
 
-
-
+    @Config(confKey = "eggroll.container.python.exec")
+    public static String EGGROLL_CONTAINER_PYTHON_EXEC;
+    @Config(confKey = "eggroll.container.deepspeed.python.exec")
+    public static String EGGROLL_CONTAINER_DEEPSPEED_PYTHON_EXEC;
+    @Config(confKey = "eggroll.container.deepspeed.script.path")
+    public static String EGGROLL_CONTAINER_DEEPSPEED_SCRIPT_PATH;
+    @Config(confKey = "eggroll.container.deepspeed.distributed.backend")
+    public static String EGGROLL_CONTAINER_DEEPSPEED_TORCH_DISTRIBUTED_BACKEND;
+    @Config(confKey = "eggroll.container.deepspeed.distributed.store.host")
+    public static String EGGROLL_CONTAINER_DEEPSPEED_TORCH_DISTRIBUTED_STORE_HOST;
+    @Config(confKey = "eeggroll.container.deepspeed.distributed.store.port")
+    public static String EGGROLL_CONTAINER_DEEPSPEED_TORCH_DISTRIBUTED_STORE_PORT;
 
     public static boolean checkPattern(String pattern, String value) {
         Pattern p = Pattern.compile(pattern);
