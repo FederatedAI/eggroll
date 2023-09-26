@@ -328,7 +328,7 @@ public class MetaInfo {
     @Config(confKey = "eggroll.container.deepspeed.script.path")
     public static String EGGROLL_CONTAINER_DEEPSPEED_SCRIPT_PATH;
     @Config(confKey = "eggroll.container.deepspeed.distributed.backend")
-    public static String EGGROLL_CONTAINER_DEEPSPEED_TORCH_DISTRIBUTED_BACKEND;
+    public static String EGGROLL_CONTAINER_DEEPSPEED_TORCH_DISTRIBUTED_BACKEND = "nccl";
     @Config(confKey = "eggroll.container.deepspeed.distributed.store.host")
     public static String EGGROLL_CONTAINER_DEEPSPEED_TORCH_DISTRIBUTED_STORE_HOST;
     @Config(confKey = "eeggroll.container.deepspeed.distributed.store.port")

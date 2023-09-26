@@ -1,10 +1,9 @@
 package com.eggroll.core.containers.container;
 
 import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.pojo.StaticErConf;
 import org.apache.commons.lang3.StringUtils;
 
-import java.util.*;
+import java.util.Map;
 
 public class PythonContainerRuntimeConfig {
     Map<String, String> options;

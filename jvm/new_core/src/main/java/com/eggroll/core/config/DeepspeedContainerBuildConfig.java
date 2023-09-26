@@ -52,7 +52,7 @@ public class DeepspeedContainerBuildConfig {
         this.options = options;
 
         this.conf = new PythonContainerRuntimeConfig(options);
-        this.pythonExec = conf.getPythonExec(Container.ContainerKey.DEEPSPEED_PYTHON_EXEC);
+        this.pythonExec = conf.getPythonExec(Dict.DEEPSPEED_PYTHON_EXEC);
 
         this.runScript = ("import runpy;\n" +
                 "import pprint;\n" +
