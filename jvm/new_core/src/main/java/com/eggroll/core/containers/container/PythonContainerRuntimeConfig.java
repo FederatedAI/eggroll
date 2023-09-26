@@ -57,15 +57,15 @@ public class PythonContainerRuntimeConfig extends ErConf {
 //                return value.get();
 //            }
 //        }
-        String value = getString(key, null);
+        String value = getString(key, "");
         if (StringUtils.isNotBlank(value)) {
             return value;
         }
-        value = getString(Container.ContainerKey.PYTHON_EXEC, null);
+        value = getString(Container.ContainerKey.PYTHON_EXEC, "");
         if (StringUtils.isNotBlank(value)) {
             return value;
         }
-        value = getString(Container.ContainerKey.EGGPAIR_VENV, null);
+        value = getString(Container.ContainerKey.EGGPAIR_VENV, "");
         if (StringUtils.isNotBlank(value)) {
             return value + "/bin/python";
         }
