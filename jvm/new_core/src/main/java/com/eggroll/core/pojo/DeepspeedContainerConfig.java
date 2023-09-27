@@ -34,19 +34,19 @@ public class DeepspeedContainerConfig implements RpcMessage {
             builder.setWorldSize(this.worldSize);
         }
         if (this.crossRank != null) {
-            builder.setWorldSize(this.crossRank);
+            builder.setCrossRank(this.crossRank);
         }
         if (this.crossSize != null) {
-            builder.setWorldSize(this.crossSize);
+            builder.setCrossSize(this.crossSize);
         }
         if (this.localSize != null) {
-            builder.setWorldSize(this.localSize);
+            builder.setLocalSize(this.localSize);
         }
         if (this.localRank != null) {
-            builder.setWorldSize(this.localRank);
+            builder.setLocalRank(this.localRank);
         }
         if (this.rank != null) {
-            builder.setWorldSize(this.rank);
+            builder.setRank(this.rank);
         }
         if (StringUtils.isNotBlank(this.storeHost)) {
             builder.setStoreHost(this.storeHost);
