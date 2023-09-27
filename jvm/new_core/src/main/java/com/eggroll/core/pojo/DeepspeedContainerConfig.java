@@ -83,9 +83,15 @@ public class DeepspeedContainerConfig implements RpcMessage {
             this.localSize = deepspeedContainerConfig.getLocalSize();
             this.localRank = deepspeedContainerConfig.getLocalRank();
             this.rank = deepspeedContainerConfig.getRank();
-            this.storePrefix = deepspeedContainerConfig.getStorePrefix();
-            this.storeHost = deepspeedContainerConfig.getStoreHost();
-            this.storePort = deepspeedContainerConfig.getStorePort();
+            if (StringUtils.isNotBlank(deepspeedContainerConfig.getStorePrefix())) {
+                this.storePrefix = deepspeedContainerConfig.getStorePrefix();
+            }
+            if (StringUtils.isNotBlank(deepspeedContainerConfig.getStoreHost())) {
+                this.storeHost = deepspeedContainerConfig.getStoreHost();
+            }
+            if (deepspeedContainerConfig.getStorePort() != 0) {
+                this.storePort = deepspeedContainerConfig.getStorePort();
+            }
             this.backend = deepspeedContainerConfig.getBackend();
         } catch (Exception e) {
             log.error("deserialize error : ", e);
