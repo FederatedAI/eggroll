@@ -52,6 +52,7 @@ public class WarpedDeepspeedContainerConfig {
                 deepspeedContainerConfig.getStorePrefix());
         this.backend = deepspeedContainerConfig.getBackend();
     }
+
     private String getBackend() {
         return Optional.ofNullable(backend).orElse(MetaInfo.EGGROLL_CONTAINER_DEEPSPEED_TORCH_DISTRIBUTED_BACKEND);
     }
@@ -70,17 +71,11 @@ public class WarpedDeepspeedContainerConfig {
 
     public Map<String, String> getEggrollCustomizedEnvironments() {
         Map<String, String> envMap = new HashMap<>();
-        if(StringUtils.isNotBlank(storeConfig.getHost())){
-            envMap.put("EGGROLL_DEEPSPEED_STORE_HOST", storeConfig.getHost());
-        }
-
-        if (storeConfig.getPort() != null && storeConfig.getPort()!=0){
-            envMap.put("EGGROLL_DEEPSPEED_STORE_PORT", Integer.toString(storeConfig.getPort()));
-        }
-        if(StringUtils.isNotBlank(storeConfig.getPrefix())){
+        envMap.put("EGGROLL_DEEPSPEED_STORE_HOST", StringUtils.isNotBlank(storeConfig.getHost()) ? storeConfig.getHost() : MetaInfo.CONFKEY_CLUSTER_MANAGER_HOST);
+        envMap.put("EGGROLL_DEEPSPEED_STORE_PORT", Integer.toString(storeConfig.getPort() != null && storeConfig.getPort() != 0 ? storeConfig.getPort() : MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT));
+        if (StringUtils.isNotBlank(storeConfig.getPrefix())) {
             envMap.put("EGGROLL_DEEPSPEED_STORE_PREFIX", storeConfig.getPrefix());
         }
-        envMap.put("EGGROLL_DEEPSPEED_STORE_PREFIX", storeConfig.getPrefix());
         envMap.put("EGGROLL_DEEPSPEED_BACKEND", getBackend());
         return envMap;
     }
