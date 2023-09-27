@@ -118,6 +118,6 @@ public class DeepspeedContainerBuildConfig {
             throw new Exception("EGGROLL_HOME not set");
         }
         mutableEnv.forEach(System::setProperty);
-        this.extraEnv = Collections.unmodifiableMap(mutableEnv);
+        this.extraEnv.putAll(mutableEnv);
     }
 }
