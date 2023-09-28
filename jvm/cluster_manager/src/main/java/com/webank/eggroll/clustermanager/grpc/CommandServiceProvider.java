@@ -139,53 +139,53 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     }
 
     @URI(value = queryJobStatus)
-    public QueryJobStatusResponse queryJobStatus(Context context ,QueryJobStatusRequest request) throws InterruptedException {
+    public QueryJobStatusResponse queryJobStatus(Context context ,QueryJobStatusRequest request){
         return jobServiceHandler.handleJobStatusQuery(request);
     }
 
     @URI(value = queryJob)
-    public QueryJobResponse queryJob(Context context ,QueryJobRequest request) throws InterruptedException {
+    public QueryJobResponse queryJob(Context context ,QueryJobRequest request){
         return jobServiceHandler.handleJobQuery(request);
     }
 
     @URI(value = killJob)
-    public KillJobResponse killJob(Context context ,KillJobRequest request) throws InterruptedException {
+    public KillJobResponse killJob(Context context ,KillJobRequest request){
         return jobServiceHandler.handleJobKill(context,request);
     }
 
     @URI(value = stopJob)
-    public StopJobResponse stopJob(Context context ,StopJobRequest request) throws InterruptedException {
+    public StopJobResponse stopJob(Context context ,StopJobRequest request){
         return jobServiceHandler.handleJobStop(context,request);
     }
 
 
     @URI(value = downloadJob)
-    public DownloadJobResponse downloadJob(Context context ,DownloadJobRequest request) throws InterruptedException {
+    public DownloadJobResponse downloadJob(Context context ,DownloadJobRequest request){
         return jobServiceHandler.handleJobDownload(context,request);
     }
 
     @URI(value = prepareJobDownload)
-    public PrepareJobDownloadResponse prepareJobDownload(Context context ,PrepareJobDownloadRequest request) throws InterruptedException {
+    public PrepareJobDownloadResponse prepareJobDownload(Context context ,PrepareJobDownloadRequest request) {
         return jobServiceHandler.prepareJobDownload(context,request);
     }
 
     @URI(value = rendezvousAdd)
-    public RendezvousStoreAddResponse rendezvousAdd(Context context , RendezvousStoreAddRequest request) throws InterruptedException {
+    public RendezvousStoreAddResponse rendezvousAdd(Context context , RendezvousStoreAddRequest request){
         return rendezvousStoreService.add(context,request);
     }
 
     @URI(value = rendezvousDestroy)
-    public RendezvousStoreDestroyResponse rendezvousAdd(Context context , RendezvousStoreDestroyRequest request) throws InterruptedException {
+    public RendezvousStoreDestroyResponse rendezvousDestroy(Context context , RendezvousStoreDestroyRequest request) {
         return rendezvousStoreService.destroy(context,request);
     }
 
     @URI(value = rendezvousSet)
-    public RendezvousStoreSetResponse rendezvousAdd(Context context ,RendezvousStoreSetRequest request) throws InterruptedException {
+    public RendezvousStoreSetResponse rendezvousSet(Context context ,RendezvousStoreSetRequest request){
         return rendezvousStoreService.set(context,request);
     }
 
     @URI(value = rendezvousGet)
-    public RendezvousStoreGetResponse rendezvousAdd(Context context ,RendezvousStoreGetRequest request) throws InterruptedException {
+    public RendezvousStoreGetResponse rendezvousGet(Context context ,RendezvousStoreGetRequest request) throws InterruptedException {
         return rendezvousStoreService.get(context,request);
     }
 
