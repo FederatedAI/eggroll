@@ -54,7 +54,7 @@ public class WarpedDeepspeedContainerConfig {
     }
 
     private String getBackend() {
-        return Optional.ofNullable(backend).orElse(MetaInfo.EGGROLL_CONTAINER_DEEPSPEED_TORCH_DISTRIBUTED_BACKEND);
+        return StringUtils.isNotBlank(backend)?backend:MetaInfo.EGGROLL_CONTAINER_DEEPSPEED_TORCH_DISTRIBUTED_BACKEND;
     }
 
     public Map<String, String> getPytorchDistributedEnvironments() {
