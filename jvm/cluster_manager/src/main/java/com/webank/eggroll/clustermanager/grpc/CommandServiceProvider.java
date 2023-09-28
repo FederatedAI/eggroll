@@ -2,6 +2,7 @@ package com.webank.eggroll.clustermanager.grpc;
 
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.context.Context;
+import com.eggroll.core.deepspeed.store.*;
 import com.eggroll.core.grpc.AbstractCommandServiceProvider;
 import com.eggroll.core.grpc.Dispatcher;
 import com.eggroll.core.grpc.URI;
@@ -38,6 +39,8 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     ClusterManagerService  clusterManagerService;
     @Inject
     JobServiceHandler jobServiceHandler;
+    @Inject
+    RendezvousStoreService rendezvousStoreService;
 
     @Inject
     public void setDispatcher(Dispatcher dispatcher) {
@@ -164,6 +167,26 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     @URI(value = prepareJobDownload)
     public PrepareJobDownloadResponse prepareJobDownload(Context context ,PrepareJobDownloadRequest request) throws InterruptedException {
         return jobServiceHandler.prepareJobDownload(context,request);
+    }
+
+    @URI(value = rendezvousAdd)
+    public RendezvousStoreAddResponse rendezvousAdd(Context context , RendezvousStoreAddRequest request) throws InterruptedException {
+        return rendezvousStoreService.add(context,request);
+    }
+
+    @URI(value = rendezvousDestroy)
+    public RendezvousStoreDestroyResponse rendezvousAdd(Context context , RendezvousStoreDestroyRequest request) throws InterruptedException {
+        return rendezvousStoreService.destroy(context,request);
+    }
+
+    @URI(value = rendezvousSet)
+    public RendezvousStoreSetResponse rendezvousAdd(Context context ,RendezvousStoreSetRequest request) throws InterruptedException {
+        return rendezvousStoreService.set(context,request);
+    }
+
+    @URI(value = rendezvousGet)
+    public RendezvousStoreGetResponse rendezvousAdd(Context context ,RendezvousStoreGetRequest request) throws InterruptedException {
+        return rendezvousStoreService.get(context,request);
     }
 
 }
