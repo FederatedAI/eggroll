@@ -3,18 +3,20 @@ package com.webank.eggroll.nodemanager.containers;
 
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.containers.container.ContainersManager;
-import com.eggroll.core.containers.container.DeepSpeedContainer;
-import com.eggroll.core.containers.container.WarpedDeepspeedContainerConfig;
+import com.eggroll.core.constant.ProcessorStatus;
+import com.eggroll.core.containers.container.*;
 import com.eggroll.core.containers.meta.KillContainersResponse;
 import com.eggroll.core.containers.meta.StartContainersResponse;
 import com.eggroll.core.containers.meta.StopContainersResponse;
+import com.eggroll.core.context.Context;
 import com.eggroll.core.exceptions.PathNotExistException;
+import com.eggroll.core.grpc.ClusterManagerClient;
 import com.eggroll.core.pojo.*;
 import com.google.inject.Singleton;
 import com.webank.eggroll.core.meta.Containers;
 import com.webank.eggroll.core.transfer.Extend;
 import com.webank.eggroll.nodemanager.extend.LogStreamHolder;
+import com.webank.eggroll.nodemanager.meta.NodeManagerMeta;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +41,9 @@ public class ContainersServiceHandler {
 
     private ExecutorService executor = Executors.newWorkStealingPool();
 
-    private ContainersManager containersManager = ContainersManager.builder().build(executor);
+    private ClusterManagerClient client = new ClusterManagerClient(new ErEndpoint(MetaInfo.CONFKEY_CLUSTER_MANAGER_HOST,MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT));
+
+    private ContainersManager containersManager = buildContainersManager();
 
     private StartDeepspeedContainerRequest startDeepspeedContainerRequest;
 
@@ -240,6 +244,36 @@ public class ContainersServiceHandler {
         String command = "tail -F -n " + line + " " + path.toString();
         return new LogStreamHolder(System.currentTimeMillis(), command, responseObserver, "running");
     }
+
+    private ContainersManager buildContainersManager(){
+        final ContainersManagerBuilder builder = ContainersManager.builder();
+        builder.withStartedCallback((status,container,exception)->{
+            ProcessorStatus newStatus = container.getPid()>0?ProcessorStatus.RUNNING: ProcessorStatus.ERROR;
+            client.hearbeat(new Context(),buildHeartBeatProcessor(newStatus,container));
+        });
+        builder.withSuccessCallback((status,container,exception)->{
+            client.hearbeat(new Context(),buildHeartBeatProcessor(ProcessorStatus.FINISHED,container));
+        });
+        builder.withFailedCallback((status,container,exception)->{
+            client.hearbeat(new Context(),buildHeartBeatProcessor(ProcessorStatus.ERROR,container));
+        });
+        builder.withExceptionCallback((status,container,exception)->{
+            client.hearbeat(new Context(),buildHeartBeatProcessor(ProcessorStatus.KILLED,container));
+        });
+
+       return builder.build(executor);
+    }
+
+    private ErProcessor buildHeartBeatProcessor(ProcessorStatus status, ContainerTrait container){
+        final ErProcessor erProcessor = new ErProcessor();
+        erProcessor.setId(container.getProcessorId());
+        erProcessor.setPid(container.getPid());
+        erProcessor.setServerNodeId(NodeManagerMeta.serverNodeId);
+        erProcessor.setStatus(status.name());
+        return erProcessor;
+    }
+
+
 
     private static Path getContainerLogsDir(String sessionId, int rank) {
         // TODO: 根据 sessionId 和 rank 获取日志文件所在目录的逻辑
