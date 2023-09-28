@@ -1,31 +1,28 @@
 package com.eggroll.core.deepspeed.store;
 
-import com.google.protobuf.ByteString;
+import com.eggroll.core.pojo.RpcMessage;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.eggroll.core.meta.Deepspeed;
 import lombok.Data;
 
 @Data
-public class RendezvousStoreDestroyRequest {
+public class RendezvousStoreDestroyRequest implements RpcMessage {
     private String prefix;
 
-    public RendezvousStoreDestroyRequest(String prefix) {
-        this.prefix = prefix;
-    }
-
-    public String getPrefix() {
-        return prefix;
-    }
-
-    public static byte[] serialize(RendezvousStoreDestroyRequest src) {
+    @Override
+    public byte[] serialize() {
         Deepspeed.StoreDestroyRequest.Builder builder = Deepspeed.StoreDestroyRequest.newBuilder()
-                .setPrefix(src.getPrefix());
+                .setPrefix(this.getPrefix());
         return builder.build().toByteArray();
     }
 
-    public static RendezvousStoreDestroyRequest deserialize(ByteString byteString) throws InvalidProtocolBufferException {
-        Deepspeed.StoreDestroyRequest src = Deepspeed.StoreDestroyRequest.parseFrom(byteString);
-        String prefix = src.getPrefix();
-        return new RendezvousStoreDestroyRequest(prefix);
+    @Override
+    public void deserialize(byte[] data){
+        try {
+            Deepspeed.StoreDestroyRequest src = Deepspeed.StoreDestroyRequest.parseFrom(data);
+            this.prefix = src.getPrefix();
+        } catch (InvalidProtocolBufferException e) {
+            e.printStackTrace();
+        }
     }
 }

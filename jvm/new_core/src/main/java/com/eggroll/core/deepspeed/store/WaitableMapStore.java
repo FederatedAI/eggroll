@@ -1,38 +1,32 @@
 package com.eggroll.core.deepspeed.store;
 
-import com.eggroll.core.utils.JsonUtil;
 import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Data
-public class WaitableMapStore<K> {
+public class WaitableMapStore {
     Logger log = LoggerFactory.getLogger(WaitableMapStore.class);
     
-    private ConcurrentHashMap<K, Vector> store;
+    private ConcurrentHashMap<byte[], byte[]> store = new ConcurrentHashMap<>();
 
-    public WaitableMapStore() {
-        this.store = new ConcurrentHashMap<>();
-    }
-
-    public void set(K key, Vector value) {
-        log.info("set key: " + key + ", value: " + value + ", store count: " + store.size());
+    public void set(byte[] key, byte[] value) {
+        log.info("set key: " + Arrays.toString(key) + ", value: " + Arrays.toString(value) + ", store count: " + store.size());
         store.put(key, value);
-        log.info("set key: " + key + ", value: " + value + ", store count: " + store.size() + " done");
+        log.info("set key: " + Arrays.toString(key) + ", value: " + Arrays.toString(value) + ", store count: " + store.size() + " done");
     }
 
-    public Vector get(K key, long timeout) throws InterruptedException {
+    public byte[] get(byte[] key, int timeout) throws InterruptedException {
         long startTime = System.currentTimeMillis();
         while (!store.containsKey(key)) {
-            log.info("waiting for key: " + key + ", store count: " + store.size());
+            log.info("waiting for key: " + Arrays.toString(key) + ", store count: " + store.size());
             long elapsedTime = System.currentTimeMillis() - startTime;
             if (elapsedTime > timeout) {
-                log.info("Timeout after waiting for key: " + key + " for " + timeout + ", store count: " + store.size());
+                log.info("Timeout after waiting for key: " + Arrays.toString(key) + " for " + timeout + ", store count: " + store.size());
                 return null;
             }
             Thread.sleep(1000);
@@ -40,30 +34,29 @@ public class WaitableMapStore<K> {
         return store.get(key);
     }
 
-    private Vector longToV(long x) {
+    private byte[] longToV(long x) {
         ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
         buffer.putLong(x);
-        byte[] byteArray = buffer.array();
-        return new Vector<>(Arrays.asList(byteArray));
+        return buffer.array();
     }
 
-    private long bytesToLong(byte[] bytes) {
+    private long vToLong(byte[] bytes) {
         ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
         buffer.put(bytes);
         buffer.flip();
         return buffer.getLong();
     }
 
-    public long add(K key, long amount) {
-        log.info("add key: " + key + ", amount: " + amount + ", store count: " + store.size());
-        Vector result = store.compute(key, (k, v) -> {
+    public long add(byte[] key, long amount) {
+        log.info("add key: " + Arrays.toString(key) + ", amount: " + amount + ", store count: " + store.size());
+        byte[] compute = store.compute(key, (k, v) -> {
             if (v == null) {
                 return longToV(amount);
             } else {
-                return longToV(bytesToLong(JsonUtil.convertToByteArray(v)) + amount);
+                return longToV(vToLong(v) + amount);
             }
         });
-        return bytesToLong(JsonUtil.convertToByteArray(result));
+        return vToLong(compute);
     }
 
     public void destroy() {

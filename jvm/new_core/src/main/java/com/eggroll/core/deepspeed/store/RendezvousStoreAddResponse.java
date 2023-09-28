@@ -1,33 +1,36 @@
 package com.eggroll.core.deepspeed.store;
 
+import com.eggroll.core.pojo.RpcMessage;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.eggroll.core.meta.Deepspeed;
+import lombok.Data;
 
-public class RendezvousStoreAddResponse {
+@Data
+public class RendezvousStoreAddResponse implements RpcMessage {
     private long amount;
 
     public RendezvousStoreAddResponse(long amount) {
         this.amount = amount;
     }
 
-    public long getAmount() {
-        return amount;
-    }
-
     public void setAmount(long amount) {
         this.amount = amount;
     }
 
-    public static byte[] serialize(RendezvousStoreAddResponse src) {
+    @Override
+    public byte[] serialize() {
         Deepspeed.StoreAddResponse.Builder builder = Deepspeed.StoreAddResponse.newBuilder()
-                .setAmount(src.getAmount());
+                .setAmount(this.getAmount());
         return builder.build().toByteArray();
     }
 
-    public static RendezvousStoreAddResponse deserialize(byte[] bytes) throws InvalidProtocolBufferException {
-        Deepspeed.StoreAddResponse src = Deepspeed.StoreAddResponse.parseFrom(bytes);
-        return new RendezvousStoreAddResponse(
-                src.getAmount()
-        );
+    @Override
+    public void deserialize(byte[] data){
+        try {
+            Deepspeed.StoreAddResponse src = Deepspeed.StoreAddResponse.parseFrom(data);
+            this.amount = src.getAmount();
+        } catch (InvalidProtocolBufferException e) {
+            e.printStackTrace();
+        }
     }
 }
