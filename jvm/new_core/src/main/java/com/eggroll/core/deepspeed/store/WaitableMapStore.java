@@ -15,18 +15,18 @@ public class WaitableMapStore {
     private ConcurrentHashMap<byte[], byte[]> store = new ConcurrentHashMap<>();
 
     public void set(byte[] key, byte[] value) {
-        log.info("set key: " + Arrays.toString(key) + ", value: " + Arrays.toString(value) + ", store count: " + store.size());
+//        log.debug("set key: " + Arrays.toString(key) + ", value: " + Arrays.toString(value) + ", store count: " + store.size());
         store.put(key, value);
-        log.info("set key: " + Arrays.toString(key) + ", value: " + Arrays.toString(value) + ", store count: " + store.size() + " done");
+//        log.debug("set key: " + Arrays.toString(key) + ", value: " + Arrays.toString(value) + ", store count: " + store.size() + " done");
     }
 
     public byte[] get(byte[] key, int timeout) throws InterruptedException {
         long startTime = System.currentTimeMillis();
         while (!store.containsKey(key)) {
-            log.info("waiting for key: " + Arrays.toString(key) + ", store count: " + store.size());
+//            log.debug("waiting for key: " + Arrays.toString(key) + ", store count: " + store.size());
             long elapsedTime = System.currentTimeMillis() - startTime;
             if (elapsedTime > timeout) {
-                log.info("Timeout after waiting for key: " + Arrays.toString(key) + " for " + timeout + ", store count: " + store.size());
+                log.debug("Timeout after waiting for key: " + Arrays.toString(key) + " for " + timeout + ", store count: " + store.size());
                 return null;
             }
             Thread.sleep(1000);
@@ -48,7 +48,7 @@ public class WaitableMapStore {
     }
 
     public long add(byte[] key, long amount) {
-        log.info("add key: " + Arrays.toString(key) + ", amount: " + amount + ", store count: " + store.size());
+//        log.debug("add key: " + Arrays.toString(key) + ", amount: " + amount + ", store count: " + store.size());
         byte[] compute = store.compute(key, (k, v) -> {
             if (v == null) {
                 return longToV(amount);
