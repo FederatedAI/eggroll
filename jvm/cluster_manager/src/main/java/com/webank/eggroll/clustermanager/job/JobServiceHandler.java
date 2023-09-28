@@ -300,7 +300,8 @@ public class JobServiceHandler {
                 }
 
                 try {
-                    Thread.sleep(100);
+                    log.info("waiting processor :{}  start ",sessionId);
+                    Thread.sleep(3000);
                 } catch (Exception e) {
                     // 处理中断异常（可根据具体需求处理）
                     log.error("", e);
