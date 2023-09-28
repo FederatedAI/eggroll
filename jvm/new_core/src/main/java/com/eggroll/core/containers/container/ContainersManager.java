@@ -34,6 +34,7 @@ public class ContainersManager {
                     });
                     handlers.entrySet().removeIf(entry -> entry.getValue().isCompleted());
                 }, 0, 1, TimeUnit.MINUTES);
+        this.callbacks.addAll(callbacks);
     }
 
     public static ContainersManagerBuilder builder() {
