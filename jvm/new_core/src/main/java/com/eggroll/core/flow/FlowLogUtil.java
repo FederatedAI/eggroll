@@ -12,7 +12,9 @@ public class FlowLogUtil {
 
     public static void printFlowLog(Context context) {
         try {
-            logger.info(context.toString());
+            if(!context.getUri().startsWith("v1/cluster-manager/job/rendezvous")){
+                logger.info(context.toString());
+            }
         }catch (Throwable ignore){
             ignore.printStackTrace();
         }
