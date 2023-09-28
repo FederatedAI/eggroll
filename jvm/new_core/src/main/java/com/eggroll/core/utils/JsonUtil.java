@@ -26,7 +26,9 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.MessageOrBuilder;
 import org.apache.commons.lang3.StringUtils;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 
 public class JsonUtil {
 
@@ -200,6 +202,17 @@ public class JsonUtil {
             e.printStackTrace();
         }
         return "";
+    }
+
+    public static byte[] convertToByteArray(Object object) {
+        ByteArrayOutputStream byteArrayOuttputStream = new ByteArrayOutputStream();
+        try (ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOuttputStream)) {
+            objectOutputStream.writeObject(object);
+        }catch (Exception e){
+            e.printStackTrace();
+            return new byte[0];
+        }
+        return byteArrayOuttputStream.toByteArray();
     }
 
 

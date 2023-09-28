@@ -1,5 +1,7 @@
 package com.eggroll.core.grpc;
 
+import lombok.val;
+
 public class CommandUri {
 
     public static final String getServerNode = "v1/cluster-manager/metadata/getServerNode";
@@ -39,4 +41,9 @@ public class CommandUri {
     public static final String killJob = "v1/cluster-manager/job/killJob";
     public static final String downloadJob = "v1/cluster-manager/job/downloadJob";
     public static final String prepareJobDownload = "v1/cluster-manager/job/prepareJobDownload";
+
+    public static final String rendezvousAdd = "v1/cluster-manager/job/rendezvous/add";
+    public static final String rendezvousDestroy = "v1/cluster-manager/job/rendezvous/destroy";
+    public static final String rendezvousGet = "v1/cluster-manager/job/rendezvous/get";
+    public static final String rendezvousSet = "v1/cluster-manager/job/rendezvous/set";
 }
