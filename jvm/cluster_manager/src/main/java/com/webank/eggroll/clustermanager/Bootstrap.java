@@ -4,6 +4,7 @@ import com.eggroll.core.boostrap.CommonBoostrap;
 import com.eggroll.core.postprocessor.ApplicationStartedRunnerUtils;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.webank.eggroll.clustermanager.schedule.Tasks;
 import com.webank.eggroll.guice.module.ClusterModule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +20,7 @@ public class Bootstrap{
     public static void main(String[] args) throws Exception {
         CommonBoostrap.init(args,"cluster-manager");
         injector = Guice.createInjector(new ClusterModule());
+        injector.getInstance(Tasks.class);
         List<String> packages = new ArrayList<>();
         packages.add(Bootstrap.class.getPackage().getName());
         ApplicationStartedRunnerUtils.run(injector, packages, args);

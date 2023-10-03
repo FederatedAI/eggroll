@@ -5,6 +5,7 @@ import javax.inject.Singleton;
 
 
 import com.eggroll.core.postprocessor.ApplicationStartedRunner;
+import lombok.extern.slf4j.Slf4j;
 import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.triggers.CronTriggerImpl;
@@ -18,6 +19,7 @@ import static com.eggroll.core.config.Dict.SCHEDULE_KEY;
 
 
 @Singleton
+@Slf4j
 public class Quartz implements ApplicationStartedRunner {
 
 	Logger logger = LoggerFactory.getLogger(Quartz.class);
@@ -36,6 +38,7 @@ public class Quartz implements ApplicationStartedRunner {
 		} catch (SchedulerException e) {
 			e.printStackTrace();
 		}
+		log.info("prepare init schedule {}",sheduleInfoMap);
 		sheduleInfoMap.forEach((key, scheduleInfo) -> {
 			try {
 				ScheduleJob scheduleJob = new ScheduleJob();

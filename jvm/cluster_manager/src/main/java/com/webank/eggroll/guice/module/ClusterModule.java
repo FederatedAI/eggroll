@@ -14,6 +14,7 @@ import com.google.inject.spi.ProvisionListener;
 import com.webank.eggroll.clustermanager.schedule.Quartz;
 import com.webank.eggroll.clustermanager.schedule.Schedule;
 import com.webank.eggroll.clustermanager.schedule.ScheduleInfo;
+import com.webank.eggroll.clustermanager.schedule.Tasks;
 import com.webank.eggroll.clustermanager.session.DefaultSessionManager;
 import com.webank.eggroll.clustermanager.session.SessionManager;
 import org.aopalliance.intercept.MethodInterceptor;
@@ -50,9 +51,11 @@ public class ClusterModule extends AbstractModule {
                 if (rawType != null && subpacket.matches(rawType)) {
                     //   key.getTypeLiteral().getRawType().
                     Method[] methods = rawType.getMethods();
+                    System.err.println("xxxxxxxxxxx"+rawType);
                     Arrays.stream(methods).forEach(method -> {
                         try {
                             Schedule config = method.getDeclaredAnnotation(Schedule.class);
+
                             if (config != null) {
 //                                String methodName = method.getName();
 //                                Class clazz = field.getType();
@@ -108,6 +111,8 @@ public class ClusterModule extends AbstractModule {
         Names.bindProperties(binder(), conf);
         //bind(Dispatcher.class).to(Dispatcher.class);
         bind(SessionManager.class).to(DefaultSessionManager.class);
+
+
         this.install(new MyBatisModule() {
             @Override
             protected void initialize() {
