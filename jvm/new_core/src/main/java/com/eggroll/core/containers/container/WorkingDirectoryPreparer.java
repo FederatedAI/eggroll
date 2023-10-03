@@ -28,12 +28,14 @@ public class WorkingDirectoryPreparer{
         }
     }
 
+
+
     private Path getModelsDir() throws Exception {
-        return getWorkingDir().resolve("MODELS");
+        return getWorkingDir().resolve("models");
     }
 
     private Path getLogsDir() throws Exception {
-        return getWorkingDir().resolve("LOGS");
+        return getWorkingDir().resolve("logs");
     }
 
     public Map<String, String> getContainerDirEnv() throws Exception {

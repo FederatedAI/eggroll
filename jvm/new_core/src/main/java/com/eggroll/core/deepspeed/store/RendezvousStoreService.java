@@ -41,7 +41,7 @@ public class RendezvousStoreService {
     public RendezvousStoreSetResponse set(Context context ,RendezvousStoreSetRequest request) {
         WaitableMapStore store = getStore(request.getPrefix());
 //        System.out.println("set: " + request + " to store " + store);
-        store.set(request.getKey(), request.getValue());
+        store.set(new String(request.getKey()), request.getValue());
 //        System.out.println("set: " + request + " done");
         return new RendezvousStoreSetResponse();
     }
@@ -49,7 +49,7 @@ public class RendezvousStoreService {
     public RendezvousStoreGetResponse get(Context context ,RendezvousStoreGetRequest request) throws InterruptedException {
 //        System.out.println("get: " + request + " to store " + stores);
         WaitableMapStore store = getStore(request.getPrefix());
-        byte[] value = store.get(request.getKey(), request.getTimeout());
+        byte[] value = store.get(new String(request.getKey()), request.getTimeout());
         if (value != null) {
 //            System.out.println("get: " + request + " done");
             return new RendezvousStoreGetResponse(value, false);
@@ -62,7 +62,7 @@ public class RendezvousStoreService {
     public RendezvousStoreAddResponse add(Context context ,RendezvousStoreAddRequest request) {
 //        System.out.println("add: " + request + " to store " + stores);
         WaitableMapStore store = getStore(request.getPrefix());
-        final long amount = store.add(request.getKey(), request.getAmount());
+        final long amount = store.add(new String(request.getKey()), request.getAmount());
 //        System.out.println("add: " + request + " done");
         return new RendezvousStoreAddResponse(amount);
     }

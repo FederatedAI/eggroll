@@ -57,6 +57,9 @@ public class DeepspeedContainerConfig implements RpcMessage {
         if (StringUtils.isNotBlank(this.backend)) {
             builder.setBackend(this.backend);
         }
+        if(StringUtils.isNotBlank(this.storePrefix)){
+            builder.setStorePrefix(this.storePrefix);
+        }
         return builder.build();
     }
 
