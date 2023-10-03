@@ -111,6 +111,7 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
         context.setSessionId(erProcessor.getSessionId());
         context.setProcessorId(erProcessor.getId().toString());
         context.putLogData(Dict.STATUS,erProcessor.getStatus());
+        logger.info("=========== {}",erProcessor);
         return defaultProcessorManager.heartbeat(context, erProcessor);
     }
 

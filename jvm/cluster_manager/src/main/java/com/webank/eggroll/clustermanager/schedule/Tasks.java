@@ -135,6 +135,7 @@ public class Tasks implements Provider<Configuration>, ConfigurationSettingListe
     @Schedule(cron = "0/10 * * * * ?")
     public void checkRedidualProcessor() {
         try {
+            log.info("check redidual processor, size {}",ClusterManagerService.residualHeartbeatMap.size());
             Context context = new Context();
             ClusterManagerService.residualHeartbeatMap.forEach((k, v) -> {
                 try {

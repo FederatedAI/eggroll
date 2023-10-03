@@ -8,7 +8,9 @@ import com.eggroll.core.pojo.ErEndpoint;
 import com.google.protobuf.ByteString;
 import com.webank.eggroll.core.command.Command;
 import com.webank.eggroll.core.command.CommandServiceGrpc;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class CommandClient {
     public  byte[] call( Context  oriContext , ErEndpoint  erEndpoint, String uri, byte[] request){
         Context   context =  new Context();
@@ -24,6 +26,7 @@ public class CommandClient {
             Command.CommandResponse commandResponse = stub.call(requestBuilder.build());
             return commandResponse.getResults(0).toByteArray();
         }catch (Throwable e){
+            log.error("send {} to {} error",uri,erEndpoint,e);
             context.setThrowable( e);
             throw e;
         }
