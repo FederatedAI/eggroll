@@ -228,7 +228,7 @@ public class ContainersServiceHandler {
     }
 
 
-    public static LogStreamHolder createLogStream(Extend.GetLogRequest request, StreamObserver<Extend.GetLogResponse> responseObserver) throws PathNotExistException {
+    public LogStreamHolder createLogStream(Extend.GetLogRequest request, StreamObserver<Extend.GetLogResponse> responseObserver) throws PathNotExistException {
         String sessionId = request.getSessionId();
         long line = request.getStartLine() > 0 ? request.getStartLine() : 0;
         int rank = Integer.valueOf(request.getRank());
@@ -271,14 +271,6 @@ public class ContainersServiceHandler {
         erProcessor.setServerNodeId(NodeManagerMeta.serverNodeId);
         erProcessor.setStatus(status.name());
         return erProcessor;
-    }
-
-
-
-    private static Path getContainerLogsDir(String sessionId, int rank) {
-        // TODO: 根据 sessionId 和 rank 获取日志文件所在目录的逻辑
-        // 返回对应的日志文件路径（Path 类型）
-        return Paths.get("");
     }
 
 }

@@ -173,8 +173,22 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
         if (CollectionUtils.isNotEmpty(processors)) {
             List<SessionProcessor> processorList = new ArrayList<>();
             processors.forEach(erProcessor -> {
-                processorList.add(new SessionProcessor(sessionId, erProcessor.getServerNodeId().intValue(), erProcessor.getProcessorType(),
-                        erProcessor.getStatus(), erProcessor.getTag(), erProcessor.getCommandEndpoint().toString(), erProcessor.getTransferEndpoint().toString()));
+                SessionProcessor sessionProcessor = new SessionProcessor();
+                sessionProcessor.setSessionId(sessionId);
+                sessionProcessor.setProcessorType(erProcessor.getProcessorType());
+                sessionProcessor.setStatus(erProcessor.getStatus());
+                sessionProcessor.setTag(erProcessor.getTag());
+                if (erProcessor.getServerNodeId() != null) {
+                    sessionProcessor.setServerNodeId(erProcessor.getServerNodeId().intValue());
+                }
+                if (erProcessor.getCommandEndpoint() != null) {
+                    sessionProcessor.setCommandEndpoint(erProcessor.getCommandEndpoint().toString());
+                }
+                if (erProcessor.getTransferEndpoint() != null) {
+                    sessionProcessor.setTransferEndpoint(erProcessor.getTransferEndpoint().toString());
+                }
+                processorList.add(sessionProcessor);
+
             });
             sessionProcessorService.saveBatch(processorList);
         }

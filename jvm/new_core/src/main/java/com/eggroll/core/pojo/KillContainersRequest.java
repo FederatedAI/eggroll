@@ -9,27 +9,46 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 
 @Data
-public class KillContainersRequest {
+public class KillContainersRequest  implements RpcMessage{
 
     Logger log = LoggerFactory.getLogger(KillContainersRequest.class);
 
     private String sessionId;
     private List<Long> containers;
 
-    public KillContainersRequest deserialize(byte[] bytes){
-        KillContainersRequest killContainersRequest = new KillContainersRequest();
+    @Override
+    public byte[] serialize() {
+                return Containers.KillContainersResponse.newBuilder()
+                .setSessionId(this.getSessionId()).build().toByteArray();
+    }
+
+    @Override
+    public void deserialize(byte[] data) {
+
         try {
-            Containers.KillContainersRequest proto = Containers.KillContainersRequest.parseFrom(bytes);
-            killContainersRequest.setSessionId(proto.getSessionId());
-            killContainersRequest.setContainers(proto.getContainerIdsList());
+            Containers.KillContainersRequest proto = Containers.KillContainersRequest.parseFrom(data);
+            this.setSessionId(proto.getSessionId());
+            this.setContainers(proto.getContainerIdsList());
         }catch (Exception e){
             log.error("KillContainersRequest.deserialize() error :" ,e);
         }
-        return killContainersRequest;
+
     }
 
-    public byte[] serialize(){
-        return Containers.KillContainersResponse.newBuilder()
-                .setSessionId(this.getSessionId()).build().toByteArray();
-    }
+//    public KillContainersRequest deserialize(byte[] bytes){
+//        KillContainersRequest killContainersRequest = new KillContainersRequest();
+//        try {
+//            Containers.KillContainersRequest proto = Containers.KillContainersRequest.parseFrom(bytes);
+//            killContainersRequest.setSessionId(proto.getSessionId());
+//            killContainersRequest.setContainers(proto.getContainerIdsList());
+//        }catch (Exception e){
+//            log.error("KillContainersRequest.deserialize() error :" ,e);
+//        }
+//        return killContainersRequest;
+//    }
+//
+//    public byte[] serialize(){
+//        return Containers.KillContainersResponse.newBuilder()
+//                .setSessionId(this.getSessionId()).build().toByteArray();
+//    }
 }
