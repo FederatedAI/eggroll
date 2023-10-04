@@ -130,6 +130,8 @@ public class Dict {
     // ClusterManagerConfKeys
     public static final String CONFKEY_CLUSTER_MANAGER_HOST = "eggroll.resourcemanager.clustermanager.host";
     public static final String CONFKEY_CLUSTER_MANAGER_PORT = "eggroll.resourcemanager.clustermanager.port";
+    public  static final String DEEPSPEED_SCRIPT_PATH="eggroll.container.deepspeed.script.path";
+
 
 
     // SessionConfKeys
