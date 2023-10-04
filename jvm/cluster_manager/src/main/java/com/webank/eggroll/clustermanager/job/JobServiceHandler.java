@@ -58,13 +58,19 @@ public class JobServiceHandler {
             clusterResourceManager.lockSession(sessionId);
             clusterResourceManager.getKillJobMap().put(sessionId, System.currentTimeMillis());
             if (sessionMainService.getById(sessionId) == null) {
+                log.error("can not found session {} ",sessionId);
                 return;
             }
             ErSessionMeta sessionMeta = sessionMainService.getSession(sessionId);
-            if (StringUtils.equalsAny(sessionMeta.getStatus(), SessionStatus.KILLED.name(), SessionStatus.CLOSED.name(), SessionStatus.ERROR.name())) {
+            if (StringUtils.equalsAny(sessionMeta.getStatus(),
+                    SessionStatus.KILLED.name(), SessionStatus.CLOSED.name(), SessionStatus.ERROR.name(),SessionStatus.FINISHED.name())) {
+                log.error(" session {} status is {}, will not send kill request to nodemanager",sessionId,sessionMeta.getStatus());
                 return;
             }
+
             Map<Long, List<ErProcessor>> groupMap = sessionMeta.getProcessors().stream().collect(Collectors.groupingBy(ErProcessor::getServerNodeId));
+
+            log.info("xxxxxxxxxxxxxxx 1111 {}",groupMap);
             Map<ErServerNode, List<ErProcessor>> nodeAndProcessors = new HashMap<>();
             groupMap.forEach((nodeId, processors) -> {
                 ErServerNode erServerNode = serverNodeService.getById(nodeId).toErServerNode();

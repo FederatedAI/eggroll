@@ -76,7 +76,7 @@ public class DeepspeedContainerBuildConfig {
                 "    traceback.print_exc(file=sys.stdout)\n" +
                 "    raise e\n" +
                 "runpy.run_path(\"%s\", run_name='__main__')\n" +
-                "\n", MetaInfo.EGGROLL_CONTAINER_DEEPSPEED_SCRIPT_PATH).getBytes();
+                "\n",this.options.get(Dict.DEEPSPEED_SCRIPT_PATH)).getBytes();
 
 
         this.scriptPath = "_boost.py";
