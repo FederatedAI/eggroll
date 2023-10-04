@@ -85,7 +85,7 @@ public class NodeManagerClient {
   }
 
   public KillContainersResponse killJobContainers(Context context,KillContainersRequest killContainersRequest){
-    byte[] responseData = commandClient.call(context,nodeManagerEndpoint, killContainers, killContainersRequest.serialize());
+    byte[] responseData = commandClient.call(context,nodeManagerEndpoint, killJobContainers, killContainersRequest.serialize());
     KillContainersResponse response = new KillContainersResponse();
     response.deserialize(responseData);
     return response;

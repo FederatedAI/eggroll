@@ -46,4 +46,5 @@ public class CommandUri {
     public static final String rendezvousDestroy = "v1/cluster-manager/job/rendezvous/destroy";
     public static final String rendezvousGet = "v1/cluster-manager/job/rendezvous/get";
     public static final String rendezvousSet = "v1/cluster-manager/job/rendezvous/set";
+
 }

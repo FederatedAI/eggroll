@@ -152,6 +152,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
             }
         } else if (sessionProcessors.stream().anyMatch(p -> ProcessorStatus.FINISHED.name().equals(p.getStatus()))) {
             session.setStatus(SessionStatus.FINISHED.name());
+
             sessionMainService.updateSessionMain(session, erSessionMeta -> erSessionMeta.getProcessors().forEach(processor -> processorStateMachine.changeStatus(new Context(), processor, null, erSessionMeta.getStatus())));
         }
         log.debug("found all processor belongs to session " + session.getId() + " finished, update session status to `Finished`");
