@@ -2,7 +2,8 @@ package com.eggroll.core.pojo;
 
 
 public enum JobProcessorTypes {
-    DeepSpeed("deepspeed");
+    DeepSpeed("deepspeed"),
+    FlowJob("flowjob");
 
     private final String name;
     JobProcessorTypes(String name){

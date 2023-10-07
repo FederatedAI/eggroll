@@ -109,6 +109,39 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
     }
 
 
+    /**
+     *
+     * @param context
+     * @param request
+     * @return
+     */
+    public CheckResourceEnoughResponse checkResourceEnoughForFlow(Context context,CheckResourceEnoughRequest request) {
+        log.info("checkResourceEnoughForFlow request info: {}",request.toString());
+        CheckResourceEnoughResponse response = new CheckResourceEnoughResponse();
+        boolean result = false;
+        Long globalRemainResource = 0L;
+        List<ErServerNode> erServerNodes = getServerNodeWithResource();
+        for (ErServerNode n : erServerNodes) {
+            for (ErResource r : n.getResources()) {
+                if (r.getResourceType().equals(request.getResourceType())) {
+                    long nodeResourceCount = r.getUnAllocatedResource();
+                    if (Dict.CHECK_RESOURCE_ENOUGH_CHECK_TYPE_NODE.equals(request.getCheckType()) && nodeResourceCount >= request.getRequiredResourceCount()) {
+                        log.info("the node {} have enough resource for required",n.getEndpoint().getHost());
+                        result = true;
+                    }
+                    globalRemainResource += nodeResourceCount;
+                }
+            }
+        }
+        log.info("globalRemainResource: {}",globalRemainResource);
+
+        if (Dict.CHECK_RESOURCE_ENOUGH_CHECK_TYPE_CLUSTER.equals(request.getCheckType())) {
+            result =  globalRemainResource >= request.getRequiredResourceCount();
+        }
+        response.setEnough(result);
+        return response;
+    }
+
     Thread countNodeResourceThread = new Thread(() -> {
         while (true) {
             try {

@@ -72,6 +72,12 @@ public class DefaultProcessorManager   implements ProcessorManager,ApplicationSt
         return result;
     }
 
+
+    @Override
+    public StartContainersResponse startFlowJobContainers(StartFlowContainersRequest startFlowContainersRequest) {
+        return containersServiceHandler.startFlowJobContainers(startFlowContainersRequest);
+    }
+
     @Override
     public StartContainersResponse startJobContainers(StartContainersRequest startContainersRequest) {
         return containersServiceHandler.startJobContainers(startContainersRequest);

@@ -69,6 +69,13 @@ public class NodeManagerClient {
   }
 
 
+  public StartContainersResponse startFlowJobContainers(Context context,StartFlowContainersRequest startFlowContainersRequest) {
+    byte[] responseData = commandClient.call(context,nodeManagerEndpoint, startFlowJobContainers,startFlowContainersRequest.serialize());
+    StartContainersResponse response = new StartContainersResponse();
+    response.deserialize(responseData);
+    return response;
+  }
+
   public StartContainersResponse startJobContainers(Context context,StartContainersRequest startContainersRequest) {
     byte[] responseData = commandClient.call(context,nodeManagerEndpoint, startJobContainers,startContainersRequest.serialize());
     StartContainersResponse response = new StartContainersResponse();

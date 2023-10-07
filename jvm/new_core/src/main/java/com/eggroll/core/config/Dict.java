@@ -14,6 +14,13 @@ public class Dict {
     public static final String STATUS = "status";
     public static final String KEY_PROCESSOR_TYPE = "ProcessorType";
 
+    // checkResourceEnough
+    public static final String CHECK_RESOURCE_ENOUGH_CHECK_TYPE_NODE = "nodeCheck";
+    public static final String CHECK_RESOURCE_ENOUGH_CHECK_TYPE_CLUSTER  = "clusterCheck";
+    public static final String RESOURCE_TYPE_GPU  = "gpu";
+    public static final String RESOURCE_TYPE_CPU  = "cpu";
+    public static final String RESOURCE_TYPE_MEMORY  = "memory";
+
     public static final String SERVER_NODES = "SERVER_NODES";
     public static final String SESSION_IN_DB = "SESSION_IN_DB";
     public static final String PROCESSOR_IN_DB = "PROCESSOR_IN_DB";
