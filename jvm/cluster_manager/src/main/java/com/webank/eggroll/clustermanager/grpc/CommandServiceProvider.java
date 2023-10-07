@@ -10,6 +10,7 @@ import com.eggroll.core.pojo.*;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.cluster.ClusterManagerService;
+import com.webank.eggroll.clustermanager.cluster.ClusterResourceManager;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.StoreCrudOperator;
 import com.webank.eggroll.clustermanager.job.JobServiceHandler;
@@ -41,6 +42,9 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     JobServiceHandler jobServiceHandler;
     @Inject
     RendezvousStoreService rendezvousStoreService;
+    @Inject
+    ClusterResourceManager clusterResourceManager;
+
 
     @Inject
     public void setDispatcher(Dispatcher dispatcher) {
@@ -188,6 +192,11 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     @URI(value = rendezvousGet)
     public RendezvousStoreGetResponse rendezvousGet(Context context ,RendezvousStoreGetRequest request) throws InterruptedException {
         return rendezvousStoreService.get(context,request);
+    }
+
+    @URI(value = checkResourceEnough)
+    public CheckResourceEnoughResponse checkResourceEnough(Context context ,CheckResourceEnoughRequest request) throws InterruptedException {
+        return clusterResourceManager.checkResourceEnoughForFlow(context, request);
     }
 
 }

@@ -29,6 +29,8 @@ public class CommandUri {
 
     public static final String checkNodeProcess = "v1/node-manager/resouce/checkNodeProcess";
 
+    public static final String startFlowJobContainers = "v1/node-manager/container/startFlowJobContainers";
+
     public static final String startJobContainers = "v1/node-manager/container/startJobContainers";
     public static final String stopJobContainers = "v1/node-manager/container/stopJobContainers";
     public static final String killJobContainers = "v1/node-manager/container/killJobContainers";
@@ -46,5 +48,9 @@ public class CommandUri {
     public static final String rendezvousDestroy = "v1/cluster-manager/job/rendezvous/destroy";
     public static final String rendezvousGet = "v1/cluster-manager/job/rendezvous/get";
     public static final String rendezvousSet = "v1/cluster-manager/job/rendezvous/set";
+
+
+    public static final String checkResourceEnough = "v1/cluster-manager/resource/checkResourceEnough";
+
 
 }

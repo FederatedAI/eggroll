@@ -67,6 +67,13 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
         return defaultProcessorManager.checkNodeProcess(context, processor);
     }
 
+
+    @URI(value = startFlowJobContainers)
+    public StartContainersResponse startFlowJobContainers(Context context,StartFlowContainersRequest startFlowContainersRequest) {
+        return defaultProcessorManager.startFlowJobContainers(startFlowContainersRequest);
+    }
+
+
     @URI(value = startJobContainers)
     public StartContainersResponse startJobContainers(Context context,StartContainersRequest startContainersRequest) {
         return defaultProcessorManager.startJobContainers(startContainersRequest);

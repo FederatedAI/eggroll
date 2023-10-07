@@ -141,6 +141,100 @@ public class JobServiceHandler {
         return response;
     }
 
+    /**
+     * 定制方式提交
+     * 1.固定提交：每个节点都完成指定数量的进程任务。
+     * 2.指定提交：所有节点一块完成指定数量的进程任务。
+     */
+    public void handleCustomizedSubmit(CustomizedJobRequest customizedJobRequest) throws InterruptedException {
+
+        String customType = customizedJobRequest.getCustomType();
+        if ("repeat".equals(customType)) {
+            // 走startContainers方式，每个节点都启动相同的进程
+
+        }else if ("noRepeat".equals(customType)) {
+            // 走大startJobContainers方式，所有节点共同完成指定的进程
+            singleProcessSubmit(customizedJobRequest);
+        }else {
+            log.error("不支持的定制方式");
+        }
+
+    }
+
+    /**
+     * 节点不重复启动：在集群中启动用户指定的进程个数。
+     *  主要针对集群中只启动一个进程的场景，该方法也考虑了可能在集群中启几个进程的场景。
+     *
+     * @param customizedJobRequest
+     */
+    private void singleProcessSubmit(CustomizedJobRequest customizedJobRequest) throws InterruptedException {
+        String sessionId = customizedJobRequest.getSessionId();
+        int processorSize = customizedJobRequest.getProcessorSize();
+
+        // 需要用到的eggroll的资源管理类型 gpu/cpu/不需要
+        String resourceMonitorType = customizedJobRequest.getResourceMonitorType();
+        if ("gpu".equals(resourceMonitorType)) {
+
+            List<ErProcessor> prepareProcessors = new ArrayList<>();
+            for (int i = 0; i < processorSize; i++) {
+                ErProcessor erProcessor = new ErProcessor();
+
+                // todo 进程类型
+                erProcessor.setProcessorType(JobProcessorTypes.FlowJob.getName());
+
+                erProcessor.setStatus(ProcessorStatus.NEW.name());
+                ErResource erResource = new ErResource();
+                erResource.setResourceType(Dict.VGPU_CORE);
+                erResource.setAllocated(1L);
+                erResource.setStatus(ResourceStatus.PRE_ALLOCATED.name());
+                erProcessor.getResources().add(erResource);
+                prepareProcessors.add(erProcessor);
+            }
+
+            ResourceApplication resourceApplication = new ResourceApplication();
+            resourceApplication.setSortByResourceType(Dict.VCPU_CORE);
+            resourceApplication.setProcessors(prepareProcessors);
+            resourceApplication.setResourceExhaustedStrategy(Dict.WAITING);
+            resourceApplication.setTimeout(customizedJobRequest.getResourceOptions().getTimeoutSeconds() * 1000);
+            resourceApplication.setSessionId(sessionId);
+            resourceApplication.setSessionName(JobProcessorTypes.FlowJob.toString());
+
+            clusterResourceManager.submitResourceRequest(resourceApplication);
+            List<MutablePair<ErProcessor, ErServerNode>> dispatchedProcessorList = resourceApplication.getResult();
+
+            dispatchedProcessorList.stream().collect(Collectors.groupingBy(MutablePair::getRight)).forEach((node, mutablePairList) -> {
+                NodeManagerClient nodeManagerClient = new NodeManagerClient(node.getEndpoint());
+
+                List<ErProcessor> processors = new ArrayList<>();
+                mutablePairList.stream().forEach(mutablePair->{
+                    ErProcessor pro = mutablePair.getLeft();
+                    pro.setOptions(customizedJobRequest.getOptions());
+                    pro.getOptions().put("scriptPath",customizedJobRequest.getScriptPath());
+                    processors.add(pro);
+                });
+
+                StartFlowContainersRequest startFlowContainersRequest = new StartFlowContainersRequest();
+                startFlowContainersRequest.setSessionId(sessionId);
+                startFlowContainersRequest.setName("flowSubmitJob");
+                startFlowContainersRequest.setCommandArguments(customizedJobRequest.getCommandArguments());
+                startFlowContainersRequest.setEnvironmentVariables(customizedJobRequest.getEnvironmentVariables());
+                startFlowContainersRequest.setOptions(customizedJobRequest.getOptions());
+                startFlowContainersRequest.setProcessors(processors);
+
+                nodeManagerClient.startFlowJobContainers(new Context(),startFlowContainersRequest);
+            });
+
+
+        } else if ("cpu".equals(resourceMonitorType)) {
+
+            // todo cpu资源管理
+        } else {
+
+        }
+
+    }
+
+
     public SubmitJobResponse handleDeepspeedSubmit(SubmitJobRequest submitJobRequest) throws InterruptedException {
         String sessionId = submitJobRequest.getSessionId();
         int worldSize = submitJobRequest.getWorldSize();
