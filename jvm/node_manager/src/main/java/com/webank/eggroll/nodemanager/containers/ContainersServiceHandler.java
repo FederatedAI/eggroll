@@ -236,7 +236,7 @@ public class ContainersServiceHandler {
 
         // 获取日志文件路径
         Path path = getContainerLogsDir(sessionId, rank);
-        path = path.resolve(StringUtils.isNotBlank(request.getLogType()) ? request.getLogType() : "INFO").resolve(".log");
+        path = path.resolve((StringUtils.isNotBlank(request.getLogType()) ? request.getLogType() : "INFO") + ".log");
 
         if (!path.toFile().exists()) {
             throw new PathNotExistException("Can not find file " + path);
