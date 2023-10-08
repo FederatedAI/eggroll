@@ -147,7 +147,7 @@ public class ContainersServiceHandler {
         List<Integer> ranks = downloadContainersRequest.getRanks();
         String compressMethod = downloadContainersRequest.getCompressMethod();
         int level = downloadContainersRequest.getCompressLevel();
-        logger.info("downloading containers, sessionId: {}, ranks: ", sessionId, ranks.stream().map(Object::toString).collect(Collectors.joining(",")));
+        logger.info("downloading containers, sessionId: {}, ranks: {}", sessionId, ranks.stream().map(Object::toString).collect(Collectors.joining(",")));
 
         List<ContainerContent> contents = ranks.stream()
                 .map(rank -> {
