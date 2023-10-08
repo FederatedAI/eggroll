@@ -70,7 +70,6 @@ public class JobServiceHandler {
 
             Map<Long, List<ErProcessor>> groupMap = sessionMeta.getProcessors().stream().collect(Collectors.groupingBy(ErProcessor::getServerNodeId));
 
-            log.info("xxxxxxxxxxxxxxx 1111 {}",groupMap);
             Map<ErServerNode, List<ErProcessor>> nodeAndProcessors = new HashMap<>();
             groupMap.forEach((nodeId, processors) -> {
                 ErServerNode erServerNode = serverNodeService.getById(nodeId).toErServerNode();
@@ -83,6 +82,9 @@ public class JobServiceHandler {
                 try {
                     killContainersRequest.setContainers(processorIdList);
                     new NodeManagerClient(erServerNode.getEndpoint()).killJobContainers(context, killContainersRequest);
+                    final UpdateWrapper<SessionMain> updateWrapper = new UpdateWrapper<>();
+                    updateWrapper.lambda().eq(SessionMain::getSessionId,sessionId).set(SessionMain::getStatus,SessionStatus.CLOSED.name());
+                    sessionMainService.update(updateWrapper);
                 } catch (Exception e) {
                     log.error("killContainers error : ", e);
                 }
