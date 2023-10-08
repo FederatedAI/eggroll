@@ -744,14 +744,14 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
             sessionLockMap.putIfAbsent(sessionId, new ReentrantLock());
             lock = sessionLockMap.get(sessionId);
         }
-        log.info("lock session {}", sessionId);
+//        log.debug("lock session {}", sessionId);
         lock.lock();
     }
 
     public void unlockSession(String sessionId) {
         ReentrantLock lock = sessionLockMap.get(sessionId);
         if (lock != null) {
-            log.info("unlock session {}", sessionId);
+//            log.info("unlock session {}", sessionId);
             lock.unlock();
         }
     }
