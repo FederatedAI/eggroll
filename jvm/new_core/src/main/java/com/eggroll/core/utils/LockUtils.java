@@ -19,7 +19,7 @@ public class LockUtils {
             lockMap.putIfAbsent(key, new ReentrantLock());
         }
         lock = lockMap.get(key);
-        logger.info("lock key {}",key);
+//        logger.info("lock key {}",key);
         lock.lock();
     }
 
@@ -27,7 +27,7 @@ public class LockUtils {
         if(lockMap == null){
             throw new RuntimeException("lockMap is null");
         }
-        logger.info("unlock key {}",key);
+//        logger.info("unlock key {}",key);
         ReentrantLock  lock = lockMap.get(key);
         if(lock!=null){
             lock.unlock();
