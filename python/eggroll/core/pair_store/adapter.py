@@ -103,6 +103,19 @@ class PairIterator:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+    def key(self):
+        raise NotImplementedError()
+
+    def last(self):
+        raise NotImplementedError()
+
+    def is_sorted(self):
+        raise NotImplementedError()
+
+    @property
+    def adapter(self) -> PairAdapter:
+        raise NotImplementedError()
+
 
 class FileAdapter(PairAdapter):
     def destroy(self):

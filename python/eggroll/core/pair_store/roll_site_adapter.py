@@ -257,9 +257,13 @@ class RollSiteWriteBatch(PairWriteBatch):
 
 class RollSiteIterator(PairIterator):
     def __init__(self, adapter: RollSiteAdapter):
-        self.adapter = adapter
+        self._adapter = adapter
         self.it = adapter.db.iteritems()
         self.it.seek_to_first()
+
+    @property
+    def adapter(self) -> RollSiteAdapter:
+        return self._adapter
 
     def first(self):
         count = 0

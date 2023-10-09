@@ -4,6 +4,7 @@
 """Generated protocol buffer code."""
 from google.protobuf.internal import enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
+from google.protobuf import descriptor_pool as _descriptor_pool
 from google.protobuf import message as _message
 from google.protobuf import reflection as _reflection
 from google.protobuf import symbol_database as _symbol_database
@@ -14,775 +15,30 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor.FileDescriptor(
-  name='containers.proto',
-  package='com.webank.eggroll.core.meta',
-  syntax='proto3',
-  serialized_options=None,
-  create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x10\x63ontainers.proto\x12\x1c\x63om.webank.eggroll.core.meta\"\xca\x06\n\x16StartContainersRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x10\n\x08job_type\x18\x03 \x01(\t\x12\x19\n\x11\x63ommand_arguments\x18\x04 \x03(\t\x12m\n\x15\x65nvironment_variables\x18\x05 \x03(\x0b\x32N.com.webank.eggroll.core.meta.StartContainersRequest.EnvironmentVariablesEntry\x12N\n\x05\x66iles\x18\x06 \x03(\x0b\x32?.com.webank.eggroll.core.meta.StartContainersRequest.FilesEntry\x12[\n\x0czipped_files\x18\x07 \x03(\x0b\x32\x45.com.webank.eggroll.core.meta.StartContainersRequest.ZippedFilesEntry\x12h\n\x13typed_extra_configs\x18\x08 \x03(\x0b\x32K.com.webank.eggroll.core.meta.StartContainersRequest.TypedExtraConfigsEntry\x12R\n\x07options\x18\t \x03(\x0b\x32\x41.com.webank.eggroll.core.meta.StartContainersRequest.OptionsEntry\x1a;\n\x19\x45nvironmentVariablesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x1a,\n\nFilesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x1a\x32\n\x10ZippedFilesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x1a\x38\n\x16TypedExtraConfigsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x04\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xf9\x01\n\x18\x44\x65\x65pspeedContainerConfig\x12\x1c\n\x14\x63uda_visible_devices\x18\x02 \x03(\r\x12\x12\n\nworld_size\x18\x03 \x01(\r\x12\x12\n\ncross_rank\x18\x04 \x01(\r\x12\x12\n\ncross_size\x18\x05 \x01(\r\x12\x12\n\nlocal_size\x18\x06 \x01(\r\x12\x12\n\nlocal_rank\x18\x07 \x01(\r\x12\x0c\n\x04rank\x18\x08 \x01(\r\x12\x12\n\nstore_host\x18\t \x01(\t\x12\x12\n\nstore_port\x18\n \x01(\x05\x12\x14\n\x0cstore_prefix\x18\x0b \x01(\t\x12\x0f\n\x07\x62\x61\x63kend\x18\x0c \x01(\t\"-\n\x17StartContainersResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\"B\n\x15StopContainersRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x15\n\rcontainer_ids\x18\x02 \x03(\x03\",\n\x16StopContainersResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\"B\n\x15KillContainersRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x15\n\rcontainer_ids\x18\x02 \x03(\x03\",\n\x16KillContainersResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\"\xb0\x01\n\x19\x44ownloadContainersRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\r\n\x05ranks\x18\x02 \x03(\x05\x12\x17\n\x0f\x63ompress_method\x18\x03 \x01(\t\x12\x16\n\x0e\x63ompress_level\x18\x04 \x01(\x05\x12?\n\x0c\x63ontent_type\x18\x05 \x01(\x0e\x32).com.webank.eggroll.core.meta.ContentType\"{\n\x1a\x44ownloadContainersResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12I\n\x11\x63ontainer_content\x18\x02 \x03(\x0b\x32..com.webank.eggroll.core.meta.ContainerContent\"J\n\x10\x43ontainerContent\x12\x0c\n\x04rank\x18\x01 \x01(\x05\x12\x0f\n\x07\x63ontent\x18\x02 \x01(\x0c\x12\x17\n\x0f\x63ompress_method\x18\x03 \x01(\t*,\n\x0b\x43ontentType\x12\x07\n\x03\x41LL\x10\x00\x12\n\n\x06MODELS\x10\x01\x12\x08\n\x04LOGS\x10\x02\x62\x06proto3'
-)
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x10\x63ontainers.proto\x12\x1c\x63om.webank.eggroll.core.meta\"\xca\x06\n\x16StartContainersRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x10\n\x08job_type\x18\x03 \x01(\t\x12\x19\n\x11\x63ommand_arguments\x18\x04 \x03(\t\x12m\n\x15\x65nvironment_variables\x18\x05 \x03(\x0b\x32N.com.webank.eggroll.core.meta.StartContainersRequest.EnvironmentVariablesEntry\x12N\n\x05\x66iles\x18\x06 \x03(\x0b\x32?.com.webank.eggroll.core.meta.StartContainersRequest.FilesEntry\x12[\n\x0czipped_files\x18\x07 \x03(\x0b\x32\x45.com.webank.eggroll.core.meta.StartContainersRequest.ZippedFilesEntry\x12h\n\x13typed_extra_configs\x18\x08 \x03(\x0b\x32K.com.webank.eggroll.core.meta.StartContainersRequest.TypedExtraConfigsEntry\x12R\n\x07options\x18\t \x03(\x0b\x32\x41.com.webank.eggroll.core.meta.StartContainersRequest.OptionsEntry\x1a;\n\x19\x45nvironmentVariablesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x1a,\n\nFilesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x1a\x32\n\x10ZippedFilesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x1a\x38\n\x16TypedExtraConfigsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x04\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xf9\x01\n\x18\x44\x65\x65pspeedContainerConfig\x12\x1c\n\x14\x63uda_visible_devices\x18\x02 \x03(\r\x12\x12\n\nworld_size\x18\x03 \x01(\r\x12\x12\n\ncross_rank\x18\x04 \x01(\r\x12\x12\n\ncross_size\x18\x05 \x01(\r\x12\x12\n\nlocal_size\x18\x06 \x01(\r\x12\x12\n\nlocal_rank\x18\x07 \x01(\r\x12\x0c\n\x04rank\x18\x08 \x01(\r\x12\x12\n\nstore_host\x18\t \x01(\t\x12\x12\n\nstore_port\x18\n \x01(\x05\x12\x14\n\x0cstore_prefix\x18\x0b \x01(\t\x12\x0f\n\x07\x62\x61\x63kend\x18\x0c \x01(\t\"-\n\x17StartContainersResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\"B\n\x15StopContainersRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x15\n\rcontainer_ids\x18\x02 \x03(\x03\",\n\x16StopContainersResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\"B\n\x15KillContainersRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x15\n\rcontainer_ids\x18\x02 \x03(\x03\",\n\x16KillContainersResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\"\xb0\x01\n\x19\x44ownloadContainersRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\r\n\x05ranks\x18\x02 \x03(\x05\x12\x17\n\x0f\x63ompress_method\x18\x03 \x01(\t\x12\x16\n\x0e\x63ompress_level\x18\x04 \x01(\x05\x12?\n\x0c\x63ontent_type\x18\x05 \x01(\x0e\x32).com.webank.eggroll.core.meta.ContentType\"{\n\x1a\x44ownloadContainersResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12I\n\x11\x63ontainer_content\x18\x02 \x03(\x0b\x32..com.webank.eggroll.core.meta.ContainerContent\"J\n\x10\x43ontainerContent\x12\x0c\n\x04rank\x18\x01 \x01(\x05\x12\x0f\n\x07\x63ontent\x18\x02 \x01(\x0c\x12\x17\n\x0f\x63ompress_method\x18\x03 \x01(\t*,\n\x0b\x43ontentType\x12\x07\n\x03\x41LL\x10\x00\x12\n\n\x06MODELS\x10\x01\x12\x08\n\x04LOGS\x10\x02\x62\x06proto3')
 
-_CONTENTTYPE = _descriptor.EnumDescriptor(
-  name='ContentType',
-  full_name='com.webank.eggroll.core.meta.ContentType',
-  filename=None,
-  file=DESCRIPTOR,
-  create_key=_descriptor._internal_create_key,
-  values=[
-    _descriptor.EnumValueDescriptor(
-      name='ALL', index=0, number=0,
-      serialized_options=None,
-      type=None,
-      create_key=_descriptor._internal_create_key),
-    _descriptor.EnumValueDescriptor(
-      name='MODELS', index=1, number=1,
-      serialized_options=None,
-      type=None,
-      create_key=_descriptor._internal_create_key),
-    _descriptor.EnumValueDescriptor(
-      name='LOGS', index=2, number=2,
-      serialized_options=None,
-      type=None,
-      create_key=_descriptor._internal_create_key),
-  ],
-  containing_type=None,
-  serialized_options=None,
-  serialized_start=1802,
-  serialized_end=1846,
-)
-_sym_db.RegisterEnumDescriptor(_CONTENTTYPE)
-
+_CONTENTTYPE = DESCRIPTOR.enum_types_by_name['ContentType']
 ContentType = enum_type_wrapper.EnumTypeWrapper(_CONTENTTYPE)
 ALL = 0
 MODELS = 1
 LOGS = 2
 
 
-
-_STARTCONTAINERSREQUEST_ENVIRONMENTVARIABLESENTRY = _descriptor.Descriptor(
-  name='EnvironmentVariablesEntry',
-  full_name='com.webank.eggroll.core.meta.StartContainersRequest.EnvironmentVariablesEntry',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='key', full_name='com.webank.eggroll.core.meta.StartContainersRequest.EnvironmentVariablesEntry.key', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='value', full_name='com.webank.eggroll.core.meta.StartContainersRequest.EnvironmentVariablesEntry.value', index=1,
-      number=2, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=b'8\001',
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=630,
-  serialized_end=689,
-)
-
-_STARTCONTAINERSREQUEST_FILESENTRY = _descriptor.Descriptor(
-  name='FilesEntry',
-  full_name='com.webank.eggroll.core.meta.StartContainersRequest.FilesEntry',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='key', full_name='com.webank.eggroll.core.meta.StartContainersRequest.FilesEntry.key', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='value', full_name='com.webank.eggroll.core.meta.StartContainersRequest.FilesEntry.value', index=1,
-      number=2, type=12, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"",
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=b'8\001',
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=691,
-  serialized_end=735,
-)
-
-_STARTCONTAINERSREQUEST_ZIPPEDFILESENTRY = _descriptor.Descriptor(
-  name='ZippedFilesEntry',
-  full_name='com.webank.eggroll.core.meta.StartContainersRequest.ZippedFilesEntry',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='key', full_name='com.webank.eggroll.core.meta.StartContainersRequest.ZippedFilesEntry.key', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='value', full_name='com.webank.eggroll.core.meta.StartContainersRequest.ZippedFilesEntry.value', index=1,
-      number=2, type=12, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"",
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=b'8\001',
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=737,
-  serialized_end=787,
-)
-
-_STARTCONTAINERSREQUEST_TYPEDEXTRACONFIGSENTRY = _descriptor.Descriptor(
-  name='TypedExtraConfigsEntry',
-  full_name='com.webank.eggroll.core.meta.StartContainersRequest.TypedExtraConfigsEntry',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='key', full_name='com.webank.eggroll.core.meta.StartContainersRequest.TypedExtraConfigsEntry.key', index=0,
-      number=1, type=4, cpp_type=4, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='value', full_name='com.webank.eggroll.core.meta.StartContainersRequest.TypedExtraConfigsEntry.value', index=1,
-      number=2, type=12, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"",
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=b'8\001',
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=789,
-  serialized_end=845,
-)
-
-_STARTCONTAINERSREQUEST_OPTIONSENTRY = _descriptor.Descriptor(
-  name='OptionsEntry',
-  full_name='com.webank.eggroll.core.meta.StartContainersRequest.OptionsEntry',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='key', full_name='com.webank.eggroll.core.meta.StartContainersRequest.OptionsEntry.key', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='value', full_name='com.webank.eggroll.core.meta.StartContainersRequest.OptionsEntry.value', index=1,
-      number=2, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=b'8\001',
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=847,
-  serialized_end=893,
-)
-
-_STARTCONTAINERSREQUEST = _descriptor.Descriptor(
-  name='StartContainersRequest',
-  full_name='com.webank.eggroll.core.meta.StartContainersRequest',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='session_id', full_name='com.webank.eggroll.core.meta.StartContainersRequest.session_id', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='name', full_name='com.webank.eggroll.core.meta.StartContainersRequest.name', index=1,
-      number=2, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='job_type', full_name='com.webank.eggroll.core.meta.StartContainersRequest.job_type', index=2,
-      number=3, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='command_arguments', full_name='com.webank.eggroll.core.meta.StartContainersRequest.command_arguments', index=3,
-      number=4, type=9, cpp_type=9, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='environment_variables', full_name='com.webank.eggroll.core.meta.StartContainersRequest.environment_variables', index=4,
-      number=5, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='files', full_name='com.webank.eggroll.core.meta.StartContainersRequest.files', index=5,
-      number=6, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='zipped_files', full_name='com.webank.eggroll.core.meta.StartContainersRequest.zipped_files', index=6,
-      number=7, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='typed_extra_configs', full_name='com.webank.eggroll.core.meta.StartContainersRequest.typed_extra_configs', index=7,
-      number=8, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='options', full_name='com.webank.eggroll.core.meta.StartContainersRequest.options', index=8,
-      number=9, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[_STARTCONTAINERSREQUEST_ENVIRONMENTVARIABLESENTRY, _STARTCONTAINERSREQUEST_FILESENTRY, _STARTCONTAINERSREQUEST_ZIPPEDFILESENTRY, _STARTCONTAINERSREQUEST_TYPEDEXTRACONFIGSENTRY, _STARTCONTAINERSREQUEST_OPTIONSENTRY, ],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=51,
-  serialized_end=893,
-)
-
-
-_DEEPSPEEDCONTAINERCONFIG = _descriptor.Descriptor(
-  name='DeepspeedContainerConfig',
-  full_name='com.webank.eggroll.core.meta.DeepspeedContainerConfig',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='cuda_visible_devices', full_name='com.webank.eggroll.core.meta.DeepspeedContainerConfig.cuda_visible_devices', index=0,
-      number=2, type=13, cpp_type=3, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='world_size', full_name='com.webank.eggroll.core.meta.DeepspeedContainerConfig.world_size', index=1,
-      number=3, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='cross_rank', full_name='com.webank.eggroll.core.meta.DeepspeedContainerConfig.cross_rank', index=2,
-      number=4, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='cross_size', full_name='com.webank.eggroll.core.meta.DeepspeedContainerConfig.cross_size', index=3,
-      number=5, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='local_size', full_name='com.webank.eggroll.core.meta.DeepspeedContainerConfig.local_size', index=4,
-      number=6, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='local_rank', full_name='com.webank.eggroll.core.meta.DeepspeedContainerConfig.local_rank', index=5,
-      number=7, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='rank', full_name='com.webank.eggroll.core.meta.DeepspeedContainerConfig.rank', index=6,
-      number=8, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='store_host', full_name='com.webank.eggroll.core.meta.DeepspeedContainerConfig.store_host', index=7,
-      number=9, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='store_port', full_name='com.webank.eggroll.core.meta.DeepspeedContainerConfig.store_port', index=8,
-      number=10, type=5, cpp_type=1, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='store_prefix', full_name='com.webank.eggroll.core.meta.DeepspeedContainerConfig.store_prefix', index=9,
-      number=11, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='backend', full_name='com.webank.eggroll.core.meta.DeepspeedContainerConfig.backend', index=10,
-      number=12, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=896,
-  serialized_end=1145,
-)
-
-
-_STARTCONTAINERSRESPONSE = _descriptor.Descriptor(
-  name='StartContainersResponse',
-  full_name='com.webank.eggroll.core.meta.StartContainersResponse',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='session_id', full_name='com.webank.eggroll.core.meta.StartContainersResponse.session_id', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=1147,
-  serialized_end=1192,
-)
-
-
-_STOPCONTAINERSREQUEST = _descriptor.Descriptor(
-  name='StopContainersRequest',
-  full_name='com.webank.eggroll.core.meta.StopContainersRequest',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='session_id', full_name='com.webank.eggroll.core.meta.StopContainersRequest.session_id', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='container_ids', full_name='com.webank.eggroll.core.meta.StopContainersRequest.container_ids', index=1,
-      number=2, type=3, cpp_type=2, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=1194,
-  serialized_end=1260,
-)
-
-
-_STOPCONTAINERSRESPONSE = _descriptor.Descriptor(
-  name='StopContainersResponse',
-  full_name='com.webank.eggroll.core.meta.StopContainersResponse',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='session_id', full_name='com.webank.eggroll.core.meta.StopContainersResponse.session_id', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=1262,
-  serialized_end=1306,
-)
-
-
-_KILLCONTAINERSREQUEST = _descriptor.Descriptor(
-  name='KillContainersRequest',
-  full_name='com.webank.eggroll.core.meta.KillContainersRequest',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='session_id', full_name='com.webank.eggroll.core.meta.KillContainersRequest.session_id', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='container_ids', full_name='com.webank.eggroll.core.meta.KillContainersRequest.container_ids', index=1,
-      number=2, type=3, cpp_type=2, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=1308,
-  serialized_end=1374,
-)
-
-
-_KILLCONTAINERSRESPONSE = _descriptor.Descriptor(
-  name='KillContainersResponse',
-  full_name='com.webank.eggroll.core.meta.KillContainersResponse',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='session_id', full_name='com.webank.eggroll.core.meta.KillContainersResponse.session_id', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=1376,
-  serialized_end=1420,
-)
-
-
-_DOWNLOADCONTAINERSREQUEST = _descriptor.Descriptor(
-  name='DownloadContainersRequest',
-  full_name='com.webank.eggroll.core.meta.DownloadContainersRequest',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='session_id', full_name='com.webank.eggroll.core.meta.DownloadContainersRequest.session_id', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='ranks', full_name='com.webank.eggroll.core.meta.DownloadContainersRequest.ranks', index=1,
-      number=2, type=5, cpp_type=1, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='compress_method', full_name='com.webank.eggroll.core.meta.DownloadContainersRequest.compress_method', index=2,
-      number=3, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='compress_level', full_name='com.webank.eggroll.core.meta.DownloadContainersRequest.compress_level', index=3,
-      number=4, type=5, cpp_type=1, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='content_type', full_name='com.webank.eggroll.core.meta.DownloadContainersRequest.content_type', index=4,
-      number=5, type=14, cpp_type=8, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=1423,
-  serialized_end=1599,
-)
-
-
-_DOWNLOADCONTAINERSRESPONSE = _descriptor.Descriptor(
-  name='DownloadContainersResponse',
-  full_name='com.webank.eggroll.core.meta.DownloadContainersResponse',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='session_id', full_name='com.webank.eggroll.core.meta.DownloadContainersResponse.session_id', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='container_content', full_name='com.webank.eggroll.core.meta.DownloadContainersResponse.container_content', index=1,
-      number=2, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=1601,
-  serialized_end=1724,
-)
-
-
-_CONTAINERCONTENT = _descriptor.Descriptor(
-  name='ContainerContent',
-  full_name='com.webank.eggroll.core.meta.ContainerContent',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='rank', full_name='com.webank.eggroll.core.meta.ContainerContent.rank', index=0,
-      number=1, type=5, cpp_type=1, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='content', full_name='com.webank.eggroll.core.meta.ContainerContent.content', index=1,
-      number=2, type=12, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"",
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='compress_method', full_name='com.webank.eggroll.core.meta.ContainerContent.compress_method', index=2,
-      number=3, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=1726,
-  serialized_end=1800,
-)
-
-_STARTCONTAINERSREQUEST_ENVIRONMENTVARIABLESENTRY.containing_type = _STARTCONTAINERSREQUEST
-_STARTCONTAINERSREQUEST_FILESENTRY.containing_type = _STARTCONTAINERSREQUEST
-_STARTCONTAINERSREQUEST_ZIPPEDFILESENTRY.containing_type = _STARTCONTAINERSREQUEST
-_STARTCONTAINERSREQUEST_TYPEDEXTRACONFIGSENTRY.containing_type = _STARTCONTAINERSREQUEST
-_STARTCONTAINERSREQUEST_OPTIONSENTRY.containing_type = _STARTCONTAINERSREQUEST
-_STARTCONTAINERSREQUEST.fields_by_name['environment_variables'].message_type = _STARTCONTAINERSREQUEST_ENVIRONMENTVARIABLESENTRY
-_STARTCONTAINERSREQUEST.fields_by_name['files'].message_type = _STARTCONTAINERSREQUEST_FILESENTRY
-_STARTCONTAINERSREQUEST.fields_by_name['zipped_files'].message_type = _STARTCONTAINERSREQUEST_ZIPPEDFILESENTRY
-_STARTCONTAINERSREQUEST.fields_by_name['typed_extra_configs'].message_type = _STARTCONTAINERSREQUEST_TYPEDEXTRACONFIGSENTRY
-_STARTCONTAINERSREQUEST.fields_by_name['options'].message_type = _STARTCONTAINERSREQUEST_OPTIONSENTRY
-_DOWNLOADCONTAINERSREQUEST.fields_by_name['content_type'].enum_type = _CONTENTTYPE
-_DOWNLOADCONTAINERSRESPONSE.fields_by_name['container_content'].message_type = _CONTAINERCONTENT
-DESCRIPTOR.message_types_by_name['StartContainersRequest'] = _STARTCONTAINERSREQUEST
-DESCRIPTOR.message_types_by_name['DeepspeedContainerConfig'] = _DEEPSPEEDCONTAINERCONFIG
-DESCRIPTOR.message_types_by_name['StartContainersResponse'] = _STARTCONTAINERSRESPONSE
-DESCRIPTOR.message_types_by_name['StopContainersRequest'] = _STOPCONTAINERSREQUEST
-DESCRIPTOR.message_types_by_name['StopContainersResponse'] = _STOPCONTAINERSRESPONSE
-DESCRIPTOR.message_types_by_name['KillContainersRequest'] = _KILLCONTAINERSREQUEST
-DESCRIPTOR.message_types_by_name['KillContainersResponse'] = _KILLCONTAINERSRESPONSE
-DESCRIPTOR.message_types_by_name['DownloadContainersRequest'] = _DOWNLOADCONTAINERSREQUEST
-DESCRIPTOR.message_types_by_name['DownloadContainersResponse'] = _DOWNLOADCONTAINERSRESPONSE
-DESCRIPTOR.message_types_by_name['ContainerContent'] = _CONTAINERCONTENT
-DESCRIPTOR.enum_types_by_name['ContentType'] = _CONTENTTYPE
-_sym_db.RegisterFileDescriptor(DESCRIPTOR)
-
+_STARTCONTAINERSREQUEST = DESCRIPTOR.message_types_by_name['StartContainersRequest']
+_STARTCONTAINERSREQUEST_ENVIRONMENTVARIABLESENTRY = _STARTCONTAINERSREQUEST.nested_types_by_name['EnvironmentVariablesEntry']
+_STARTCONTAINERSREQUEST_FILESENTRY = _STARTCONTAINERSREQUEST.nested_types_by_name['FilesEntry']
+_STARTCONTAINERSREQUEST_ZIPPEDFILESENTRY = _STARTCONTAINERSREQUEST.nested_types_by_name['ZippedFilesEntry']
+_STARTCONTAINERSREQUEST_TYPEDEXTRACONFIGSENTRY = _STARTCONTAINERSREQUEST.nested_types_by_name['TypedExtraConfigsEntry']
+_STARTCONTAINERSREQUEST_OPTIONSENTRY = _STARTCONTAINERSREQUEST.nested_types_by_name['OptionsEntry']
+_DEEPSPEEDCONTAINERCONFIG = DESCRIPTOR.message_types_by_name['DeepspeedContainerConfig']
+_STARTCONTAINERSRESPONSE = DESCRIPTOR.message_types_by_name['StartContainersResponse']
+_STOPCONTAINERSREQUEST = DESCRIPTOR.message_types_by_name['StopContainersRequest']
+_STOPCONTAINERSRESPONSE = DESCRIPTOR.message_types_by_name['StopContainersResponse']
+_KILLCONTAINERSREQUEST = DESCRIPTOR.message_types_by_name['KillContainersRequest']
+_KILLCONTAINERSRESPONSE = DESCRIPTOR.message_types_by_name['KillContainersResponse']
+_DOWNLOADCONTAINERSREQUEST = DESCRIPTOR.message_types_by_name['DownloadContainersRequest']
+_DOWNLOADCONTAINERSRESPONSE = DESCRIPTOR.message_types_by_name['DownloadContainersResponse']
+_CONTAINERCONTENT = DESCRIPTOR.message_types_by_name['ContainerContent']
 StartContainersRequest = _reflection.GeneratedProtocolMessageType('StartContainersRequest', (_message.Message,), {
 
   'EnvironmentVariablesEntry' : _reflection.GeneratedProtocolMessageType('EnvironmentVariablesEntry', (_message.Message,), {
@@ -893,10 +149,49 @@ ContainerContent = _reflection.GeneratedProtocolMessageType('ContainerContent', 
   })
 _sym_db.RegisterMessage(ContainerContent)
 
+if _descriptor._USE_C_DESCRIPTORS == False:
 
-_STARTCONTAINERSREQUEST_ENVIRONMENTVARIABLESENTRY._options = None
-_STARTCONTAINERSREQUEST_FILESENTRY._options = None
-_STARTCONTAINERSREQUEST_ZIPPEDFILESENTRY._options = None
-_STARTCONTAINERSREQUEST_TYPEDEXTRACONFIGSENTRY._options = None
-_STARTCONTAINERSREQUEST_OPTIONSENTRY._options = None
+  DESCRIPTOR._options = None
+  _STARTCONTAINERSREQUEST_ENVIRONMENTVARIABLESENTRY._options = None
+  _STARTCONTAINERSREQUEST_ENVIRONMENTVARIABLESENTRY._serialized_options = b'8\001'
+  _STARTCONTAINERSREQUEST_FILESENTRY._options = None
+  _STARTCONTAINERSREQUEST_FILESENTRY._serialized_options = b'8\001'
+  _STARTCONTAINERSREQUEST_ZIPPEDFILESENTRY._options = None
+  _STARTCONTAINERSREQUEST_ZIPPEDFILESENTRY._serialized_options = b'8\001'
+  _STARTCONTAINERSREQUEST_TYPEDEXTRACONFIGSENTRY._options = None
+  _STARTCONTAINERSREQUEST_TYPEDEXTRACONFIGSENTRY._serialized_options = b'8\001'
+  _STARTCONTAINERSREQUEST_OPTIONSENTRY._options = None
+  _STARTCONTAINERSREQUEST_OPTIONSENTRY._serialized_options = b'8\001'
+  _CONTENTTYPE._serialized_start=1802
+  _CONTENTTYPE._serialized_end=1846
+  _STARTCONTAINERSREQUEST._serialized_start=51
+  _STARTCONTAINERSREQUEST._serialized_end=893
+  _STARTCONTAINERSREQUEST_ENVIRONMENTVARIABLESENTRY._serialized_start=630
+  _STARTCONTAINERSREQUEST_ENVIRONMENTVARIABLESENTRY._serialized_end=689
+  _STARTCONTAINERSREQUEST_FILESENTRY._serialized_start=691
+  _STARTCONTAINERSREQUEST_FILESENTRY._serialized_end=735
+  _STARTCONTAINERSREQUEST_ZIPPEDFILESENTRY._serialized_start=737
+  _STARTCONTAINERSREQUEST_ZIPPEDFILESENTRY._serialized_end=787
+  _STARTCONTAINERSREQUEST_TYPEDEXTRACONFIGSENTRY._serialized_start=789
+  _STARTCONTAINERSREQUEST_TYPEDEXTRACONFIGSENTRY._serialized_end=845
+  _STARTCONTAINERSREQUEST_OPTIONSENTRY._serialized_start=847
+  _STARTCONTAINERSREQUEST_OPTIONSENTRY._serialized_end=893
+  _DEEPSPEEDCONTAINERCONFIG._serialized_start=896
+  _DEEPSPEEDCONTAINERCONFIG._serialized_end=1145
+  _STARTCONTAINERSRESPONSE._serialized_start=1147
+  _STARTCONTAINERSRESPONSE._serialized_end=1192
+  _STOPCONTAINERSREQUEST._serialized_start=1194
+  _STOPCONTAINERSREQUEST._serialized_end=1260
+  _STOPCONTAINERSRESPONSE._serialized_start=1262
+  _STOPCONTAINERSRESPONSE._serialized_end=1306
+  _KILLCONTAINERSREQUEST._serialized_start=1308
+  _KILLCONTAINERSREQUEST._serialized_end=1374
+  _KILLCONTAINERSRESPONSE._serialized_start=1376
+  _KILLCONTAINERSRESPONSE._serialized_end=1420
+  _DOWNLOADCONTAINERSREQUEST._serialized_start=1423
+  _DOWNLOADCONTAINERSREQUEST._serialized_end=1599
+  _DOWNLOADCONTAINERSRESPONSE._serialized_start=1601
+  _DOWNLOADCONTAINERSRESPONSE._serialized_end=1724
+  _CONTAINERCONTENT._serialized_start=1726
+  _CONTAINERCONTENT._serialized_end=1800
 # @@protoc_insertion_point(module_scope)

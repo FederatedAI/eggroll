@@ -103,7 +103,7 @@ class TestIo(unittest.TestCase):
 
     # todo: add send logic here
 
-    # run in egg
+    # run in eggs
     do_insert(sendMat1, TestIo._mat_a)
     do_insert(sendMat2, TestIo._mat_b)
 
@@ -142,7 +142,7 @@ class TestIo(unittest.TestCase):
                                       : ((int(i % 2) + 1) * subVecsize + headSize)])
 
     # todo: add send logic here
-    # run in egg
+    # run in eggs
     do_insert(sendMat, TestIo._mat_a)
     do_insert(sendVec, TestIo._mat_b)
 
