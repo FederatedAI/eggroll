@@ -10,6 +10,7 @@ import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.*;
 import com.eggroll.core.postprocessor.ApplicationStartedRunner;
 import com.eggroll.core.utils.JsonUtil;
+import com.eggroll.core.utils.LockUtils;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.inject.Inject;
@@ -40,7 +41,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
 
     Logger log = LoggerFactory.getLogger(ClusterResourceManager.class);
 
-    private Map<String, ReentrantLock> sessionLockMap = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, ReentrantLock> sessionLockMap = new ConcurrentHashMap<>();
     private Map<String, Long> killJobMap = new ConcurrentHashMap<>();
     private FifoBroker<ResourceApplication> applicationQueue = new FifoBroker<>();
     @Inject
@@ -739,21 +740,23 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
 
 
     public void lockSession(String sessionId) {
-        ReentrantLock lock = sessionLockMap.get(sessionId);
-        if (lock == null) {
-            sessionLockMap.putIfAbsent(sessionId, new ReentrantLock());
-            lock = sessionLockMap.get(sessionId);
-        }
-//        log.debug("lock session {}", sessionId);
-        lock.lock();
+        LockUtils.lock(sessionLockMap,sessionId);
+//        ReentrantLock lock = sessionLockMap.get(sessionId);
+//        if (lock == null) {
+//            sessionLockMap.putIfAbsent(sessionId, new ReentrantLock());
+//            lock = sessionLockMap.get(sessionId);
+//        }
+////        log.debug("lock session {}", sessionId);
+//        lock.lock();
     }
 
     public void unlockSession(String sessionId) {
-        ReentrantLock lock = sessionLockMap.get(sessionId);
-        if (lock != null) {
-//            log.info("unlock session {}", sessionId);
-            lock.unlock();
-        }
+        LockUtils.unLock(sessionLockMap,sessionId);
+//        ReentrantLock lock = sessionLockMap.get(sessionId);
+//        if (lock != null) {
+////            log.info("unlock session {}", sessionId);
+//            lock.unlock();
+//        }
     }
 
     @Override

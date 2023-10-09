@@ -7,7 +7,6 @@ import com.eggroll.core.constant.ProcessorStatus;
 import com.eggroll.core.constant.ProcessorType;
 import com.eggroll.core.constant.ResourceStatus;
 import com.eggroll.core.constant.SessionStatus;
-import com.eggroll.core.containers.container.Container;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.exceptions.ErSessionException;
 import com.eggroll.core.grpc.NodeManagerClient;
