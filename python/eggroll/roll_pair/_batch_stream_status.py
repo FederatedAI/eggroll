@@ -23,8 +23,8 @@ from eggroll.core.datastructure.broker import BrokerClosed
 from eggroll.core.pair_store.format import ArrayByteBuffer, PairBinReader
 from eggroll.core.transfer.transfer_service import TransferService
 from eggroll.core.transfer_model import ErRollSiteHeader
-from eggroll.roll_pair import create_adapter
 from eggroll.utils.log_utils import get_logger
+from eggroll.core.meta_model import ErPartition
 
 L = get_logger()
 FINISH_STATUS = "finish_partition"
@@ -169,11 +169,11 @@ class PutBatchTask:
     _class_lock = threading.Lock()
     _partition_lock = defaultdict(threading.Lock)
 
-    def __init__(self, tag, partition=None):
+    def __init__(self, tag, partition: ErPartition =None):
         self.partition = partition
         self.tag = tag
 
-    def run(self):
+    def run(self, data_dir):
         # batch stream must be executed serially, and reinit.
         # TODO:0:  remove lock to bss
         rs_header = None
@@ -188,7 +188,7 @@ class PutBatchTask:
 
                 batch = None
                 batch_get_interval = 0.1
-                with create_adapter(self.partition) as db, db.new_batch() as wb:
+                with self.partition.get_adapter(data_dir) as db, db.new_batch() as wb:
                     #for batch in broker:
                     while not broker.is_closable():
                         try:
