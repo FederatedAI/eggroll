@@ -15,15 +15,15 @@ public class WaitableMapStore {
     private ConcurrentHashMap<String, byte[]> store = new ConcurrentHashMap<>();
 
     public void set(String key, byte[] value) {
-//        log.debug("set key: " + Arrays.toString(key) + ", value: " + Arrays.toString(value) + ", store count: " + store.size());
+        log.info("set key: " + key + ", value: " + Arrays.toString(value) + ", store count: " + store.size());
         store.put(key, value);
-//        log.debug("set key: " + Arrays.toString(key) + ", value: " + Arrays.toString(value) + ", store count: " + store.size() + " done");
+        log.info("set key: " + key + ", value: " + Arrays.toString(value) + ", store count: " + store.size() + " done");
     }
 
     public byte[] get(String key, int timeout) throws InterruptedException {
         long startTime = System.currentTimeMillis();
         while (!store.containsKey(key)) {
-//            log.debug("waiting for key: " + Arrays.toString(key) + ", store count: " + store.size());
+            log.info("waiting for key: " + key + ", store count: " + store.size());
             long elapsedTime = System.currentTimeMillis() - startTime;
             if (elapsedTime > timeout) {
                 log.error("Timeout after waiting for key: " + key + " for " + timeout + ", store count: " + store.size());
