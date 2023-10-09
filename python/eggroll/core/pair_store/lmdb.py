@@ -19,16 +19,15 @@ import threading
 
 import lmdb
 
-from eggroll.core.pair_store.adapter import PairIterator, PairWriteBatch, \
-    PairAdapter
+from eggroll.core.pair_store.adapter import PairIterator, PairWriteBatch, PairAdapter
 from eggroll.utils.log_utils import get_logger
 
 L = get_logger()
 
-#64 * 1024 * 1024
-LMDB_MAP_SIZE = 16 * 4_096 * 244_140    # follows storage-service-cxx's config here
+# 64 * 1024 * 1024
+LMDB_MAP_SIZE = 16 * 4_096 * 244_140  # follows storage-service-cxx's config here
 LMDB_MAP_SIZE_WINDOWS_OS = 40 * 1024 * 1024
-DEFAULT_DB = b'main'
+DEFAULT_DB = b"main"
 
 
 class LmdbAdapter(PairAdapter):
@@ -44,12 +43,12 @@ class LmdbAdapter(PairAdapter):
 
     def put(self, key, value):
         self._init_write()
-        ret = None
+        success = False
         try:
-            ret = self.txn_w.put(key, value)
+            success = self.txn_w.put(key, value)
         except lmdb.BadValsizeError as e:
             L.info(f"key={key}, value={value} raise lmdb.BadValsizeError")
-        return ret
+        return success
 
     def __init__(self, options):
         self.env = None
@@ -61,22 +60,26 @@ class LmdbAdapter(PairAdapter):
         with LmdbAdapter.env_lock:
             super().__init__(options)
             self.path = options["path"]
-            lmdb_map_size = options.get("lmdb_map_size", LMDB_MAP_SIZE if platform.system() != 'Windows' else LMDB_MAP_SIZE_WINDOWS_OS)
-            create_if_missing = (str(options.get("create_if_missing", "True")).lower() == 'true')
+            lmdb_map_size = options.get(
+                "lmdb_map_size", LMDB_MAP_SIZE if platform.system() != "Windows" else LMDB_MAP_SIZE_WINDOWS_OS
+            )
+            create_if_missing = str(options.get("create_if_missing", "True")).lower() == "true"
             if self.path not in LmdbAdapter.env_dict:
                 if create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
                 L.debug("lmdb init create env={}".format(self.path))
-                writemap = False if platform.system() == 'Darwin' else True
+                writemap = False if platform.system() == "Darwin" else True
                 if not os.path.exists(self.path):
                     os.makedirs(self.path, exist_ok=True)
-                self.env = lmdb.open(self.path,
-                                     create=create_if_missing,
-                                     max_dbs=128,
-                                     sync=False,
-                                     map_size=lmdb_map_size,
-                                     writemap=writemap,
-                                     lock=False)
+                self.env = lmdb.open(
+                    self.path,
+                    create=create_if_missing,
+                    max_dbs=128,
+                    sync=False,
+                    map_size=lmdb_map_size,
+                    writemap=writemap,
+                    lock=False,
+                )
                 self.sub_db = self.env.open_db(DEFAULT_DB)
                 try:
                     L.trace(f"LmdbAdapter.init: env={self.path}, data count={self.count()}")
@@ -118,7 +121,7 @@ class LmdbAdapter(PairAdapter):
 
     def __get_write_count(self):
         self._init_write()
-        return self.txn_w.stat()['entries']
+        return self.txn_w.stat()["entries"]
 
     def close(self):
         with LmdbAdapter.env_lock:
@@ -138,9 +141,11 @@ class LmdbAdapter(PairAdapter):
                 if not count or count - 1 <= 0:
                     L.debug(f"LmdbAdapter: actually closing {self.path}")
                     try:
-                        if "EGGROLL_LMDB_ENV_CLOSE_ENABLE" in os.environ \
-                                and os.environ["EGGROLL_LMDB_ENV_CLOSE_ENABLE"] == '1'\
-                                or sys.platform == 'win32':
+                        if (
+                            "EGGROLL_LMDB_ENV_CLOSE_ENABLE" in os.environ
+                            and os.environ["EGGROLL_LMDB_ENV_CLOSE_ENABLE"] == "1"
+                            or sys.platform == "win32"
+                        ):
                             self.env.close()
                             L.debug(f"EGGROLL_LMDB_ENV_CLOSE_ENABLE is True, finish close lmdb env obj: {self.path}")
                         else:
@@ -191,13 +196,20 @@ class LmdbAdapter(PairAdapter):
 class LmdbIterator(PairIterator):
     def __init__(self, adapter: LmdbAdapter):
         L.trace(f"creating lmdb iterator of env={adapter.path}")
-        self.adapter = adapter
+        self._adapter = adapter
         # with LmdbAdapter.env_lock:
         self.txn_r = adapter.env.begin(db=adapter.sub_db, write=False)
         self.cursor = self.txn_r.cursor()
         L.trace(f"created lmdb iterator of env={adapter.path}")
 
-    #seek for key, if key not exits then seek to nearby key
+    @property
+    def adapter(self) -> LmdbAdapter:
+        return self._adapter
+
+    def is_sorted(self):
+        return self.adapter.is_sorted()
+
+    # seek for key, if key not exits then seek to nearby key
     def seek(self, key):
         return self.cursor.set_range(key)
 
@@ -224,7 +236,7 @@ class LmdbIterator(PairIterator):
 
 class LmdbWriteBatch(PairWriteBatch):
     def __init__(self, adapter: LmdbAdapter, txn):
-        L.trace(f'creating lmdb write batch of env={adapter.path}')
+        L.trace(f"creating lmdb write batch of env={adapter.path}")
         self.adapter = adapter
         self.txn = txn
 

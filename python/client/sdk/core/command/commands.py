@@ -154,4 +154,4 @@ class SessionCommands(object):
 
 class RollPairCommands(object):
     roll_prefix = 'v1/roll-pair'
-    egg_prefix = 'v1/egg-pair'
+    egg_prefix = 'v1/eggs-pair'
