@@ -17,7 +17,7 @@
 import unittest
 
 from eggroll.roll_pair.roll_pair import RollPair
-from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context
+from test.roll_pair_test_assets import get_debug_test_context
 from eggroll.roll_site.roll_site import RollSiteContext
 
 is_standalone = True

@@ -20,7 +20,6 @@ import traceback
 from datetime import datetime
 from threading import RLock
 
-import numba
 from google.protobuf.text_format import MessageToString
 
 static_er_conf = {}
@@ -227,26 +226,6 @@ def generate_job_id(session_id, tag='', delim='-'):
 
 def generate_task_id(job_id, partition_id, delim='-'):
     return delim.join([job_id, "task", str(partition_id)])
-
-
-'''AI copy from java ByteString.hashCode(), @see RollPairContext.partitioner'''
-@numba.jit
-def hash_code(s):
-    seed = 31
-    h = len(s)
-    for c in s:
-        # to singed int
-        if c > 127:
-            c = -256 + c
-        h = h * seed
-        if h > 2147483647 or h < -2147483648:
-            h = (h & (M - 1)) - (h & M)
-        h = h + c
-        if h > 2147483647 or h < -2147483648:
-            h = (h & (M - 1)) - (h & M)
-    if h == 0 or h == -2147483648:
-        h = 1
-    return h if h >= 0 else abs(h)
 
 
 def to_one_line_string(msg, as_one_line=True):

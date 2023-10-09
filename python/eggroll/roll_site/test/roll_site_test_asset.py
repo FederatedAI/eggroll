@@ -18,7 +18,7 @@
 import configparser
 import os
 
-import eggroll.roll_pair.test.roll_pair_test_assets as rpta
+import test.roll_pair_test_assets as rpta
 from eggroll.core.conf_keys import RollSiteConfKeys, SessionConfKeys, \
     CoreConfKeys
 from eggroll.core.constants import StoreTypes, DeployModes
