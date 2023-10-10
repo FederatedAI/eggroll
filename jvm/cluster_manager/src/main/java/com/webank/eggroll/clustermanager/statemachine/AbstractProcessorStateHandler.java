@@ -44,7 +44,7 @@ public abstract class  AbstractProcessorStateHandler  implements   StateHandler<
         if(MetaInfo.EGGROLL_SESSION_USE_RESOURCE_DISPATCH||"DeepSpeed".equals(erProcessor.getProcessorType())) {
             return true;
         }
-        return  true;
+        return  false;
     }
 
 
