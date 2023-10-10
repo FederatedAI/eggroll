@@ -9,31 +9,16 @@ import com.webank.eggroll.clustermanager.dao.mapper.ProcessorResourceMapper;
 import com.webank.eggroll.clustermanager.dao.mapper.SessionProcessorMapper;
 import com.webank.eggroll.clustermanager.entity.ProcessorResource;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
+import com.webank.eggroll.clustermanager.resource.ResourceManager;
 
 
 import java.util.List;
 
 @Singleton
-public class ProcessorResourceService extends EggRollBaseServiceImpl<ProcessorResourceMapper, ProcessorResource>{
+public class ProcessorResourceService extends EggRollBaseServiceImpl<ProcessorResourceMapper, ProcessorResource> implements ResourceManager {
 
-    public  void  insertProcessorResource(ErProcessor  erProcessor){
-//        if(erProcessor.getResources().size() == 0 ){
-//            ErResource GPU_Resource = new ErResource();
-//            GPU_Resource.setServerNodeId(erProcessor.getServerNodeId());
-//            GPU_Resource.setResourceType(Dict.VGPU_CORE);
-//            GPU_Resource.setPreAllocated(0L);
-//            GPU_Resource.setAllocated(0L);
-//            GPU_Resource.setExtention("");
-//            erProcessor.getResources().add(GPU_Resource);
-//
-//            ErResource CPU_Resource = new ErResource();
-//            CPU_Resource.setServerNodeId(erProcessor.getServerNodeId());
-//            CPU_Resource.setResourceType(Dict.VCPU_CORE);
-//            CPU_Resource.setPreAllocated(0L);
-//            CPU_Resource.setAllocated(0L);
-//            CPU_Resource.setExtention("");
-//            erProcessor.getResources().add(CPU_Resource);
-//        }
+    @Override
+    public void preAllocateResource(ErProcessor erProcessor) {
         for(ErResource erResource: erProcessor.getResources()){
             ProcessorResource  processorResource = new  ProcessorResource();
             processorResource.setProcessorId(erProcessor.getId());
@@ -47,4 +32,13 @@ public class ProcessorResourceService extends EggRollBaseServiceImpl<ProcessorRe
         }
     }
 
+    @Override
+    public void allocatedResource(ErProcessor erProcessor) {
+
+    }
+
+    @Override
+    public void returnResource(ErProcessor erProcessor) {
+
+    }
 }
