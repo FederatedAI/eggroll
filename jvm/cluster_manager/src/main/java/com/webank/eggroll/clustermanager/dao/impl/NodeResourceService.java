@@ -2,11 +2,15 @@ package com.webank.eggroll.clustermanager.dao.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErResource;
+import com.eggroll.core.utils.LockUtils;
 import com.google.common.collect.Lists;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.mapper.NodeResourceMapper;
 import com.webank.eggroll.clustermanager.entity.NodeResource;
+import com.webank.eggroll.clustermanager.resource.ResourceManager;
+import com.webank.eggroll.clustermanager.statemachine.ResourceStateHandler;
 import org.apache.commons.lang3.StringUtils;
 
 import org.mybatis.guice.transactional.Transactional;
@@ -16,7 +20,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 
 @Singleton
-public class NodeResourceService extends EggRollBaseServiceImpl<NodeResourceMapper, NodeResource> {
+public class NodeResourceService extends EggRollBaseServiceImpl<NodeResourceMapper, NodeResource> implements ResourceManager {
 
     Logger log = LoggerFactory.getLogger(NodeResourceService.class);
 
@@ -69,6 +73,32 @@ public class NodeResourceService extends EggRollBaseServiceImpl<NodeResourceMapp
             this.remove(deleteWrapper);
         }
     }
+
+    public void preAllocateResource(ErProcessor erProcessor) {
+        try {
+            LockUtils.lock(ResourceStateHandler.nodeResourceLockMap,erProcessor.getServerNodeId());
+        }finally {
+            LockUtils.unLock(ResourceStateHandler.nodeResourceLockMap,erProcessor.getServerNodeId());
+        }
+    }
+
+    public void allocatedResource(ErProcessor erProcessor) {
+        try {
+            LockUtils.lock(ResourceStateHandler.nodeResourceLockMap,erProcessor.getServerNodeId());
+
+        }finally {
+            LockUtils.unLock(ResourceStateHandler.nodeResourceLockMap,erProcessor.getServerNodeId());
+        }
+    }
+
+    public void returnResource(ErProcessor erProcessor) {
+        try {
+            LockUtils.lock(ResourceStateHandler.nodeResourceLockMap,erProcessor.getServerNodeId());
+        }finally {
+            LockUtils.unLock(ResourceStateHandler.nodeResourceLockMap,erProcessor.getServerNodeId());
+        }
+    }
+
 
 
 }
