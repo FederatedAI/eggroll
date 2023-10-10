@@ -1,10 +1,13 @@
 package com.webank.eggroll.webapp.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import com.webank.eggroll.webapp.dao.SessionProcessorDao;
-import com.webank.eggroll.webapp.model.CommonResponse;
+import com.webank.eggroll.webapp.global.ErrorCode;
+import com.webank.eggroll.webapp.model.ResponseResult;
+import com.webank.eggroll.webapp.queryobject.SessionProcessorQO;
 import com.webank.eggroll.webapp.utils.JsonFormatUtil;
 
 import javax.servlet.ServletException;
@@ -24,18 +27,19 @@ public class SessionProcessorController extends HttpServlet {
     }
 
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        int page = Integer.parseInt(req.getParameter("page"));
-        int pageSize = Integer.parseInt(req.getParameter("pageSize"));
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        SessionProcessorQO sessionProcessorQO = objectMapper.readValue(req.getInputStream(), SessionProcessorQO.class);
 
-        CommonResponse<List<SessionProcessor>> response;
-        List<SessionProcessor> resources = resourceDao.getData(page, pageSize);
+
+        ResponseResult<List<SessionProcessor>> response;
+        List<SessionProcessor> resources = resourceDao.queryData(sessionProcessorQO);
         if (resources != null && !resources.isEmpty()) {
             // 获取数据成功
-            response = CommonResponse.success(resources);
+            response = ResponseResult.success(resources);
         } else {
             // 获取数据失败或无数据
-            response = CommonResponse.error("Failed to retrieve resources.");
+            response = new ResponseResult(ErrorCode.DATA_ERROR);
         }
 
         resp.setContentType("application/json");
@@ -46,5 +50,8 @@ public class SessionProcessorController extends HttpServlet {
                 response.getMsg(), response.getData());
 
         resp.getWriter().write(json);
+
     }
+
+
 }
