@@ -17,23 +17,23 @@ import java.util.List;
 public class ProcessorResourceService extends EggRollBaseServiceImpl<ProcessorResourceMapper, ProcessorResource>{
 
     public  void  insertProcessorResource(ErProcessor  erProcessor){
-        if(erProcessor.getResources().size() == 0 ){
-            ErResource GPU_Resource = new ErResource();
-            GPU_Resource.setServerNodeId(erProcessor.getServerNodeId());
-            GPU_Resource.setResourceType(Dict.VGPU_CORE);
-            GPU_Resource.setPreAllocated(0L);
-            GPU_Resource.setAllocated(0L);
-            GPU_Resource.setExtention("");
-            erProcessor.getResources().add(GPU_Resource);
-
-            ErResource CPU_Resource = new ErResource();
-            CPU_Resource.setServerNodeId(erProcessor.getServerNodeId());
-            CPU_Resource.setResourceType(Dict.VCPU_CORE);
-            CPU_Resource.setPreAllocated(0L);
-            CPU_Resource.setAllocated(0L);
-            CPU_Resource.setExtention("");
-            erProcessor.getResources().add(CPU_Resource);
-        }
+//        if(erProcessor.getResources().size() == 0 ){
+//            ErResource GPU_Resource = new ErResource();
+//            GPU_Resource.setServerNodeId(erProcessor.getServerNodeId());
+//            GPU_Resource.setResourceType(Dict.VGPU_CORE);
+//            GPU_Resource.setPreAllocated(0L);
+//            GPU_Resource.setAllocated(0L);
+//            GPU_Resource.setExtention("");
+//            erProcessor.getResources().add(GPU_Resource);
+//
+//            ErResource CPU_Resource = new ErResource();
+//            CPU_Resource.setServerNodeId(erProcessor.getServerNodeId());
+//            CPU_Resource.setResourceType(Dict.VCPU_CORE);
+//            CPU_Resource.setPreAllocated(0L);
+//            CPU_Resource.setAllocated(0L);
+//            CPU_Resource.setExtention("");
+//            erProcessor.getResources().add(CPU_Resource);
+//        }
         for(ErResource erResource: erProcessor.getResources()){
             ProcessorResource  processorResource = new  ProcessorResource();
             processorResource.setProcessorId(erProcessor.getId());

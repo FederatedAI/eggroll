@@ -179,6 +179,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                 }
             }
 
+            ErSessionMeta erSessionMeta = new ErSessionMeta();
             try {
                 if (resourceApplication != null) {
                     long now = System.currentTimeMillis();
@@ -241,7 +242,6 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                                 break;
                         }
                         List<MutablePair<ErProcessor, ErServerNode>> dispatchedProcessors = resourceApplication.getResourceDispatch();
-                        ErSessionMeta erSessionMeta = new ErSessionMeta();
                         erSessionMeta.setId(resourceApplication.getSessionId());
                         erSessionMeta.setName(resourceApplication.getSessionName());
                         List<ErProcessor> processorList = new ArrayList<>();
@@ -258,10 +258,10 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                     } finally {
                         unlockSession(resourceApplication.getSessionId());
                     }
-                    ErSessionMeta registeredSessionMeta = sessionMainService.getSession(resourceApplication.getSessionId());
+//                    ErSessionMeta registeredSessionMeta = sessionMainService.getSession(resourceApplication.getSessionId());
                     Map<Long, List<ErServerNode>> serverNodeMap = serverNodes.stream().collect(Collectors.groupingBy(ErServerNode::getId));
                     resourceApplication.getResourceDispatch().clear();
-                    for (ErProcessor processor : registeredSessionMeta.getProcessors()) {
+                    for (ErProcessor processor : erSessionMeta.getProcessors()) {
                         resourceApplication.getResourceDispatch().add(new MutablePair<>(processor, serverNodeMap.get(processor.getServerNodeId()).get(0)));
                     }
                     resourceApplication.countDown();
@@ -459,19 +459,25 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                 }
                 newResources.add(changedResource);
             }
-
             nodeResourceTupes = new ArrayList<>(nodeResourceTupes.subList(1, nodeResourceTupes.size()));
+            final String host = node.getEndpoint().getHost();
             int globalRank = index;
             int localRank = nodeToProcessors.getOrDefault(node, new ArrayList<>()).size();
-            ErProcessor newRequiredProcessor = new ErProcessor();
-            BeanUtils.copyProperties(newRequiredProcessor,requiredProcessor);
-            newRequiredProcessor.setServerNodeId(node.getId());
-            newRequiredProcessor.setCommandEndpoint(new ErEndpoint(node.getEndpoint().getHost(), 0));
-            newRequiredProcessor.setResources(newResources);
-            newRequiredProcessor.getOptions().put("cudaVisibleDevices",String.valueOf(nextGpuIndex));
-            requiredProcessor = newRequiredProcessor;
+            requiredProcessor.setServerNodeId(node.getId());
+            requiredProcessor.setCommandEndpoint(new ErEndpoint(host,0));
+            requiredProcessor.setResources(newResources);
+            requiredProcessor.getOptions().put("cudaVisibleDevices",String.valueOf(nextGpuIndex));
 
             nodeToProcessors.computeIfAbsent(node, k -> new ArrayList<>()).add(requiredProcessor);
+
+//            ErProcessor newRequiredProcessor = new ErProcessor();
+//            BeanUtils.copyProperties(newRequiredProcessor,requiredProcessor);
+//            newRequiredProcessor.setServerNodeId(node.getId());
+//            newRequiredProcessor.setCommandEndpoint(new ErEndpoint(node.getEndpoint().getHost(), 0));
+//            newRequiredProcessor.setResources(newResources);
+//            newRequiredProcessor.getOptions().put("cudaVisibleDevices",String.valueOf(nextGpuIndex));
+//            requiredProcessor = newRequiredProcessor;
+
         }
 
         List<MutablePair<ErProcessor, ErServerNode>> result = nodeToProcessors.entrySet().stream()
