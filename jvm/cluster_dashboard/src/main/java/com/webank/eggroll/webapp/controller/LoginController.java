@@ -4,7 +4,7 @@ import com.eggroll.core.config.MetaInfo;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.webapp.entity.UserInfo;
-import com.webank.eggroll.webapp.exception.ErrorCode;
+import com.webank.eggroll.webapp.global.ErrorCode;
 import com.webank.eggroll.webapp.service.LoginService;
 import com.webank.eggroll.webapp.utils.JsonFormatUtil;
 
@@ -38,8 +38,8 @@ public class LoginController extends HttpServlet{
                     ErrorCode.SUCCESS.getMsg(), true);
         } else {
             // 将响应结果转换为 JSON 格式
-            json = JsonFormatUtil.toJson(ErrorCode.FAILED.getCode(),
-                    ErrorCode.FAILED.getMsg(), false);
+            json = JsonFormatUtil.toJson(ErrorCode.LOGIN_FAILED.getCode(),
+                    ErrorCode.LOGIN_FAILED.getMsg(), false);
         }
         resp.getWriter().write(json);
 
