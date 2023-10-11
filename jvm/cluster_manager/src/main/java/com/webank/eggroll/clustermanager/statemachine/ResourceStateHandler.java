@@ -42,11 +42,13 @@ public class ResourceStateHandler implements StateHandler<ErProcessor> {
                 preAllocateResource(data);
                 break;
             case "pre_allocated_allocated":
-                ;
+                allocatedResource(data);
+                break;
             case "pre_allocated_allocate_failed":
-                ;
+                preAllocateFailedResource(data);
+                break;
             case "allocated_return":
-                updateResource(data, desStateParam);
+                returnResource(data);
                 break;
         }
         this.openAsynPostHandle(context);
@@ -64,31 +66,42 @@ public class ResourceStateHandler implements StateHandler<ErProcessor> {
 
     public void preAllocateResource(ErProcessor erProcessor) {
         try {
-            LockUtils.lock(nodeResourceLockMap,erProcessor.getServerNodeId());
-            processorResourceService.preAllocateResource(erProcessor);
+            LockUtils.lock(ClusterResourceManager.sessionLockMap,erProcessor.getSessionId());
             nodeResourceService.preAllocateResource(erProcessor);
+            processorResourceService.preAllocateResource(erProcessor);
         }finally {
-            LockUtils.unLock(nodeResourceLockMap,erProcessor.getServerNodeId());
+            LockUtils.unLock(ClusterResourceManager.sessionLockMap,erProcessor.getSessionId());
         }
     }
 
-    public void allocatedResource(ErProcessor erProcessor) {
+    public void preAllocateFailedResource(ErProcessor erProcessor) {
         try {
             LockUtils.lock(nodeResourceLockMap,erProcessor.getServerNodeId());
-            processorResourceService.allocatedResource(erProcessor);
-            nodeResourceService.allocatedResource(erProcessor);
+            nodeResourceService.preAllocateFailed(erProcessor);
+            processorResourceService.preAllocateFailed(erProcessor);
         }finally {
-            LockUtils.unLock(nodeResourceLockMap,erProcessor.getServerNodeId());
+            LockUtils.unLock(ClusterResourceManager.sessionLockMap,erProcessor.getSessionId());
+        }
+    }
+
+
+    public void allocatedResource(ErProcessor erProcessor) {
+        try {
+            LockUtils.lock(ClusterResourceManager.sessionLockMap,erProcessor.getSessionId());
+            nodeResourceService.allocatedResource(erProcessor);
+            processorResourceService.allocatedResource(erProcessor);
+        }finally {
+            LockUtils.unLock(ClusterResourceManager.sessionLockMap,erProcessor.getSessionId());
         }
     }
 
     public void returnResource(ErProcessor erProcessor) {
         try {
-            LockUtils.lock(nodeResourceLockMap,erProcessor.getServerNodeId());
-            processorResourceService.returnResource(erProcessor);
+            LockUtils.lock(ClusterResourceManager.sessionLockMap,erProcessor.getSessionId());
             nodeResourceService.returnResource(erProcessor);
+            processorResourceService.returnResource(erProcessor);
         }finally {
-            LockUtils.unLock(nodeResourceLockMap,erProcessor.getServerNodeId());
+            LockUtils.unLock(ClusterResourceManager.sessionLockMap,erProcessor.getSessionId());
         }
     }
 
