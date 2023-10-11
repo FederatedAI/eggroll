@@ -1,4 +1,4 @@
-package com.webank.eggroll.webapp.exception;
+package com.webank.eggroll.webapp.global;
 
 
 public enum CodeEnum {

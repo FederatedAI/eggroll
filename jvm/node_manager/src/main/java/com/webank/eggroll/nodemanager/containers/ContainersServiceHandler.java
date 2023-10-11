@@ -19,6 +19,7 @@ import com.webank.eggroll.nodemanager.extend.LogStreamHolder;
 import com.webank.eggroll.nodemanager.meta.NodeManagerMeta;
 import com.webank.eggroll.nodemanager.pojo.ContainerParam;
 import io.grpc.stub.StreamObserver;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -197,7 +198,7 @@ public class ContainersServiceHandler {
         List<Integer> ranks = downloadContainersRequest.getRanks();
         String compressMethod = downloadContainersRequest.getCompressMethod();
         int level = downloadContainersRequest.getCompressLevel();
-        logger.info("downloading containers, sessionId: {}, ranks: ", sessionId, ranks.stream().map(Object::toString).collect(Collectors.joining(",")));
+        logger.info("downloading containers, sessionId: {}, ranks: {}", sessionId, ranks.stream().map(Object::toString).collect(Collectors.joining(",")));
 
         List<ContainerContent> contents = ranks.stream()
                 .map(rank -> {
@@ -285,7 +286,7 @@ public class ContainersServiceHandler {
 
         // 获取日志文件路径
         Path path = getContainerLogsDir(sessionId, rank);
-        path = path.resolve(request.getLogType() != null ? request.getLogType() : "INFO").resolve("log");
+        path = path.resolve((StringUtils.isNotBlank(request.getLogType()) ? request.getLogType() : "INFO") + ".log");
 
         if (!path.toFile().exists()) {
             throw new PathNotExistException("Can not find file " + path);

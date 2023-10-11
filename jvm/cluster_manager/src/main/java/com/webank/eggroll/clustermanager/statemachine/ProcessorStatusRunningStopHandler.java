@@ -9,12 +9,11 @@ import com.webank.eggroll.clustermanager.dao.impl.SessionProcessorService;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 
 
-
 @Singleton
-public class ProcessorStatusRunningStopHandler  extends  AbstractProcessorStateHandler {
+public class ProcessorStatusRunningStopHandler extends AbstractProcessorStateHandler {
 
     @Inject
-    ResourceStateMechine  resourceStateMachine ;
+    ResourceStateMechine resourceStateMachine;
 
     @Inject
     SessionProcessorService sessionProcessorService;
@@ -26,7 +25,7 @@ public class ProcessorStatusRunningStopHandler  extends  AbstractProcessorStateH
 
     @Override
     public ErProcessor handle(Context context, ErProcessor data, String preStateParam, String desStateParam) {
-        String  line =   preStateParam+"_"+desStateParam;
+        String line = preStateParam + "_" + desStateParam;
 //        switch (line){
 //            case "NEW_RUNNING":
 //                updateState(data,desStateParam);
@@ -45,14 +44,14 @@ public class ProcessorStatusRunningStopHandler  extends  AbstractProcessorStateH
 //                }
 //                break;
 //        }
-        updateState(data,desStateParam);
-        if(this.checkNeedChangeResource(data)) {
-                    resourceStateMachine.changeStatus(context, data, ResourceStatus.PRE_ALLOCATED.getValue(), ResourceStatus.ALLOCATED.getValue());
-                }
+        updateState(data, desStateParam);
+        if (this.checkNeedChangeResource(data)) {
+            resourceStateMachine.changeStatus(context, data, ResourceStatus.PRE_ALLOCATED.getValue(), ResourceStatus.ALLOCATED.getValue());
+        }
 
-        SessionProcessor  result =  sessionProcessorService.getById(data.getId());
-        if(result==null){
-            throw  new RuntimeException("");
+        SessionProcessor result = sessionProcessorService.getById(data.getId());
+        if (result == null) {
+            throw new RuntimeException("");
         }
         return result.toErProcessor();
     }
