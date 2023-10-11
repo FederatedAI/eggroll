@@ -66,42 +66,42 @@ public class ResourceStateHandler implements StateHandler<ErProcessor> {
 
     public void preAllocateResource(ErProcessor erProcessor) {
         try {
-            LockUtils.lock(ClusterResourceManager.sessionLockMap,erProcessor.getSessionId());
+//            LockUtils.lock(ClusterResourceManager.sessionLockMap,erProcessor.getSessionId());
             nodeResourceService.preAllocateResource(erProcessor);
             processorResourceService.preAllocateResource(erProcessor);
         }finally {
-            LockUtils.unLock(ClusterResourceManager.sessionLockMap,erProcessor.getSessionId());
+//            LockUtils.unLock(ClusterResourceManager.sessionLockMap,erProcessor.getSessionId());
         }
     }
 
     public void preAllocateFailedResource(ErProcessor erProcessor) {
         try {
-            LockUtils.lock(nodeResourceLockMap,erProcessor.getServerNodeId());
+//            LockUtils.lock(nodeResourceLockMap,erProcessor.getServerNodeId());
             nodeResourceService.preAllocateFailed(erProcessor);
             processorResourceService.preAllocateFailed(erProcessor);
         }finally {
-            LockUtils.unLock(ClusterResourceManager.sessionLockMap,erProcessor.getSessionId());
+//            LockUtils.unLock(ClusterResourceManager.sessionLockMap,erProcessor.getSessionId());
         }
     }
 
 
     public void allocatedResource(ErProcessor erProcessor) {
         try {
-            LockUtils.lock(ClusterResourceManager.sessionLockMap,erProcessor.getSessionId());
+//            LockUtils.lock(ClusterResourceManager.sessionLockMap,erProcessor.getSessionId());
             nodeResourceService.allocatedResource(erProcessor);
             processorResourceService.allocatedResource(erProcessor);
         }finally {
-            LockUtils.unLock(ClusterResourceManager.sessionLockMap,erProcessor.getSessionId());
+//            LockUtils.unLock(ClusterResourceManager.sessionLockMap,erProcessor.getSessionId());
         }
     }
 
     public void returnResource(ErProcessor erProcessor) {
         try {
-            LockUtils.lock(ClusterResourceManager.sessionLockMap,erProcessor.getSessionId());
+//            LockUtils.lock(ClusterResourceManager.sessionLockMap,erProcessor.getSessionId());
             nodeResourceService.returnResource(erProcessor);
             processorResourceService.returnResource(erProcessor);
         }finally {
-            LockUtils.unLock(ClusterResourceManager.sessionLockMap,erProcessor.getSessionId());
+//            LockUtils.unLock(ClusterResourceManager.sessionLockMap,erProcessor.getSessionId());
         }
     }
 

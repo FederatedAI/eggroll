@@ -244,7 +244,7 @@ public class JobServiceHandler {
         List<ErProcessor> prepareProcessors = new ArrayList<>();
         for (int i = 0; i < worldSize; i++) {
             ErProcessor erProcessor = new ErProcessor();
-            erProcessor.setProcessorType(JobProcessorTypes.DeepSpeed.getName());
+            erProcessor.setProcessorType(JobProcessorTypes.DeepSpeed.toString());
             erProcessor.setStatus(ProcessorStatus.NEW.name());
 
             ErResource erResource = new ErResource();
