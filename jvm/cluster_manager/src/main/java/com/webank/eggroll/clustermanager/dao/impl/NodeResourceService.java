@@ -17,7 +17,7 @@ import org.mybatis.guice.transactional.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
+import java.util.*;
 
 @Singleton
 public class NodeResourceService extends EggRollBaseServiceImpl<NodeResourceMapper, NodeResource> implements ResourceManager {
@@ -74,31 +74,125 @@ public class NodeResourceService extends EggRollBaseServiceImpl<NodeResourceMapp
         }
     }
 
+    @Override
     public void preAllocateResource(ErProcessor erProcessor) {
-        try {
-            LockUtils.lock(ResourceStateHandler.nodeResourceLockMap,erProcessor.getServerNodeId());
-        }finally {
-            LockUtils.unLock(ResourceStateHandler.nodeResourceLockMap,erProcessor.getServerNodeId());
+        final List<ErResource> processorResources = erProcessor.getResources();
+        if (processorResources == null || processorResources.size() == 0) {
+            return;
+        }
+        Map<String, NodeResource> resourceMap = new HashMap<>();
+        for (ErResource resource : processorResources) {
+            NodeResource nodeResource = resourceMap.get(resource.getResourceType());
+            if (nodeResource == null) {
+                nodeResource = new NodeResource();
+                nodeResource.setServerNodeId(erProcessor.getServerNodeId());
+                nodeResource.setResourceType(resource.getResourceType());
+                nodeResource = this.get(nodeResource);
+                if (nodeResource == null) {
+                    throw new RuntimeException("nodeResource serverNodeId = " + erProcessor.getServerNodeId() + ", resourceType = " + resource.getResourceType() + " missing");
+                }
+                resourceMap.put(resource.getResourceType(), nodeResource);
+            }
+            nodeResource.setPreAllocated(nodeResource.getPreAllocated() + resource.getAllocated());
+            if (StringUtils.isBlank(nodeResource.getExtention())) {
+                nodeResource.setExtention(resource.getExtention());
+            } else {
+                List<String> extensionList = new ArrayList<>(Arrays.asList(nodeResource.getExtention().split(","))) ;
+                boolean exists = extensionList.stream().anyMatch((extension) -> extension.equals(resource.getExtention()));
+                if (!exists) {
+                    extensionList.add(resource.getExtention());
+                }
+                nodeResource.setExtention(String.join(",", extensionList));
+            }
+            resourceMap.forEach((k, v) -> this.updateById(v));
         }
     }
 
+    @Override
+    public void preAllocateFailed(ErProcessor erProcessor) {
+        final List<ErResource> processorResources = erProcessor.getResources();
+        if (processorResources == null || processorResources.size() == 0) {
+            return;
+        }
+        Map<String, NodeResource> resourceMap = new HashMap<>();
+        for (ErResource resource : processorResources) {
+            NodeResource nodeResource = resourceMap.get(resource.getResourceType());
+            if (nodeResource == null) {
+                nodeResource = new NodeResource();
+                nodeResource.setServerNodeId(erProcessor.getServerNodeId());
+                nodeResource.setResourceType(resource.getResourceType());
+                nodeResource = this.get(nodeResource);
+                if (nodeResource == null) {
+                    throw new RuntimeException("nodeResource serverNodeId = " + erProcessor.getServerNodeId() + ", resourceType = " + resource.getResourceType() + " missing");
+                }
+                resourceMap.put(resource.getResourceType(), nodeResource);
+            }
+            nodeResource.setPreAllocated(nodeResource.getPreAllocated() - resource.getAllocated());
+            if (StringUtils.isNotBlank(nodeResource.getExtention())) {
+                List<String> extensionList = Arrays.asList(nodeResource.getExtention().split(","));
+                extensionList.removeIf((extension)->extension.equals(resource.getExtention()));
+                nodeResource.setExtention(String.join(",", extensionList));
+            }
+            resourceMap.forEach((k, v) -> this.updateById(v));
+        }
+    }
+
+    @Override
     public void allocatedResource(ErProcessor erProcessor) {
-        try {
-            LockUtils.lock(ResourceStateHandler.nodeResourceLockMap,erProcessor.getServerNodeId());
-
-        }finally {
-            LockUtils.unLock(ResourceStateHandler.nodeResourceLockMap,erProcessor.getServerNodeId());
+        final List<ErResource> processorResources = erProcessor.getResources();
+        if (processorResources == null || processorResources.size() == 0) {
+            return;
+        }
+        Map<String, NodeResource> resourceMap = new HashMap<>();
+        for (ErResource resource : processorResources) {
+            NodeResource nodeResource = resourceMap.get(resource.getResourceType());
+            if (nodeResource == null) {
+                nodeResource = new NodeResource();
+                nodeResource.setServerNodeId(erProcessor.getServerNodeId());
+                nodeResource.setResourceType(resource.getResourceType());
+                nodeResource = this.get(nodeResource);
+                if (nodeResource == null) {
+                    throw new RuntimeException("nodeResource serverNodeId = " + erProcessor.getServerNodeId() + ", resourceType = " + resource.getResourceType() + " missing");
+                }
+                resourceMap.put(resource.getResourceType(), nodeResource);
+            }
+            nodeResource.setPreAllocated(nodeResource.getPreAllocated() - resource.getAllocated());
+            nodeResource.setAllocated(nodeResource.getAllocated()  + resource.getAllocated());
+            nodeResource.setUsed(nodeResource.getUsed() + resource.getAllocated());
+            resourceMap.forEach((k, v) -> this.updateById(v));
         }
     }
 
+    @Override
     public void returnResource(ErProcessor erProcessor) {
-        try {
-            LockUtils.lock(ResourceStateHandler.nodeResourceLockMap,erProcessor.getServerNodeId());
-        }finally {
-            LockUtils.unLock(ResourceStateHandler.nodeResourceLockMap,erProcessor.getServerNodeId());
+        final List<ErResource> processorResources = erProcessor.getResources();
+        if (processorResources == null || processorResources.size() == 0) {
+            return;
+        }
+        Map<String, NodeResource> resourceMap = new HashMap<>();
+        for (ErResource resource : processorResources) {
+            NodeResource nodeResource = resourceMap.get(resource.getResourceType());
+            if (nodeResource == null) {
+                nodeResource = new NodeResource();
+                nodeResource.setServerNodeId(erProcessor.getServerNodeId());
+                nodeResource.setResourceType(resource.getResourceType());
+                nodeResource = this.get(nodeResource);
+                if (nodeResource == null) {
+                    throw new RuntimeException("nodeResource serverNodeId = " + erProcessor.getServerNodeId() + ", resourceType = " + resource.getResourceType() + " missing");
+                }
+                resourceMap.put(resource.getResourceType(), nodeResource);
+            }
+            nodeResource.setAllocated(nodeResource.getAllocated() - resource.getAllocated());
+            if (StringUtils.isNotBlank(nodeResource.getExtention())) {
+                List<String> extensionList = Arrays.asList(nodeResource.getExtention().split(","));
+                extensionList.removeIf((extension)->extension.equals(resource.getExtention()));
+                nodeResource.setExtention(String.join(",", extensionList));
+            }
+            nodeResource.setAllocated(nodeResource.getAllocated()  - resource.getAllocated());
+            nodeResource.setUsed(nodeResource.getUsed() - resource.getAllocated());
+            resourceMap.forEach((k, v) -> this.save(v));
         }
     }
-
 
 
 }
