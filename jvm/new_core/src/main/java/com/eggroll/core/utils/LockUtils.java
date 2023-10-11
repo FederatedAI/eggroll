@@ -19,7 +19,7 @@ public class LockUtils {
             lockMap.putIfAbsent(key, new ReentrantLock());
         }
         lock = lockMap.get(key);
-        logger.info("lock key {}",key);
+//        logger.info("lock key {}",key);
         lock.lock();
     }
 
@@ -27,7 +27,7 @@ public class LockUtils {
         if(lockMap == null){
             throw new RuntimeException("lockMap is null");
         }
-        logger.info("unlock key {}",key);
+//        logger.info("unlock key {}",key);
         ReentrantLock  lock = lockMap.get(key);
         if(lock!=null){
             lock.unlock();
@@ -35,9 +35,9 @@ public class LockUtils {
     }
 
     public static void main(String[] args) {
-        ConcurrentHashMap<Object, ReentrantLock> lockMap = new ConcurrentHashMap<>();
-        LockUtils.lock(lockMap,String.valueOf(123));
-        LockUtils.unLock(lockMap,String.valueOf(123));
+//        ConcurrentHashMap<Object, ReentrantLock> lockMap = new ConcurrentHashMap<>();
+//        LockUtils.lock(lockMap,String.valueOf(123));
+//        LockUtils.unLock(lockMap,String.valueOf(123));
     }
 
 

@@ -2,21 +2,25 @@ package com.webank.eggroll.clustermanager.dao.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErResource;
+import com.eggroll.core.utils.LockUtils;
 import com.google.common.collect.Lists;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.mapper.NodeResourceMapper;
 import com.webank.eggroll.clustermanager.entity.NodeResource;
+import com.webank.eggroll.clustermanager.resource.ResourceManager;
+import com.webank.eggroll.clustermanager.statemachine.ResourceStateHandler;
 import org.apache.commons.lang3.StringUtils;
 
 import org.mybatis.guice.transactional.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
+import java.util.*;
 
 @Singleton
-public class NodeResourceService extends EggRollBaseServiceImpl<NodeResourceMapper, NodeResource> {
+public class NodeResourceService extends EggRollBaseServiceImpl<NodeResourceMapper, NodeResource> implements ResourceManager {
 
     Logger log = LoggerFactory.getLogger(NodeResourceService.class);
 
@@ -67,6 +71,126 @@ public class NodeResourceService extends EggRollBaseServiceImpl<NodeResourceMapp
             deleteWrapper.lambda().eq(NodeResource::getServerNodeId, serverNodeId)
                     .eq(NodeResource::getResourceType, erResource.getResourceType());
             this.remove(deleteWrapper);
+        }
+    }
+
+    @Override
+    public void preAllocateResource(ErProcessor erProcessor) {
+        final List<ErResource> processorResources = erProcessor.getResources();
+        if (processorResources == null || processorResources.size() == 0) {
+            return;
+        }
+        Map<String, NodeResource> resourceMap = new HashMap<>();
+        for (ErResource resource : processorResources) {
+            NodeResource nodeResource = resourceMap.get(resource.getResourceType());
+            if (nodeResource == null) {
+                nodeResource = new NodeResource();
+                nodeResource.setServerNodeId(erProcessor.getServerNodeId());
+                nodeResource.setResourceType(resource.getResourceType());
+                nodeResource = this.get(nodeResource);
+                if (nodeResource == null) {
+                    throw new RuntimeException("nodeResource serverNodeId = " + erProcessor.getServerNodeId() + ", resourceType = " + resource.getResourceType() + " missing");
+                }
+                resourceMap.put(resource.getResourceType(), nodeResource);
+            }
+            nodeResource.setPreAllocated(nodeResource.getPreAllocated() + resource.getAllocated());
+            if (StringUtils.isBlank(nodeResource.getExtention())) {
+                nodeResource.setExtention(resource.getExtention());
+            } else {
+                List<String> extensionList = new ArrayList<>(Arrays.asList(nodeResource.getExtention().split(","))) ;
+                boolean exists = extensionList.stream().anyMatch((extension) -> extension.equals(resource.getExtention()));
+                if (!exists) {
+                    extensionList.add(resource.getExtention());
+                }
+                nodeResource.setExtention(String.join(",", extensionList));
+            }
+            resourceMap.forEach((k, v) -> this.updateById(v));
+        }
+    }
+
+    @Override
+    public void preAllocateFailed(ErProcessor erProcessor) {
+        final List<ErResource> processorResources = erProcessor.getResources();
+        if (processorResources == null || processorResources.size() == 0) {
+            return;
+        }
+        Map<String, NodeResource> resourceMap = new HashMap<>();
+        for (ErResource resource : processorResources) {
+            NodeResource nodeResource = resourceMap.get(resource.getResourceType());
+            if (nodeResource == null) {
+                nodeResource = new NodeResource();
+                nodeResource.setServerNodeId(erProcessor.getServerNodeId());
+                nodeResource.setResourceType(resource.getResourceType());
+                nodeResource = this.get(nodeResource);
+                if (nodeResource == null) {
+                    throw new RuntimeException("nodeResource serverNodeId = " + erProcessor.getServerNodeId() + ", resourceType = " + resource.getResourceType() + " missing");
+                }
+                resourceMap.put(resource.getResourceType(), nodeResource);
+            }
+            nodeResource.setPreAllocated(nodeResource.getPreAllocated() - resource.getAllocated());
+            if (StringUtils.isNotBlank(nodeResource.getExtention())) {
+                List<String> extensionList = Arrays.asList(nodeResource.getExtention().split(","));
+                extensionList.removeIf((extension)->extension.equals(resource.getExtention()));
+                nodeResource.setExtention(String.join(",", extensionList));
+            }
+            resourceMap.forEach((k, v) -> this.updateById(v));
+        }
+    }
+
+    @Override
+    public void allocatedResource(ErProcessor erProcessor) {
+        final List<ErResource> processorResources = erProcessor.getResources();
+        if (processorResources == null || processorResources.size() == 0) {
+            return;
+        }
+        Map<String, NodeResource> resourceMap = new HashMap<>();
+        for (ErResource resource : processorResources) {
+            NodeResource nodeResource = resourceMap.get(resource.getResourceType());
+            if (nodeResource == null) {
+                nodeResource = new NodeResource();
+                nodeResource.setServerNodeId(erProcessor.getServerNodeId());
+                nodeResource.setResourceType(resource.getResourceType());
+                nodeResource = this.get(nodeResource);
+                if (nodeResource == null) {
+                    throw new RuntimeException("nodeResource serverNodeId = " + erProcessor.getServerNodeId() + ", resourceType = " + resource.getResourceType() + " missing");
+                }
+                resourceMap.put(resource.getResourceType(), nodeResource);
+            }
+            nodeResource.setPreAllocated(nodeResource.getPreAllocated() - resource.getAllocated());
+            nodeResource.setAllocated(nodeResource.getAllocated()  + resource.getAllocated());
+            nodeResource.setUsed(nodeResource.getUsed() + resource.getAllocated());
+            resourceMap.forEach((k, v) -> this.updateById(v));
+        }
+    }
+
+    @Override
+    public void returnResource(ErProcessor erProcessor) {
+        final List<ErResource> processorResources = erProcessor.getResources();
+        if (processorResources == null || processorResources.size() == 0) {
+            return;
+        }
+        Map<String, NodeResource> resourceMap = new HashMap<>();
+        for (ErResource resource : processorResources) {
+            NodeResource nodeResource = resourceMap.get(resource.getResourceType());
+            if (nodeResource == null) {
+                nodeResource = new NodeResource();
+                nodeResource.setServerNodeId(erProcessor.getServerNodeId());
+                nodeResource.setResourceType(resource.getResourceType());
+                nodeResource = this.get(nodeResource);
+                if (nodeResource == null) {
+                    throw new RuntimeException("nodeResource serverNodeId = " + erProcessor.getServerNodeId() + ", resourceType = " + resource.getResourceType() + " missing");
+                }
+                resourceMap.put(resource.getResourceType(), nodeResource);
+            }
+            nodeResource.setAllocated(nodeResource.getAllocated() - resource.getAllocated());
+            if (StringUtils.isNotBlank(nodeResource.getExtention())) {
+                List<String> extensionList = Arrays.asList(nodeResource.getExtention().split(","));
+                extensionList.removeIf((extension)->extension.equals(resource.getExtention()));
+                nodeResource.setExtention(String.join(",", extensionList));
+            }
+            nodeResource.setAllocated(nodeResource.getAllocated()  - resource.getAllocated());
+            nodeResource.setUsed(nodeResource.getUsed() - resource.getAllocated());
+            resourceMap.forEach((k, v) -> this.save(v));
         }
     }
 
