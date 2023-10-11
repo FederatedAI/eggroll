@@ -41,7 +41,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
 
     Logger log = LoggerFactory.getLogger(ClusterResourceManager.class);
 
-    public static ConcurrentHashMap<String, ReentrantLock> sessionLockMap = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, ReentrantLock> sessionLockMap = new ConcurrentHashMap<>();
     private Map<String, Long> killJobMap = new ConcurrentHashMap<>();
     private FifoBroker<ResourceApplication> applicationQueue = new FifoBroker<>();
     @Inject
