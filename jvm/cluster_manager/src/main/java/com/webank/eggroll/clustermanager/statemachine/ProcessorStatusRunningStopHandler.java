@@ -46,7 +46,7 @@ public class ProcessorStatusRunningStopHandler extends AbstractProcessorStateHan
 //        }
         updateState(data, desStateParam);
         if (this.checkNeedChangeResource(data)) {
-            resourceStateMachine.changeStatus(context, data, ResourceStatus.PRE_ALLOCATED.getValue(), ResourceStatus.ALLOCATED.getValue());
+            resourceStateMachine.changeStatus(context, data, ResourceStatus.ALLOCATED.getValue(), ResourceStatus.RETURN.getValue());
         }
 
         SessionProcessor result = sessionProcessorService.getById(data.getId());

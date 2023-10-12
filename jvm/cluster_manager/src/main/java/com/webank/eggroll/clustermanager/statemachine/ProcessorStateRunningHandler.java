@@ -36,9 +36,8 @@ public class ProcessorStateRunningHandler   extends  AbstractProcessorStateHandl
     public ErProcessor handle(Context context, ErProcessor data, String preStateParam, String desStateParam) {
         this.updateState(data,desStateParam);
         if(this.checkNeedChangeResource(data)){
-            resourceStateMechine.changeStatus(context,data, ResourceStatus.PRE_ALLOCATED.getValue(),ResourceStatus.ALLOCATE_FAILED.getValue());
+            resourceStateMechine.changeStatus(context,data, ResourceStatus.PRE_ALLOCATED.getValue(),ResourceStatus.ALLOCATED.getValue());
         }
-
         return sessionProcessorService.getById(data.getId()).toErProcessor();
     }
 
