@@ -10,7 +10,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>cluster_manager</artifactId>
-
+    <version>3.0.0</version>
     <dependencies>
 
         <dependency>
@@ -33,7 +33,7 @@
         <dependency>
             <groupId>com.webank.eggroll</groupId>
             <artifactId>new_core</artifactId>
-            <version>${eggroll.version}</version>
+            <version>3.0.0</version>
         </dependency>
 
         <dependency>
