@@ -250,7 +250,7 @@ public class JobServiceHandler {
             ErResource erResource = new ErResource();
             erResource.setResourceType(Dict.VGPU_CORE);
             erResource.setAllocated(1L);
-            erResource.setStatus(ResourceStatus.PRE_ALLOCATED.name());
+            erResource.setStatus(ResourceStatus.PRE_ALLOCATED.getValue());
             erProcessor.getResources().add(erResource);
 
             prepareProcessors.add(erProcessor);
