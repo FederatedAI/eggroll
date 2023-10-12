@@ -31,17 +31,4 @@ public class RequestUtils {
         return new UserInfo(username, password);
     }
 
-//    public static String readRequestBody(HttpServletRequest req) throws IOException {
-//        StringBuilder requestBody = new StringBuilder();
-//        try (BufferedReader reader = req.getReader()) {
-//            String line;
-//            while ((line = reader.readLine()) != null) {
-//                requestBody.append(line);
-//            }
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//            return null;
-//        }
-//        return requestBody.toString();
-//    }
 }
