@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 //import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 
+import java.util.Collection;
 import java.util.List;
 
 public class EggRollBaseServiceImpl<M extends BaseMapper<T>, T> extends ServiceImpl<M, T> {
@@ -18,5 +19,14 @@ public class EggRollBaseServiceImpl<M extends BaseMapper<T>, T> extends ServiceI
 
     public T get(T entity) {
         return this.getOne(new QueryWrapper<>(entity));
+    }
+
+
+    //guice的原生saveBatch没有效果
+    public boolean saveBatch(Collection<T> entityList) {
+        if(entityList !=null){
+            entityList.forEach(this::save);
+        }
+        return true;
     }
 }
