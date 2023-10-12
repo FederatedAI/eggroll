@@ -9,7 +9,6 @@ import java.io.IOException;
 
 public class LoginService {
 
-
     public boolean login(UserInfo userInfo, HttpServletRequest req){
         try {
             UserInfo userCredentials = RequestUtils.extractUserCredentials(req);
