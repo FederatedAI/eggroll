@@ -4,15 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErResource;
-import com.eggroll.core.utils.LockUtils;
 import com.google.common.collect.Lists;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.mapper.NodeResourceMapper;
 import com.webank.eggroll.clustermanager.entity.NodeResource;
 import com.webank.eggroll.clustermanager.resource.ResourceManager;
-import com.webank.eggroll.clustermanager.statemachine.ResourceStateHandler;
 import org.apache.commons.lang3.StringUtils;
-
 import org.mybatis.guice.transactional.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -129,7 +126,7 @@ public class NodeResourceService extends EggRollBaseServiceImpl<NodeResourceMapp
             }
             nodeResource.setPreAllocated(nodeResource.getPreAllocated() - resource.getAllocated());
             if (StringUtils.isNotBlank(nodeResource.getExtention())) {
-                List<String> extensionList = Arrays.asList(nodeResource.getExtention().split(","));
+                List<String> extensionList = new ArrayList<>(Arrays.asList(nodeResource.getExtention().split(",")));
                 extensionList.removeIf((extension)->extension.equals(resource.getExtention()));
                 nodeResource.setExtention(String.join(",", extensionList));
             }
@@ -182,15 +179,14 @@ public class NodeResourceService extends EggRollBaseServiceImpl<NodeResourceMapp
                 }
                 resourceMap.put(resource.getResourceType(), nodeResource);
             }
-            nodeResource.setAllocated(nodeResource.getAllocated() - resource.getAllocated());
             if (StringUtils.isNotBlank(nodeResource.getExtention())) {
-                List<String> extensionList = Arrays.asList(nodeResource.getExtention().split(","));
+                List<String> extensionList = new ArrayList<>(Arrays.asList(nodeResource.getExtention().split(",")));
                 extensionList.removeIf((extension)->extension.equals(resource.getExtention()));
                 nodeResource.setExtention(String.join(",", extensionList));
             }
             nodeResource.setAllocated(nodeResource.getAllocated()  - resource.getAllocated());
             nodeResource.setUsed(nodeResource.getUsed() - resource.getAllocated());
-            resourceMap.forEach((k, v) -> this.save(v));
+            resourceMap.forEach((k, v) -> this.updateById(v));
         }
     }
 
