@@ -737,9 +737,9 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
 
             while (System.currentTimeMillis() <= startTimeout) {
                 ErSessionMeta lastSession = sessionMainService.getSession(sessionId);
-                if (lastSession.getActiveProcCount() < resourceApplication.getProcessors().size()) {
+                if ( lastSession.getActiveProcCount()==null || lastSession.getActiveProcCount() < resourceApplication.getProcessors().size()) {
                     try {
-                        Thread.sleep(100);
+                        Thread.sleep(1000);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
