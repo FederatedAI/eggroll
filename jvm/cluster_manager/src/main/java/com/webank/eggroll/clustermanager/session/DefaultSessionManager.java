@@ -199,7 +199,7 @@ public class DefaultSessionManager implements SessionManager {
         }
         if(cur!=null)
         {
-            cur =  this.sessionMainService.getSession(session.getId(),true,false,false);
+            cur =  this.sessionMainService.getSession(session.getId(),true,true,false);
         }
         return cur;
     }
@@ -231,7 +231,8 @@ public class DefaultSessionManager implements SessionManager {
     @Override
     public ErSessionMeta getSession(Context context, ErSessionMeta sessionMeta) {
 //        checkSessionRpcReady(sessionMeta);
-        return sessionService.getSession(sessionMeta.getId(), true, true, false);
+        return this.getSessionBusyWaiting(sessionMeta);
+       // return sessionService.getSession(sessionMeta.getId(), true, true, false);
     }
 
     @Override
