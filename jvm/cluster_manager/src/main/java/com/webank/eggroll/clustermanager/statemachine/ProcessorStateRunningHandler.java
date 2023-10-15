@@ -29,6 +29,7 @@ public class ProcessorStateRunningHandler   extends  AbstractProcessorStateHandl
     @Override
     public ErProcessor prepare(Context context, ErProcessor data, String preStateParam, String desStateParam) {
         ErProcessor  erProcessor  = (ErProcessor) context.getData(Dict.PROCESSOR_IN_DB);
+        this.openAsynPostHandle(context);
         return data;
     }
 
