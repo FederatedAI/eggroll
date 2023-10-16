@@ -35,6 +35,7 @@ public class ProcessorStateMachine extends  AbstractStateMachine<ErProcessor> {
         String  line= "";
         SessionProcessor processorInDb = sessionProcessorService.getById(erProcessor.getId());
         if(processorInDb!=null){
+            erProcessor.setProcessorType(processorInDb.getProcessorType());
             context.putData(Dict.PROCESSOR_IN_DB,processorInDb.toErProcessor());
         }
         if(StringUtils.isEmpty(preStateParam))
