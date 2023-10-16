@@ -6,8 +6,9 @@ import com.webank.eggroll.clustermanager.dao.impl.NodeResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.entity.NodeResource;
 import com.webank.eggroll.clustermanager.entity.ServerNode;
-import com.webank.eggroll.webapp.entity.NodeDetail;
+import com.webank.eggroll.webapp.entity.NodeInfo;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class NodeSituationService {
@@ -18,10 +19,10 @@ public class NodeSituationService {
     private NodeResourceService nodeResourceService;
 
 
-    public List<NodeDetail> getNodeDetails() {
+    public List<NodeInfo> getNodeDetails() {
 
-        NodeDetail nodeDetail = new NodeDetail();
-        List<NodeDetail> nodeDetails = null;
+
+        List<NodeInfo> nodeInfos = new ArrayList<>();
         // 查询 server_node 表中的所有数据
         List<ServerNode> serverNodes = serverNodeService.list();
         // 查询 node_resource 表中的所有数据
@@ -30,28 +31,26 @@ public class NodeSituationService {
         for (ServerNode serverNode : serverNodes) {
             for (NodeResource nodeResource : nodeResources) {
                 if (serverNode.getServerNodeId().equals(nodeResource.getServerNodeId())) {
-                    nodeDetail.setResourceId(nodeResource.getResourceId());
-                    nodeDetail.setServerNodeId(nodeResource.getServerNodeId());
-                    nodeDetail.setResourceType(nodeResource.getResourceType());
-                    nodeDetail.setTotal(nodeResource.getTotal());
-                    nodeDetail.setUsed(nodeResource.getUsed());
-                    nodeDetail.setPreAllocated(nodeResource.getPreAllocated());
-                    nodeDetail.setAllocated(nodeResource.getAllocated());
-                    nodeDetail.setExtention(nodeResource.getExtention());
-                    nodeDetail.setServerStatus(serverNode.getStatus());
-                    nodeDetail.setResourceStatus(nodeResource.getStatus());
-                    nodeDetail.setName(serverNode.getName());
-                    nodeDetail.setServerClusterId(serverNode.getServerClusterId());
-                    nodeDetail.setHost(serverNode.getHost());
-                    nodeDetail.setPort(serverNode.getPort());
-                    nodeDetail.setNodeType(serverNode.getNodeType());
-                    nodeDetail.setLastHeartbeatAt(serverNode.getLastHeartbeatAt());
-                    nodeDetails.add(nodeDetail);
+                    NodeInfo nodeInfo = new NodeInfo();
+                    nodeInfo.setResourceId(nodeResource.getResourceId());
+                    nodeInfo.setServerNodeId(nodeResource.getServerNodeId());
+                    nodeInfo.setResourceType(nodeResource.getResourceType());
+                    nodeInfo.setTotal(nodeResource.getTotal());
+                    nodeInfo.setAllocated(nodeResource.getAllocated());
+                    nodeInfo.setServerNodeStatus(serverNode.getStatus());
+                    nodeInfo.setNodeResourceStatus(nodeResource.getStatus());
+                    nodeInfo.setName(serverNode.getName());
+                    nodeInfo.setServerClusterId(serverNode.getServerClusterId());
+                    nodeInfo.setHost(serverNode.getHost());
+                    nodeInfo.setPort(serverNode.getPort());
+                    nodeInfo.setNodeType(serverNode.getNodeType());
+                    nodeInfo.setLastHeartbeatAt(serverNode.getLastHeartbeatAt());
+                    nodeInfos.add(nodeInfo);
                 }
             }
         }
 
-        return nodeDetails;
+        return nodeInfos;
     }
 
 }

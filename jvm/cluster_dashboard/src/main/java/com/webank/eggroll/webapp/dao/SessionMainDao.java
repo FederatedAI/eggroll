@@ -15,6 +15,7 @@ import java.util.List;
 public class SessionMainDao {
     @Inject
     SessionMainService sessionMainService;
+    // 查询所有数据，包含分页和模糊查询
     public List<SessionMain> queryData(SessionMainQO sessionMainQO) {
         PageHelper.startPage(sessionMainQO.getPageNum(), sessionMainQO.getPageSize());
         QueryWrapper<SessionMain> queryWrapper = new QueryWrapper<>();
@@ -34,4 +35,14 @@ public class SessionMainDao {
         }
         return this.sessionMainService.list(queryWrapper);
     }
+
+    public List<SessionMain> topQuery(int topCount) {
+
+        QueryWrapper<SessionMain> queryWrapper = new QueryWrapper<>();
+        queryWrapper.in("status", "NEW", "ACTIVATED")  // 状态为NEW或ACTIVATED
+                .orderByDesc("updated_at")           // 按照 updated_at 降序排序
+                .last("LIMIT " + topCount);          // 取前 topCount 条数据");
+        return this.sessionMainService.list(queryWrapper);
+    }
+
 }

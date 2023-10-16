@@ -1,6 +1,5 @@
 package com.webank.eggroll.webapp.entity;
 
-
 import lombok.*;
 
 import java.util.Date;
@@ -11,7 +10,7 @@ import java.util.Date;
 @AllArgsConstructor
 @EqualsAndHashCode
 @ToString
-public class NodeDetail {// 节点详情
+public class NodeInfo {// 节点概况
 
     private Long resourceId;
 
@@ -21,15 +20,23 @@ public class NodeDetail {// 节点详情
 
     private Long total;
 
-    private Long used;
-
-    private Long preAllocated;
-
     private Long allocated;
 
-    private String extention;
+    private String serverNodeStatus;
 
-    private String status;
+    private String nodeResourceStatus;
+
+    private String name;
+
+    private Long serverClusterId;
+
+    private String host;
+
+    private Integer port;
+
+    private String nodeType;
+
+    private Date lastHeartbeatAt;
 
     private Date createdAt;
 
