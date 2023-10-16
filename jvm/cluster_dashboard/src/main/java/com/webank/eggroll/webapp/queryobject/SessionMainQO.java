@@ -17,6 +17,9 @@ public class SessionMainQO {
     private String status;
     private String tag;
 
+    //查询前多少条数
+    private Integer topCount;
+
     private Integer pageNum = 1;
     private Integer pageSize = 10;
 

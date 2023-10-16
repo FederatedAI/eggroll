@@ -16,6 +16,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 @Singleton
@@ -32,7 +33,15 @@ public class SessionMainController extends HttpServlet {
         SessionMainQO sessionMainQO = objectMapper.readValue(req.getInputStream(), SessionMainQO.class);
 
         ResponseResult<List<SessionMain>> response;
-        List<SessionMain> resources = sessionMainDao.queryData(sessionMainQO);
+        List<SessionMain> resources = new ArrayList<>();
+        int topCount = sessionMainQO.getTopCount();
+        if (topCount > 0) {
+            resources = sessionMainDao.topQuery(topCount);
+        } else {
+            resources = sessionMainDao.queryData(sessionMainQO);
+        }
+
+
         if (resources != null && !resources.isEmpty()) {
             // 获取数据成功
             response = ResponseResult.success(resources);

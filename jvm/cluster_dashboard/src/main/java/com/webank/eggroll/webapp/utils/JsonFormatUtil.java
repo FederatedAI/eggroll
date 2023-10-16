@@ -9,21 +9,6 @@ import java.util.Map;
 
 public class JsonFormatUtil {
 
-    public static String toJson(int code, String msg, List<?> data) {
-        Map<String, Object> resultMap = new HashMap<>();
-        resultMap.put("code", code);
-        resultMap.put("msg", msg);
-        if (data == null || data.isEmpty()){
-            resultMap.put("data", new ArrayList());
-            resultMap.put("total", 0);
-        }else {
-            resultMap.put("data", data);
-            resultMap.put("total", data.size());
-        }
-        Gson gson = new Gson();
-        return gson.toJson(resultMap);
-    }
-
     public static <T> String toJson(int code, String msg, T data) {
         Map<String, Object> resultMap = new HashMap<>();
         resultMap.put("code", code);
@@ -31,6 +16,12 @@ public class JsonFormatUtil {
         if (data == null){
             resultMap.put("data", new ArrayList());
             resultMap.put("total", 0);
+        }else if (data instanceof Map) {
+            resultMap.put("data", data);
+            resultMap.put("total", ((Map) data).size());
+        } else if (data instanceof List) {
+            resultMap.put("data", data);
+            resultMap.put("total", ((List) data).size());
         }else {
             resultMap.put("data", data);
             resultMap.put("total", 1);

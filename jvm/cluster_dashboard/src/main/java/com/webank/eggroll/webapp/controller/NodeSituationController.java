@@ -3,7 +3,7 @@ package com.webank.eggroll.webapp.controller;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import com.webank.eggroll.webapp.entity.NodeDetail;
+import com.webank.eggroll.webapp.entity.NodeInfo;
 import com.webank.eggroll.webapp.global.ErrorCode;
 import com.webank.eggroll.webapp.model.ResponseResult;
 import com.webank.eggroll.webapp.service.NodeSituationService;
@@ -18,7 +18,7 @@ import java.util.List;
 
 @Singleton
 public class NodeSituationController extends HttpServlet {
-
+    //获取节点（机器）概况
     private NodeSituationService situationService;
 
     @Inject
@@ -30,11 +30,11 @@ public class NodeSituationController extends HttpServlet {
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 
 
-        ResponseResult<List<NodeDetail>> response;
-        List<NodeDetail> nodeDetails = situationService.getNodeDetails();
-        if (nodeDetails != null && !nodeDetails.isEmpty()) {
+        ResponseResult<List<NodeInfo>> response;
+        List<NodeInfo> nodeInfos = situationService.getNodeDetails();
+        if (nodeInfos != null && !nodeInfos.isEmpty()) {
             // 获取数据成功
-            response = ResponseResult.success(nodeDetails);
+            response = ResponseResult.success(nodeInfos);
         } else {
             // 获取数据失败或无数据
             response = new ResponseResult(ErrorCode.DATA_ERROR);
