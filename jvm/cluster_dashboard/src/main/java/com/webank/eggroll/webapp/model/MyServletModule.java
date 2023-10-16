@@ -25,10 +25,11 @@ public class MyServletModule extends ServletModule {
 
         // 集群接口的绑定
         bind(NodeSituationController.class).in(Singleton.class);
+        bind(NodeDetailController.class).in(Singleton.class);
 
 
 
-        //        bind(ZookeeperQueryResource.class).in(Singleton.class);
+        // bind(ZookeeperQueryResource.class).in(Singleton.class);
         // 绑定ZookeeperQueryService,并从配置文件读取zk服务器地址，创建连接实例
         String url =  ZooKeeperRegistration.generateZkUrl(host,port);
         //bind(ZookeeperQueryService.class).toInstance(new ZookeeperQueryService(url)); //"localhost:2181"
@@ -44,5 +45,7 @@ public class MyServletModule extends ServletModule {
 
         // 集群接口的配置
         serve("/eggroll/nodesituation").with(NodeSituationController.class);
+        serve("/eggroll/nodedetail").with(NodeDetailController.class);
+
     }
 }
