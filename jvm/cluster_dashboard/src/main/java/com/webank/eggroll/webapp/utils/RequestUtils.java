@@ -2,11 +2,15 @@ package com.webank.eggroll.webapp.utils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.webank.eggroll.clustermanager.entity.SessionMain;
 import com.webank.eggroll.webapp.entity.UserInfo;
+import com.webank.eggroll.webapp.global.ErrorCode;
+import com.webank.eggroll.webapp.model.ResponseResult;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.util.List;
 
 public class RequestUtils {
 
@@ -30,5 +34,16 @@ public class RequestUtils {
 
         return new UserInfo(username, password);
     }
+
+    public static <T> ResponseResult<List<T>> isResourceExist(List<T> resources) {
+        ResponseResult<List<T>> response;
+        if (resources != null && !resources.isEmpty()) {
+            response = ResponseResult.success(resources);
+        } else {
+            response = new ResponseResult<>(ErrorCode.DATA_ERROR);
+        }
+        return response;
+    }
+
 
 }

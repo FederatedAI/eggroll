@@ -23,10 +23,12 @@ public class MyServletModule extends ServletModule {
         bind(SessionProcessorController.class).in(Singleton.class);
         bind(LoginController.class).in(Singleton.class);
 
+
         // 集群接口的绑定
         bind(NodeSituationController.class).in(Singleton.class);
         bind(NodeDetailController.class).in(Singleton.class);
-
+        bind(PrenodeSessionInfoController.class).in(Singleton.class);
+        bind(QuerySessionProcessorController.class).in(Singleton.class);
 
 
         // bind(ZookeeperQueryResource.class).in(Singleton.class);
@@ -46,6 +48,8 @@ public class MyServletModule extends ServletModule {
         // 集群接口的配置
         serve("/eggroll/nodesituation").with(NodeSituationController.class);
         serve("/eggroll/nodedetail").with(NodeDetailController.class);
+        serve("/eggroll/prenodesessioninfo").with(PrenodeSessionInfoController.class);
+        serve("/eggroll/querysessionprocessor").with(QuerySessionProcessorController.class);
 
     }
 }

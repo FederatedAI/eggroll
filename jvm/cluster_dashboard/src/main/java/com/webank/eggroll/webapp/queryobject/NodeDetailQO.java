@@ -13,5 +13,6 @@ import lombok.*;
 public class NodeDetailQO {
 
     private Integer nodeNum;
+    private String sessionId;
 
 }
