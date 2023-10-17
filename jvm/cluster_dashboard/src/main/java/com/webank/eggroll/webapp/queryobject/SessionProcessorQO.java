@@ -13,11 +13,11 @@ import lombok.*;
 public class SessionProcessorQO {
 
     private String sessionId;
+    private Integer serverNodeId;
     private String processorId;
     private String status;
     private String createTime;
     private String updateTime;
-
 
     private Integer pageNum = 1;
     private Integer pageSize = 10;

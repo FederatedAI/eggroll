@@ -12,12 +12,6 @@ import lombok.*;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ServerNodeQO {
 
-//    server_node_id;
-//    name;
-//    server_cluster_id;
-//    node_type;
-//    status;
-//    last_heartbeat_at;
     private String serverNodeId;
     private String name;
     private String serverClusterId;
