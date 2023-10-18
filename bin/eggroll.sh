@@ -25,7 +25,7 @@ echo "EGGROLL_HOME=${EGGROLL_HOME}"
 
 eval action=\$$#
 start_mode=1
-modules=(clustermanager nodemanager rollsite)
+modules=(clustermanager nodemanager)
 
 if [ $action = starting ];then
 	action=start
@@ -49,24 +49,17 @@ echo "processor_tag=$processor_tag"
 main() {
 	case "$module" in
 		clustermanager)
-			main_class=com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap
+			main_class=com.webank.eggroll.clustermanager.Bootstrap
 			get_property "eggroll.resourcemanager.clustermanager.port"
 			port=${property_value}
 			get_property "eggroll.resourcemanager.clustermanager.jvm.options"
 			jvm_options=${property_value}
 			;;
 		nodemanager)
-			main_class=com.webank.eggroll.core.resourcemanager.NodeManagerBootstrap
+			main_class=com.webank.eggroll.nodemanager.Bootstrap
 			get_property "eggroll.resourcemanager.nodemanager.port"
 			port=${property_value}
 			get_property "eggroll.resourcemanager.nodemanager.jvm.options"
-			jvm_options=${property_value}
-			;;
-		rollsite)
-			main_class=com.webank.eggroll.rollsite.EggSiteBootstrap
-			get_property "eggroll.rollsite.port"
-			port=${property_value}
-			get_property "eggroll.rollsite.jvm.options"
 			jvm_options=${property_value}
 			;;
 		*)
@@ -77,6 +70,11 @@ main() {
 
 action() {
 	case "$action" in
+	  debug)
+	  stop
+	  debug
+	  status
+	  ;;
 		start)
 			start
 			status
@@ -165,7 +163,8 @@ start() {
 	if [[ $? -eq 1 ]]; then
 		mklogsdir
 		export EGGROLL_LOG_FILE=${module}
-		cmd="java ${jvm_options} -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*: com.webank.eggroll.core.Bootstrap --bootstraps ${main_class} -c ${EGGROLL_HOME}/conf/eggroll.properties -p $port -s ${processor_tag}"
+		export module=${module}
+		cmd="java -server ${jvm_options} -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.xml -Dmodule=${module} -cp ${EGGROLL_HOME}/lib/*: ${main_class}  -p $port -s ${processor_tag}"
 
 		echo $cmd
 		if [ $start_mode = 0 ];then
@@ -179,6 +178,32 @@ start() {
 			echo "service start sucessfully. pid=${pid}"
 		else
 			echo "service start failed"
+		fi
+	else
+		echo "service already started. pid=${pid}"
+	fi
+}
+
+debug() {
+	getpid
+	if [[ $? -eq 1 ]]; then
+		mklogsdir
+		export EGGROLL_LOG_FILE=${module}
+		export module=${module}
+		cmd="java -server -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=7007   ${jvm_options} -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.xml -Dmodule=${module} -cp ${EGGROLL_HOME}/lib/*: ${main_class}  -p $port -s ${processor_tag}"
+
+		echo $cmd
+		if [ $start_mode = 0 ];then
+			exec $cmd >> ${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.out 2>>${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.err
+		else
+			exec $cmd >> ${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.out 2>>${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.err &
+		fi
+
+		getpid
+		if [[ $? -eq 0 ]]; then
+			echo "service debug sucessfully. pid=${pid}"
+		else
+			echo "service debug failed"
 		fi
 	else
 		echo "service already started. pid=${pid}"

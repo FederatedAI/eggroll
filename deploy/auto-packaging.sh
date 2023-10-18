@@ -25,14 +25,13 @@ cd ..
 if [[ ! -d "lib" ]]; then
     mkdir lib
 fi
-
-cp -r jvm/core/target/eggroll-core-${version}.jar lib
-cp -r jvm/core/target/lib/* lib
-cp -r jvm/roll_pair/target/eggroll-roll-pair-${version}.jar lib
-cp -r jvm/roll_pair/target/lib/* ./lib
-cp -r jvm/roll_site/target/eggroll-roll-site-${version}.jar lib
-cp -r jvm/roll_site/target/lib/* lib
-cp jvm/core/main/resources/create-eggroll-meta-tables.sql conf
+rm -r lib/*.jar
+cp -r jvm/new_core/target/new_core-${version}.jar lib
+cp -r jvm/new_core/target/lib/* ./lib
+cp -r jvm/cluster_manager/target/cluster_manager-${version}.jar lib
+cp -r jvm/cluster_manager/target/lib/* lib
+cp -r jvm/node_manager/target/node_manager-${version}.jar lib
+cp -r jvm/node_manager/target/lib/* lib
 
 tar -czf eggroll.tar.gz lib bin conf data python deploy
 cd $pwd
