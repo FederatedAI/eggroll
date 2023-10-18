@@ -1,25 +1,24 @@
 -- create database if not exists, default database is eggroll_meta
-CREATE DATABASE IF NOT EXISTS `eggroll_meta`;
+-- CREATE DATABASE IF NOT EXISTS `eggroll_meta`;
 
 -- all operation under this database
-USE `eggroll_meta`;
+-- USE `eggroll_meta`;
 
 -- store_locator
 CREATE TABLE IF NOT EXISTS `store_locator`
 (
-    `store_locator_id`  SERIAL PRIMARY KEY,
-    `store_type`        VARCHAR(255)  NOT NULL,
-    `namespace`         VARCHAR(2000) NOT NULL DEFAULT 'DEFAULT',
-    `name`              VARCHAR(2000) NOT NULL,
-    `path`              VARCHAR(2000) NOT NULL DEFAULT '',
-    `total_partitions`  INT UNSIGNED  NOT NULL,
-    `key_serdes_type`   INT NOT NULL DEFAULT 0,
-    `value_serdes_type` INT NOT NULL DEFAULT 0,
-    `partitioner_type`  INT NOT NULL DEFAULT 0,
-    `version`           INT UNSIGNED  NOT NULL DEFAULT 0,
-    `status`            VARCHAR(255)  NOT NULL,
-    `created_at`        DATETIME               DEFAULT CURRENT_TIMESTAMP,
-    `updated_at`        DATETIME               DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    `store_locator_id` SERIAL PRIMARY KEY,
+    `store_type`       VARCHAR(255)  NOT NULL,
+    `namespace`        VARCHAR(2000) NOT NULL DEFAULT 'DEFAULT',
+    `name`             VARCHAR(2000) NOT NULL,
+    `path`             VARCHAR(2000) NOT NULL DEFAULT '',
+    `total_partitions` INT UNSIGNED  NOT NULL,
+    `partitioner`      VARCHAR(2000) NOT NULL DEFAULT 'BYTESTRING_HASH',
+    `serdes`           VARCHAR(2000) NOT NULL DEFAULT '',
+    `version`          INT UNSIGNED  NOT NULL DEFAULT 0,
+    `status`           VARCHAR(255)  NOT NULL,
+    `created_at`       DATETIME               DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`       DATETIME               DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) DEFAULT CHARACTER SET latin1
   COLLATE latin1_swedish_ci;
 

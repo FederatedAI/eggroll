@@ -22,13 +22,11 @@ public class StoreLocator {
 
     private Integer totalPartitions;
 
+    private String partitioner;
+
+    private String serdes;
+
     private Integer version;
-
-    private Integer keySerdesType;
-
-    private Integer valueSerdesType;
-
-    private Integer partitionerType;
 
     private String status;
 
@@ -36,16 +34,15 @@ public class StoreLocator {
 
     private Date updatedAt;
 
-    public StoreLocator(Long storeLocatorId, String storeType, String namespace, String name, String path, Integer totalPartitions, Integer keySerdesType, Integer valueSerdesType, Integer partitionerType, Integer version, String status, Date createdAt, Date updatedAt) {
+    public StoreLocator(Long storeLocatorId, String storeType, String namespace, String name, String path, Integer totalPartitions, String partitioner, String serdes, Integer version, String status, Date createdAt, Date updatedAt) {
         this.storeLocatorId = storeLocatorId;
         this.storeType = storeType;
         this.namespace = namespace;
         this.name = name;
         this.path = path;
         this.totalPartitions = totalPartitions;
-        this.keySerdesType = keySerdesType;
-        this.valueSerdesType = valueSerdesType;
-        this.partitionerType = partitionerType;
+        this.partitioner = partitioner;
+        this.serdes = serdes;
         this.version = version;
         this.status = status;
         this.createdAt = createdAt;
