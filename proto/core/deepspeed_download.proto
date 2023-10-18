@@ -39,5 +39,4 @@ message DsDownloadResponse {
 }
 message DsDownloadSplitResponse{
   bytes data=1;
-  int32 rank=2;
 }
