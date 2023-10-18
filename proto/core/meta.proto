@@ -159,5 +159,6 @@ message NodeHeartbeat{
   ServerNode node = 2;
   string code = 3;
   string msg = 4;
-
+  repeated int32 gpuProcessors=5;
+  repeated int32 cpuProcessors=6;
 }
