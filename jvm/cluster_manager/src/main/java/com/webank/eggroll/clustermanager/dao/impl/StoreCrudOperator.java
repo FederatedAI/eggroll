@@ -71,7 +71,7 @@ public class StoreCrudOperator {
                 .orderByAsc(StorePartition::getStorePartitionId);
         List<StorePartition> storePartitionResult = storePartitionService.list(queryStorePartition);
         if (storePartitionResult.isEmpty()) {
-            throw new IllegalStateException("store locator found but no partition found: " + input.getStoreLocator().getNamespace() + "/" + input.getStoreLocator().getName());
+            throw new IllegalStateException("store locator found but no partition found");
         }
 
         List<Long> missingNodeId = new ArrayList<>();
@@ -105,9 +105,8 @@ public class StoreCrudOperator {
                 , store.getName()
                 , store.getPath()
                 , store.getTotalPartitions()
-                , store.getKeySerdesType()
-                , store.getValueSerdesType()
-                , store.getPartitionerType());
+                , store.getPartitioner()
+                , store.getSerdes());
         QueryWrapper<StoreOption> storeOptionWrapper = new QueryWrapper<>();
         storeOptionWrapper.lambda().eq(StoreOption::getStoreLocatorId, storeLocatorId);
         List<StoreOption> storeOpts = storeOptionService.list(storeOptionWrapper);
@@ -152,7 +151,7 @@ public class StoreCrudOperator {
             return existing;
         } else {
             try {
-                LockUtils.lock(storeLockMap, input.getStoreLocator().buildKey());
+                LockUtils.lock(storeLockMap,input.getStoreLocator().buildKey());
                 existing = doGetStore(inputWithoutType);
                 if (existing != null) {
                     if (!existing.getStoreLocator().getStoreType().equals(inputStoreType)) {
@@ -165,7 +164,7 @@ public class StoreCrudOperator {
                 }
                 return doCreateStore(input);
             } finally {
-                LockUtils.unLock(storeLockMap, input.getStoreLocator().buildKey());
+                LockUtils.unLock(storeLockMap,input.getStoreLocator().buildKey());
             }
         }
     }
@@ -180,9 +179,8 @@ public class StoreCrudOperator {
         newStoreLocator.setName(inputStoreLocator.getName());
         newStoreLocator.setPath(inputStoreLocator.getPath());
         newStoreLocator.setTotalPartitions(inputStoreLocator.getTotalPartitions());
-        newStoreLocator.setKeySerdesType(inputStoreLocator.getKeySerdesType());
-        newStoreLocator.setValueSerdesType(inputStoreLocator.getValueSerdesType());
-        newStoreLocator.setPartitionerType(inputStoreLocator.getPartitionerType());
+        newStoreLocator.setPartitioner(inputStoreLocator.getPartitioner());
+        newStoreLocator.setSerdes(inputStoreLocator.getSerdes());
         newStoreLocator.setStatus(Dict.NORMAL);
         boolean addStoreLocatorFlag = storeLocatorService.save(newStoreLocator);
         if (!addStoreLocatorFlag) {
@@ -300,9 +298,8 @@ public class StoreCrudOperator {
                     , store.getName()
                     , store.getPath()
                     , store.getTotalPartitions()
-                    , store.getKeySerdesType()
-                    , store.getValueSerdesType()
-                    , store.getPartitionerType());
+                    , store.getPartitioner()
+                    , store.getSerdes());
             erStoreArr.add(new ErStore(erStoreLocator, new ArrayList<>(), new ConcurrentHashMap<>()));
         }
         return new ErStoreList(erStoreArr, new ConcurrentHashMap<>());
