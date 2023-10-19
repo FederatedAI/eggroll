@@ -7,6 +7,8 @@ import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.entity.NodeResource;
 import com.webank.eggroll.clustermanager.entity.ServerNode;
 import com.webank.eggroll.webapp.entity.NodeInfo;
+import com.webank.eggroll.webapp.global.ErrorCode;
+import com.webank.eggroll.webapp.model.ResponseResult;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,13 +23,17 @@ public class NodeSituationService {
 
     public List<NodeInfo> getNodeDetails() {
 
-
         List<NodeInfo> nodeInfos = new ArrayList<>();
-        // 查询 server_node 表中的所有数据
+
         List<ServerNode> serverNodes = serverNodeService.list();
-        // 查询 node_resource 表中的所有数据
+
+        if (serverNodes == null || serverNodes.isEmpty()) {
+            return nodeInfos;
+        }
         List<NodeResource> nodeResources = nodeResourceService.list();
-        // 将 nodeDetails 和 nodeResources 中的数据合并到 nodeDetails 中
+        if (nodeResources == null || nodeResources.isEmpty()) {
+            return nodeInfos;
+        }
         for (ServerNode serverNode : serverNodes) {
             for (NodeResource nodeResource : nodeResources) {
                 if (serverNode.getServerNodeId().equals(nodeResource.getServerNodeId())) {
@@ -49,7 +55,6 @@ public class NodeSituationService {
                 }
             }
         }
-
         return nodeInfos;
     }
 

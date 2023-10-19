@@ -38,7 +38,7 @@ public class NodeDetailController extends HttpServlet {
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         ObjectMapper objectMapper = new ObjectMapper();
         NodeDetailQO nodeDetailQO = objectMapper.readValue(req.getInputStream(), NodeDetailQO.class);
-        int nodeNum = nodeDetailQO.getNodeNum();
+        Integer nodeNum = nodeDetailQO.getNodeNum();
         String sessionId = nodeDetailQO.getSessionId();
         boolean isSessionId = (sessionId != null && !sessionId.isEmpty());
         if (nodeNum > 0) {// 获取单个机器详情
