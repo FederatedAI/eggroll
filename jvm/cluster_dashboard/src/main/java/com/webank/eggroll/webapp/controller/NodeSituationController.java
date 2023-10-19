@@ -37,7 +37,7 @@ public class NodeSituationController extends HttpServlet {
             response = ResponseResult.success(nodeInfos);
         } else {
             // 获取数据失败或无数据
-            response = new ResponseResult(ErrorCode.DATA_ERROR);
+            response = ResponseResult.noData(ErrorCode.NO_DATA);
         }
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");

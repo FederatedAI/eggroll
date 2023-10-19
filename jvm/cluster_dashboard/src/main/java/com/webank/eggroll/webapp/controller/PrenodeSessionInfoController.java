@@ -36,10 +36,10 @@ public class PrenodeSessionInfoController extends HttpServlet {
         NodeDetailQO nodeDetailQO = objectMapper.readValue(req.getInputStream(), NodeDetailQO.class);
 
         ResponseResult<List<SessionMain>> response;
-        int nodeNum = nodeDetailQO.getNodeNum();
+        Integer nodeNum = nodeDetailQO.getNodeNum();
         String sessionId = nodeDetailQO.getSessionId();
         boolean isSessionId = (sessionId != null && !sessionId.isEmpty());
-        if (nodeNum > 0 && !isSessionId) {
+        if (nodeNum > 0 ) {
             List<SessionMain> resources = prenodeSessionInfoService.getNodeSessions(nodeNum);
             response = RequestUtils.isResourceExist(resources);
         } else if (isSessionId) {

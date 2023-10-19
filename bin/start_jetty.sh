@@ -10,7 +10,7 @@ echo "EGGROLL_HOME=${EGGROLL_HOME}"
 
 eval action=\$$#
 start_mode=1
-modules=(clustermanager nodemanager)
+modules=(jettyserver)
 
 if [ $action = starting ];then
 	action=start
@@ -33,7 +33,7 @@ echo "processor_tag=$processor_tag"
 main() {
 	case "$module" in
 		jettyserver)
-			main_class=com.webank.eggroll.webapp.JettyServer
+			main_class=com/webank/eggroll/webapp/JettyServer
 
 			;;
 		*)
