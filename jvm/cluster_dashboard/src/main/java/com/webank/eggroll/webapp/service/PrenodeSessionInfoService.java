@@ -26,20 +26,22 @@ public class PrenodeSessionInfoService {
         QueryWrapper spWrapper = new QueryWrapper();
         spWrapper.eq("server_node_id", nodeNum);
         List<SessionProcessor> sessionProcessors = sessionProcessorService.list(spWrapper);
-        List<String> sessionIs = new ArrayList<>();
+        List<String> sessionIds = new ArrayList<>();
         for (SessionProcessor sessionProcessor : sessionProcessors) {
-            sessionIs.add(sessionProcessor.getSessionId());
+            sessionIds.add(sessionProcessor.getSessionId());
         }
         QueryWrapper sessionMainWrapper = new QueryWrapper();
-        sessionMainWrapper.in("session_id",sessionIs);
+//        sessionIds 判空
+        sessionMainWrapper.in("session_id",sessionIds);
         List<SessionMain> list = sessionMainService.list(sessionMainWrapper);
         return list;
     }
 
     public List<SessionMain> getNodeSessions(String sessionId){
-
+        // todo 改成直接用sessionid查询的方式
         List<String> sessionIdList = new ArrayList<>();
         sessionIdList.add(sessionId);
+
         List<SessionMain> list = sessionMainService.listByIds(sessionIdList);
         return list;
     }

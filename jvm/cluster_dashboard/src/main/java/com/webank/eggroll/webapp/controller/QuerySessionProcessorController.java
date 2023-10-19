@@ -33,13 +33,13 @@ public class QuerySessionProcessorController extends HttpServlet {
         ObjectMapper objectMapper = new ObjectMapper();
         SessionProcessorQO sessionProcessorQO = objectMapper.readValue(req.getInputStream(), SessionProcessorQO.class);
 
-        int serverNodeId = sessionProcessorQO.getServerNodeId();
+        Integer serverNodeId = sessionProcessorQO.getServerNodeId();
         String sessionId = sessionProcessorQO.getSessionId();
         int pageNum = sessionProcessorQO.getPageNum();
         int pageSize = sessionProcessorQO.getPageSize();
 
         ResponseResult<List<SessionProcessor>> response;
-        if (serverNodeId > 0 && sessionId != null && !sessionId.isEmpty()) {
+        if (serverNodeId > 0 && (sessionId != null && !sessionId.isEmpty())) {
             List<SessionProcessor> resources = querySessionService.getSessionProcessors(serverNodeId, sessionId, pageNum, pageSize);
             response = RequestUtils.isResourceExist(resources);
         } else {

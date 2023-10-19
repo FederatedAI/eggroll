@@ -86,6 +86,13 @@ public class ResponseResult<T> {
         return responseResult;
     }
 
+    public static <T> ResponseResult<T> noData(ErrorCode errorCode) {
+        ResponseResult<T> responseResult = new ResponseResult<>();
+        responseResult.setCode(ErrorCode.SUCCESS.getCode());
+        responseResult.setMsg(errorCode.getMsg());
+        return responseResult;
+    }
+
     public static <T> ResponseResult<T> error(int errorCode, String message) {
         ResponseResult<T> responseResult = new ResponseResult<>();
         responseResult.setCode(errorCode);
