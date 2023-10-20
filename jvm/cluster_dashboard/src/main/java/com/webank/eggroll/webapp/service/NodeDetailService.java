@@ -76,13 +76,25 @@ public class NodeDetailService {
             }
         }
         // 用根据distinctServerNodeIds查询server_node表中的数据
-        List<ServerNode> serverNodes = serverNodeService.listByIds(distinctServerNodeIds);
-        // 用根据distinctServerNodeIds查询node_resource表中的数据
+        QueryWrapper serverNodeWrapper = new QueryWrapper();
         QueryWrapper nodeResourceWrapper = new QueryWrapper();
-        nodeResourceWrapper.in("server_node_id", distinctServerNodeIds);
+        if (distinctServerNodeIds != null && !distinctServerNodeIds.isEmpty()) {
+            serverNodeWrapper.in("server_node_id", distinctServerNodeIds);
+            nodeResourceWrapper.in("server_node_id", distinctServerNodeIds);
+        } else {
+            // 如果列表为空，添加一个不成立的条件，例如 ID 为负数的情况
+            serverNodeWrapper.in("server_node_id", -1);
+            nodeResourceWrapper.in("server_node_id", -1);
+        }
+        // todo 如果查询出来的数据为空，应判空处理
+        List<ServerNode> serverNodes = serverNodeService.list(serverNodeWrapper);
+        // 用根据distinctServerNodeIds查询node_resource表中的数据
         List<NodeResource> nodeResources = nodeResourceService.list(nodeResourceWrapper);
 
         List<NodeInfo> nodeInfos = new ArrayList<>();
+        if ((serverNodes == null || serverNodes.isEmpty()) || (nodeResources == null || nodeResources.isEmpty())) {
+            return nodeInfos;
+        }
         for (ServerNode serverNode : serverNodes) {
             for (NodeResource nodeResource : nodeResources) {
                 if (serverNode.getServerNodeId().equals(nodeResource.getServerNodeId())) {
