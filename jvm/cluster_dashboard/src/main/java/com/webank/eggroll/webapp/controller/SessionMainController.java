@@ -34,7 +34,7 @@ public class SessionMainController extends HttpServlet {
 
         ResponseResult<List<SessionMain>> response;
         List<SessionMain> resources = new ArrayList<>();
-        int topCount = sessionMainQO.getTopCount();
+        Integer topCount = sessionMainQO.getTopCount();
         if (topCount > 0) {
             resources = sessionMainDao.topQuery(topCount);
         } else {

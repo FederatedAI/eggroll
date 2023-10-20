@@ -1,11 +1,13 @@
 package com.webank.eggroll.webapp.model;
 
 import com.eggroll.core.config.MetaInfo;
+import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import com.google.inject.servlet.ServletModule;
 import com.webank.eggroll.clustermanager.register.ZooKeeperRegistration;
 import com.webank.eggroll.guice.module.ClusterModule;
 import com.webank.eggroll.webapp.controller.*;
+import org.eclipse.jetty.servlet.DefaultServlet;
 
 public class MyServletModule extends ServletModule {
 
@@ -30,6 +32,7 @@ public class MyServletModule extends ServletModule {
         bind(PrenodeSessionInfoController.class).in(Singleton.class);
         bind(QuerySessionProcessorController.class).in(Singleton.class);
 
+        bind(DefaultServlet.class).in(Scopes.SINGLETON);
 
         // bind(ZookeeperQueryResource.class).in(Singleton.class);
         // 绑定ZookeeperQueryService,并从配置文件读取zk服务器地址，创建连接实例
@@ -50,6 +53,9 @@ public class MyServletModule extends ServletModule {
         serve("/eggroll/nodedetail").with(NodeDetailController.class);
         serve("/eggroll/prenodesessioninfo").with(PrenodeSessionInfoController.class);
         serve("/eggroll/querysessionprocessor").with(QuerySessionProcessorController.class);
+
+
+        serve("/static/*").with(DefaultServlet.class);
 
     }
 }
