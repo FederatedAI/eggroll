@@ -148,72 +148,58 @@ public class JobServiceHandler {
      * 2.指定提交：所有节点一块完成指定数量的进程任务。
      */
     public void handleCustomizedSubmit(CustomizedJobRequest customizedJobRequest) throws InterruptedException {
-
         String customType = customizedJobRequest.getCustomType();
         if ("repeat".equals(customType)) {
             // 走startContainers方式，每个节点都启动相同的进程
 
-        }else if ("noRepeat".equals(customType)) {
+        } else if ("noRepeat".equals(customType)) {
             // 走大startJobContainers方式，所有节点共同完成指定的进程
             singleProcessSubmit(customizedJobRequest);
-        }else {
+        } else {
             log.error("不支持的定制方式");
         }
-
     }
 
     /**
      * 节点不重复启动：在集群中启动用户指定的进程个数。
-     *  主要针对集群中只启动一个进程的场景，该方法也考虑了可能在集群中启几个进程的场景。
+     * 主要针对集群中只启动一个进程的场景，该方法也考虑了可能在集群中启几个进程的场景。
      *
      * @param customizedJobRequest
      */
     private void singleProcessSubmit(CustomizedJobRequest customizedJobRequest) throws InterruptedException {
         String sessionId = customizedJobRequest.getSessionId();
         int processorSize = customizedJobRequest.getProcessorSize();
+        List<MutablePair<ErProcessor, ErServerNode>> dispatchedProcessorList = new ArrayList<>();
 
-        // 需要用到的eggroll的资源管理类型 gpu/cpu/不需要
+        // 需要用到的eggroll的资源管理类型 gpu/cpu/ 不需要
         String resourceMonitorType = customizedJobRequest.getResourceMonitorType();
         if ("gpu".equals(resourceMonitorType)) {
-
-            List<ErProcessor> prepareProcessors = new ArrayList<>();
-            for (int i = 0; i < processorSize; i++) {
-                ErProcessor erProcessor = new ErProcessor();
-
-                // todo 进程类型
-                erProcessor.setProcessorType(JobProcessorTypes.FlowJob.getName());
-
-                erProcessor.setStatus(ProcessorStatus.NEW.name());
-                ErResource erResource = new ErResource();
-                erResource.setResourceType(Dict.VGPU_CORE);
-                erResource.setAllocated(1L);
-                erResource.setStatus(ResourceStatus.PRE_ALLOCATED.name());
-                erProcessor.getResources().add(erResource);
-                prepareProcessors.add(erProcessor);
-            }
-
-            ResourceApplication resourceApplication = new ResourceApplication();
-            resourceApplication.setSortByResourceType(Dict.VCPU_CORE);
-            resourceApplication.setProcessors(prepareProcessors);
-            resourceApplication.setResourceExhaustedStrategy(Dict.WAITING);
-            resourceApplication.setTimeout(customizedJobRequest.getResourceOptions().getTimeoutSeconds() * 1000);
-            resourceApplication.setSessionId(sessionId);
-            resourceApplication.setSessionName(JobProcessorTypes.FlowJob.toString());
-
+            List<ErProcessor> prepareProcessors = generatePrepareProcessors(processorSize, Dict.VGPU_CORE);
+            ResourceApplication resourceApplication = generateResourceApplication(prepareProcessors, Dict.VGPU_CORE, customizedJobRequest.getResourceOptions().getTimeoutSeconds(), sessionId);
             clusterResourceManager.submitResourceRequest(resourceApplication);
-            List<MutablePair<ErProcessor, ErServerNode>> dispatchedProcessorList = resourceApplication.getResult();
+            dispatchedProcessorList = resourceApplication.getResult();
+        } else if ("cpu".equals(resourceMonitorType)) {
+            List<ErProcessor> prepareProcessors = generatePrepareProcessors(processorSize, Dict.VCPU_CORE);
+            ResourceApplication resourceApplication = generateResourceApplication(prepareProcessors, Dict.VCPU_CORE, customizedJobRequest.getResourceOptions().getTimeoutSeconds(), sessionId);
+            clusterResourceManager.submitResourceRequest(resourceApplication);
+            dispatchedProcessorList = resourceApplication.getResult();
+        } else {
+            log.error("Unsupported resource type allocation");
+            return;
+        }
 
+        try {
+            clusterResourceManager.lockSession(sessionId);
             dispatchedProcessorList.stream().collect(Collectors.groupingBy(MutablePair::getRight)).forEach((node, mutablePairList) -> {
                 NodeManagerClient nodeManagerClient = new NodeManagerClient(node.getEndpoint());
 
                 List<ErProcessor> processors = new ArrayList<>();
-                mutablePairList.stream().forEach(mutablePair->{
+                mutablePairList.stream().forEach(mutablePair -> {
                     ErProcessor pro = mutablePair.getLeft();
                     pro.setOptions(customizedJobRequest.getOptions());
-                    pro.getOptions().put("scriptPath",customizedJobRequest.getScriptPath());
+                    pro.getOptions().put("scriptPath", customizedJobRequest.getScriptPath());
                     processors.add(pro);
                 });
-
                 StartFlowContainersRequest startFlowContainersRequest = new StartFlowContainersRequest();
                 startFlowContainersRequest.setSessionId(sessionId);
                 startFlowContainersRequest.setName("flowSubmitJob");
@@ -221,20 +207,44 @@ public class JobServiceHandler {
                 startFlowContainersRequest.setEnvironmentVariables(customizedJobRequest.getEnvironmentVariables());
                 startFlowContainersRequest.setOptions(customizedJobRequest.getOptions());
                 startFlowContainersRequest.setProcessors(processors);
-
-                nodeManagerClient.startFlowJobContainers(new Context(),startFlowContainersRequest);
+                nodeManagerClient.startFlowJobContainers(new Context(), startFlowContainersRequest);
             });
+        }catch (Exception e){
+            // todo kill掉该进程
 
-
-        } else if ("cpu".equals(resourceMonitorType)) {
-
-            // todo cpu资源管理
-        } else {
-
+            throw e;
+        }finally {
+            clusterResourceManager.unlockSession(sessionId);
         }
 
     }
 
+    private List<ErProcessor> generatePrepareProcessors(int processorSize, String resourceType) {
+        List<ErProcessor> prepareProcessors = new ArrayList<>();
+        for (int i = 0; i < processorSize; i++) {
+            ErProcessor erProcessor = new ErProcessor();
+            erProcessor.setProcessorType(JobProcessorTypes.FlowJob.getName());
+            erProcessor.setStatus(ProcessorStatus.NEW.name());
+            ErResource erResource = new ErResource();
+            erResource.setResourceType(resourceType);
+            erResource.setAllocated(1L);
+            erResource.setStatus(ResourceStatus.PRE_ALLOCATED.name());
+            erProcessor.getResources().add(erResource);
+            prepareProcessors.add(erProcessor);
+        }
+        return prepareProcessors;
+    }
+
+    private ResourceApplication generateResourceApplication(List<ErProcessor> prepareProcessors, String resourceType, Integer timeout, String sessionId) {
+        ResourceApplication resourceApplication = new ResourceApplication();
+        resourceApplication.setSortByResourceType(resourceType);
+        resourceApplication.setProcessors(prepareProcessors);
+        resourceApplication.setResourceExhaustedStrategy(Dict.WAITING);
+        resourceApplication.setTimeout(timeout * 1000);
+        resourceApplication.setSessionId(sessionId);
+        resourceApplication.setSessionName(JobProcessorTypes.FlowJob.toString());
+        return resourceApplication;
+    }
 
     public SubmitJobResponse handleDeepspeedSubmit(SubmitJobRequest submitJobRequest) throws InterruptedException {
         String sessionId = submitJobRequest.getSessionId();
