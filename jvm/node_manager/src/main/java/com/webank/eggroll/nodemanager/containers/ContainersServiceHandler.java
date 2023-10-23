@@ -18,6 +18,7 @@ import com.webank.eggroll.core.transfer.Extend;
 import com.webank.eggroll.nodemanager.extend.LogStreamHolder;
 import com.webank.eggroll.nodemanager.meta.NodeManagerMeta;
 import com.webank.eggroll.nodemanager.pojo.ContainerParam;
+import com.webank.eggroll.nodemanager.service.FlowProcessorService;
 import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -33,6 +34,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -69,51 +71,6 @@ public class ContainersServiceHandler {
         }
         this.containersDataDir = path;
         return path;
-    }
-
-
-    /**
-     * 接受flow直接提交的任务
-     *
-     * @return
-     */
-    public StartContainersResponse startFlowJobContainers(StartFlowContainersRequest startFlowContainersRequest) {
-        String sessionId = startFlowContainersRequest.getSessionId();
-
-        Map<String, String> options = startFlowContainersRequest.getOptions();
-        List<String> commandArguments = startFlowContainersRequest.getCommandArguments();
-        List<ErProcessor> processors = startFlowContainersRequest.getProcessors();
-        String scriptPath = options.get("scriptPath");
-        Map<String, String> environmentVariables = startFlowContainersRequest.getEnvironmentVariables();
-
-        Path containerWorkspace = this.getContainersDataDir().resolve(sessionId);
-
-        // todo
-        for (ErProcessor processor : processors) {
-            try {
-                FlowTaskContainer flowTaskContainer = new FlowTaskContainer(
-                        sessionId,
-                        -1L,
-                        containerWorkspace,
-                        commandArguments,
-                        environmentVariables,
-                        options,
-                        scriptPath
-                );
-
-                // todo cluster端生成containerId
-                containersManager.addContainer(23242L, flowTaskContainer);
-                containersManager.startContainer(23242L);
-
-            }catch (Exception e) {
-                logger.error("starting flow containers failed: {}", e);
-                e.printStackTrace();
-            }
-        }
-
-        StartContainersResponse startContainersResponse = new StartContainersResponse();
-        startContainersResponse.setSessionId(sessionId);
-        return startContainersResponse;
     }
 
 

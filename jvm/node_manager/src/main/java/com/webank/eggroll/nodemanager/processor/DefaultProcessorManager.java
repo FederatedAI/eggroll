@@ -13,6 +13,7 @@ import com.eggroll.core.postprocessor.ApplicationStartedRunner;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.nodemanager.containers.ContainersServiceHandler;
+import com.webank.eggroll.nodemanager.containers.FlowJobServiceHandle;
 import com.webank.eggroll.nodemanager.service.ContainerService;
 import com.webank.eggroll.nodemanager.utils.ProcessUtils;
 import org.apache.commons.beanutils.BeanUtils;
@@ -33,6 +34,9 @@ public class DefaultProcessorManager   implements ProcessorManager,ApplicationSt
 
     @Inject
     private ContainersServiceHandler containersServiceHandler;
+
+    @Inject
+    private FlowJobServiceHandle flowJobServiceHandle;
 
     @Override
     public ErSessionMeta startContainers(Context context, ErSessionMeta sessionMeta) {
@@ -75,7 +79,7 @@ public class DefaultProcessorManager   implements ProcessorManager,ApplicationSt
 
     @Override
     public StartContainersResponse startFlowJobContainers(StartFlowContainersRequest startFlowContainersRequest) {
-        return containersServiceHandler.startFlowJobContainers(startFlowContainersRequest);
+        return flowJobServiceHandle.startFlowJobContainers(startFlowContainersRequest);
     }
 
     @Override

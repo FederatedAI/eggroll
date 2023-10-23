@@ -142,31 +142,8 @@ public class JobServiceHandler {
         return response;
     }
 
-    /**
-     * 定制方式提交
-     * 1.固定提交：每个节点都完成指定数量的进程任务。
-     * 2.指定提交：所有节点一块完成指定数量的进程任务。
-     */
-    public void handleCustomizedSubmit(CustomizedJobRequest customizedJobRequest) throws InterruptedException {
-        String customType = customizedJobRequest.getCustomType();
-        if ("repeat".equals(customType)) {
-            // 走startContainers方式，每个节点都启动相同的进程
 
-        } else if ("noRepeat".equals(customType)) {
-            // 走大startJobContainers方式，所有节点共同完成指定的进程
-            singleProcessSubmit(customizedJobRequest);
-        } else {
-            log.error("不支持的定制方式");
-        }
-    }
-
-    /**
-     * 节点不重复启动：在集群中启动用户指定的进程个数。
-     * 主要针对集群中只启动一个进程的场景，该方法也考虑了可能在集群中启几个进程的场景。
-     *
-     * @param customizedJobRequest
-     */
-    private void singleProcessSubmit(CustomizedJobRequest customizedJobRequest) throws InterruptedException {
+    public SubmitJobResponse singleProcessSubmit(CustomizedJobRequest customizedJobRequest) throws InterruptedException {
         String sessionId = customizedJobRequest.getSessionId();
         int processorSize = customizedJobRequest.getProcessorSize();
         List<MutablePair<ErProcessor, ErServerNode>> dispatchedProcessorList = new ArrayList<>();
@@ -185,7 +162,7 @@ public class JobServiceHandler {
             dispatchedProcessorList = resourceApplication.getResult();
         } else {
             log.error("Unsupported resource type allocation");
-            return;
+            return new SubmitJobResponse();
         }
 
         try {
@@ -209,9 +186,32 @@ public class JobServiceHandler {
                 startFlowContainersRequest.setProcessors(processors);
                 nodeManagerClient.startFlowJobContainers(new Context(), startFlowContainersRequest);
             });
-        }catch (Exception e){
-            // todo kill掉该进程
 
+            long startTimeout = System.currentTimeMillis() + MetaInfo.EGGROLL_SESSION_START_TIMEOUT_MS;
+            List<ErProcessor> activeProcessors = waitSubmittedContainers(sessionId, processorSize, startTimeout);
+
+            Map<Long, Map<String, String>> idToOptions = new HashMap<>();
+            dispatchedProcessorList.forEach(pair -> {
+                idToOptions.put(pair.getKey().getId(), pair.getKey().getOptions());
+            });
+
+            for (ErProcessor processor : activeProcessors) {
+                Map<String, String> options = idToOptions.get(processor.getId());
+                processor.getOptions().putAll(options);
+            }
+
+            UpdateWrapper<SessionMain> updateWrapper = new UpdateWrapper<>();
+            updateWrapper.lambda().set(SessionMain::getStatus, SessionStatus.ACTIVE.name())
+                    .eq(SessionMain::getStatus, SessionStatus.NEW.name())
+                    .eq(SessionMain::getSessionId, sessionId);
+            sessionMainService.update(updateWrapper);
+            SubmitJobResponse submitJobResponse = new SubmitJobResponse();
+            submitJobResponse.setSessionId(sessionId);
+            submitJobResponse.setProcessors(activeProcessors);
+            return submitJobResponse;
+
+        }catch (Exception e){
+            killJob(new Context(),sessionId);
             throw e;
         }finally {
             clusterResourceManager.unlockSession(sessionId);
