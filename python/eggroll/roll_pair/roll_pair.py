@@ -25,6 +25,7 @@ from eggroll.core.utils import generate_job_id, generate_task_id, get_runtime_st
 from eggroll.roll_pair._roll_pair import RollPair
 from eggroll.roll_pair._gc import GcRecorder
 from eggroll.utils.log_utils import get_logger
+from typing import Callable, Iterable
 
 L = get_logger()
 
@@ -62,12 +63,16 @@ class RollPairContext(object):
         self._broadcast_eggs(eggs, session.get_eggs_count())
 
     def _broadcast_eggs(self, eggs, count):
-        store = self.load(
+        rp = self.create_rp(
+            id=-1,
             name=self.session_id,
             namespace=f"er_session_meta",
             total_partitions=count,
             store_type=StoreTypes.ROLLPAIR_CACHE,
-            create_if_missing=True,
+            key_serdes_type=0,
+            value_serdes_type=0,
+            partitioner_type=0,
+            options={},
         )
 
         def _bc_eggs(_data_dir, _task: ErTask):
@@ -76,7 +81,7 @@ class RollPairContext(object):
             add_runtime_storage("__eggs", eggs)
             L.debug(f"runtime_storage={get_runtime_storage('__eggs')}")
 
-        store.with_stores(func=_bc_eggs)
+        rp.with_stores(func=_bc_eggs, description="broadcast eggs")
 
     def set_store_type(self, store_type: str):
         self.default_store_type = store_type
@@ -104,7 +109,7 @@ class RollPairContext(object):
         for k, v in dict(self.gc_recorder.gc_recorder.items()):
             namespace = k[0]
             name = k[1]
-            rp = self.load(namespace=namespace, name=name, create_if_missing=True)
+            rp = self.load_rp(namespace=namespace, name=name, store_type=StoreTypes.ROLLPAIR_IN_MEMORY)
             rp.destroy()
 
     def route_to_egg(self, partition: ErPartition):
@@ -113,87 +118,118 @@ class RollPairContext(object):
     def populate_processor(self, store: ErStore):
         return self.__session.populate_processor(store)
 
-    def _load_store(
+    def create_rp(
+        self,
+        id,
+        name: str,
+        namespace: str,
+        total_partitions: int,
+        store_type: str,
+        key_serdes_type: int,
+        value_serdes_type: int,
+        partitioner_type: int,
+        options: dict,
+    ):
+        store = self.create_store(
+            id=id,
+            name=name,
+            namespace=namespace,
+            total_partitions=total_partitions,
+            store_type=store_type,
+            key_serdes_type=key_serdes_type,
+            value_serdes_type=value_serdes_type,
+            partitioner_type=partitioner_type,
+            options=options,
+        )
+        return RollPair(store, self)
+
+    def create_store(
+        self,
+        id,
+        name: str,
+        namespace: str,
+        total_partitions: int,
+        store_type: str,
+        key_serdes_type: int,
+        value_serdes_type: int,
+        partitioner_type: int,
+        options: dict,
+    ):
+        store = ErStore(
+            store_locator=ErStoreLocator(
+                id=id,
+                store_type=store_type,
+                namespace=namespace,
+                name=name,
+                total_partitions=total_partitions,
+                key_serdes_type=key_serdes_type,
+                value_serdes_type=value_serdes_type,
+                partitioner_type=partitioner_type,
+            ),
+            partitions=[],
+            options=options,
+        )
+        return self.__session.get_or_create_store(store)
+
+    def load_store(
         self,
         name: str,
         namespace: str,
         store_type: str,
-        total_partitions: int,
-        partitioner: str,
-        create_if_missing: bool,
     ):
-        if not namespace:
-            namespace = self.get_session().get_session_id()
-
-        partitioner = PartitionerTypes.MMH3_BYTESTRING_HASH if partitioner is None else partitioner
-        store_type = self.default_store_type if store_type is None else store_type
-
-        # store_options = self.__session.get_all_options()
-        # store_options.update(options)
-
         store = ErStore(
             store_locator=ErStoreLocator(
                 store_type=store_type,
                 namespace=namespace,
                 name=name,
-                total_partitions=total_partitions,
-                partitioner=partitioner,
             ),
             options={},
         )
-
-        if create_if_missing:
-            result = self.__session._cluster_manager_client.get_or_create_store(store)
-        else:
-            result = self.__session._cluster_manager_client.get_store(store)
-            if len(result._partitions) == 0:
-                L.info(
-                    f"store: namespace={namespace}, name={name} not exist, "
-                    f"create_if_missing={create_if_missing}, create first"
-                )
-                return None
-
+        result = self.__session.cluster_manager_client.get_store(store)
+        if result.num_partitions == 0:
+            raise ValueError(f"store not found: {name}, {namespace}, {store_type}")
         return self.populate_processor(result)
 
-    def load(
+    def load_rp(
         self,
         name: str,
-        namespace=None,
-        store_type: str = StoreTypes.ROLLPAIR_IN_MEMORY,
-        total_partitions: int = 1,
-        partitioner: str = PartitionerTypes.MMH3_BYTESTRING_HASH,
-        create_if_missing=False,
+        namespace: str,
+        store_type: str,
     ):
-        store = self._load_store(
+        store = self.load_store(
             name=name,
             namespace=namespace,
             store_type=store_type,
-            total_partitions=total_partitions,
-            partitioner=partitioner,
-            create_if_missing=create_if_missing,
         )
         return RollPair(store, self)
 
     def parallelize(
         self,
-        data,
-        total_partitions=1,
-        partitioner: str = PartitionerTypes.MMH3_BYTESTRING_HASH,
+        data: Iterable,
+        total_partitions: int,
+        partitioner: Callable[[bytes], int],
+        partitioner_type: int,
+        key_serdes_type: int,
+        value_serdes_type: int,
         store_type: str = StoreTypes.ROLLPAIR_IN_MEMORY,
         namespace=None,
         name=None,
     ):
         namespace = namespace or self.session_id
         name = name or str(uuid.uuid1())
-        rp = self.load(
-            namespace=namespace,
+        store = self.create_store(
+            id=-1,
             name=name,
+            namespace=namespace,
             store_type=store_type,
             total_partitions=total_partitions,
-            partitioner=partitioner,
-            create_if_missing=True,
+            key_serdes_type=key_serdes_type,
+            value_serdes_type=value_serdes_type,
+            partitioner_type=partitioner_type,
+            options={},
         )
-        return rp.put_all(data)
+        rp = RollPair(store, self)
+        return rp.put_all(data, partitioner)
 
     def cleanup(self, name, namespace, options: dict = None):
         """store name only supports full name and reg: *, *abc ,abc* and a*c"""

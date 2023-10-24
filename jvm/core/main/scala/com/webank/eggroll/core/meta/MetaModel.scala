@@ -49,8 +49,9 @@ case class ErStoreLocator(id: Long = -1L,
                           name: String,
                           path: String = StringConstants.EMPTY,
                           totalPartitions: Int = 0,
-                          partitioner: String = StringConstants.EMPTY,
-                          serdes: String = StringConstants.EMPTY) extends MetaRpcMessage {
+                          keySerdesType: Int = 0,
+                          valueSerdesType: Int = 0,
+                          partitionerType: Int = 0) extends MetaRpcMessage {
   def toPath(delim: String = StringConstants.SLASH): String = {
     if (!StringUtils.isBlank(path)) {
       path
@@ -102,10 +103,20 @@ case class ErStoreList(stores: Array[ErStore] = Array.empty,
 
 case class ErJob(id: String,
                  name: String = StringConstants.EMPTY,
-                 inputs: Array[ErStore],
-                 outputs: Array[ErStore] = Array(),
+                 inputs: Array[ErJobIO],
+                 outputs: Array[ErJobIO] = Array(),
                  functors: Array[ErFunctor],
                  options: Map[String, String] = Map[String, String]()) extends MetaRpcMessage
+
+case class ErSerdes(t: Int = 0, body: ByteString = null) extends MetaRpcMessage
+
+case class ErPartitioner(t: Int = 0, body: ByteString = null) extends MetaRpcMessage
+
+case class ErJobIO(
+                    store: ErStore,
+                    key_serdes: ErSerdes = ErSerdes(),
+                    value_serdes: ErSerdes = ErSerdes(),
+                    partitioner: ErPartitioner = ErPartitioner()) extends MetaRpcMessage
 
 case class ErTask(id: String,
                   name: String = StringConstants.EMPTY,
@@ -134,8 +145,8 @@ case class ErSessionMeta(id: String = StringConstants.EMPTY,
                          activeProcCount: Int = 0,
                          tag: String = StringConstants.EMPTY,
                          processors: Array[ErProcessor] = Array(),
-                         createTime:Timestamp = null,
-                         updateTime:Timestamp = null,
+                         createTime: Timestamp = null,
+                         updateTime: Timestamp = null,
                          options: Map[String, String] = Map()) extends MetaRpcMessage {
 }
 
@@ -190,8 +201,9 @@ object MetaModelPbMessageSerdes {
         .setName(src.name)
         .setPath(src.path)
         .setTotalPartitions(src.totalPartitions)
-        .setPartitioner(src.partitioner)
-        .setSerdes(src.serdes)
+        .setPartitionerType(src.partitionerType)
+        .setKeySerdesType(src.keySerdesType)
+        .setValueSerdesType(src.valueSerdesType)
 
       builder.build()
     }
@@ -238,6 +250,45 @@ object MetaModelPbMessageSerdes {
 
     override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
       baseSerializable.asInstanceOf[ErPartition].toBytes()
+  }
+
+  implicit class ErSerdesToPbMessage(src: ErSerdes) extends PbMessageSerializer {
+    override def toProto[T >: PbMessage](): Meta.Serdes = {
+      val builder = Meta.Serdes.newBuilder()
+        .setType(src.t)
+      if (src.body != null) builder.setBody(src.body)
+
+      builder.build()
+    }
+
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
+      baseSerializable.asInstanceOf[ErSerdes].toBytes()
+  }
+
+  implicit class ErPartitionerToPbMessage(src: ErPartitioner) extends PbMessageSerializer {
+    override def toProto[T >: PbMessage](): Meta.Partitioner = {
+      val builder = Meta.Partitioner.newBuilder()
+        .setType(src.t)
+
+      if (src.body != null) builder.setBody(src.body)
+
+      builder.build()
+    }
+
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
+      baseSerializable.asInstanceOf[ErPartitioner].toBytes()
+  }
+
+  implicit class ErJobIOToPbMessage(src: ErJobIO) extends PbMessageSerializer {
+    override def toProto[T >: PbMessage](): Meta.JobIO = {
+      val builder = Meta.JobIO.newBuilder()
+        .setStore(src.store.toProto())
+        .setKeySerdes(src.key_serdes.toProto())
+        .setValueSerdes(src.value_serdes.toProto())
+        .setPartitioner(src.partitioner.toProto())
+
+      builder.build()
+    }
   }
 
   implicit class ErJobToPbMessage(src: ErJob) extends PbMessageSerializer {
@@ -325,8 +376,9 @@ object MetaModelPbMessageSerdes {
         name = src.getName,
         path = src.getPath,
         totalPartitions = src.getTotalPartitions,
-        partitioner = src.getPartitioner,
-        serdes = src.getSerdes)
+        keySerdesType = src.getKeySerdesType,
+        valueSerdesType = src.getValueSerdesType,
+        partitionerType = src.getPartitionerType)
     }
 
     override def fromBytes(bytes: Array[Byte]): ErStoreLocator =
@@ -362,6 +414,36 @@ object MetaModelPbMessageSerdes {
 
     override def fromBytes(bytes: Array[Byte]): ErPartition =
       Meta.Partition.parseFrom(bytes).fromProto()
+  }
+
+  implicit class ErSerdesFromPbMessage(src: Meta.Serdes) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): ErSerdes = {
+      ErSerdes(t = src.getType, body = src.getBody)
+    }
+
+    override def fromBytes(bytes: Array[Byte]): ErSerdes =
+      Meta.Serdes.parseFrom(bytes).fromProto()
+  }
+
+  implicit class ErPartitionerFromPbMessage(src: Meta.Partitioner) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): ErPartitioner = {
+      ErPartitioner(t = src.getType, body = src.getBody)
+    }
+
+    override def fromBytes(bytes: Array[Byte]): ErPartitioner =
+      Meta.Partitioner.parseFrom(bytes).fromProto()
+  }
+
+  implicit class ErJobIOFromPbMessage(src: Meta.JobIO) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): ErJobIO = {
+      ErJobIO(store = src.getStore.fromProto(),
+        key_serdes = src.getKeySerdes.fromProto(),
+        value_serdes = src.getValueSerdes.fromProto(),
+        partitioner = src.getPartitioner.fromProto())
+    }
+
+    override def fromBytes(bytes: Array[Byte]): ErJobIO =
+      Meta.JobIO.parseFrom(bytes).fromProto()
   }
 
   implicit class ErJobFromPbMessage(src: Meta.Job) extends PbMessageDeserializer {

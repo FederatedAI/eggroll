@@ -32,6 +32,7 @@ from eggroll.core.utils import (
 )
 from eggroll.core.utils import time_now_ns
 import typing
+from typing import List
 
 
 DEFAULT_PATH_DELIM = "/"
@@ -200,6 +201,10 @@ class ErProcessor(RpcMessage):
         self._tag = tag
 
     @property
+    def server_node_id(self):
+        return self._server_node_id
+
+    @property
     def command_endpoint(self):
         return self._command_endpoint
 
@@ -322,6 +327,14 @@ class ErFunctor(RpcMessage):
         self._body = body
         self._options = options
 
+    @classmethod
+    def from_func(cls, name, func, options: dict = None):
+        import cloudpickle
+
+        if options is None:
+            options = {}
+        return cls(name=name, body=cloudpickle.dumps(func), options=options)
+
     def deserialized_as(self, model_type: typing.Type[T]) -> T:
         return model_type.from_proto_string(self._body)
 
@@ -329,7 +342,6 @@ class ErFunctor(RpcMessage):
     def body(self):
         return self._body
 
-    @property
     def load_with_cloudpickle(self):
         import cloudpickle
 
@@ -434,7 +446,9 @@ class ErStoreLocator(RpcMessage):
         name: str = "",
         path: str = "",
         total_partitions=0,
-        partitioner: str = "",
+        key_serdes_type: int = 0,
+        value_serdes_type: int = 0,
+        partitioner_type: int = 0,
     ):
         self._id = id
         self._store_type = store_type
@@ -442,7 +456,13 @@ class ErStoreLocator(RpcMessage):
         self._name = name
         self._path = path
         self._total_partitions = total_partitions
-        self._partitioner = partitioner
+        self._key_serdes_type = key_serdes_type
+        self._value_serdes_type = value_serdes_type
+        self._partitioner_type = partitioner_type
+
+    @property
+    def id(self):
+        return self._id
 
     @property
     def store_type(self) -> str:
@@ -461,8 +481,16 @@ class ErStoreLocator(RpcMessage):
         return self._path
 
     @property
-    def partitioner_type(self) -> str:
-        return self._partitioner
+    def partitioner_type(self) -> int:
+        return self._partitioner_type
+
+    @property
+    def key_serdes_type(self) -> int:
+        return self._key_serdes_type
+
+    @property
+    def value_serdes_type(self) -> int:
+        return self._value_serdes_type
 
     @property
     def num_partitions(self) -> int:
@@ -471,12 +499,14 @@ class ErStoreLocator(RpcMessage):
     def to_proto(self):
         return meta_pb2.StoreLocator(
             id=self._id,
-            storeType=self._store_type,
+            store_type=self._store_type,
             namespace=self._namespace,
             name=self._name,
             path=self._path,
-            totalPartitions=self._total_partitions,
-            partitioner=self._partitioner,
+            total_partitions=self._total_partitions,
+            key_serdes_type=self._key_serdes_type,
+            value_serdes_type=self._value_serdes_type,
+            partitioner_type=self._partitioner_type,
         )
 
     def to_proto_string(self):
@@ -486,12 +516,14 @@ class ErStoreLocator(RpcMessage):
     def from_proto(pb_message):
         return ErStoreLocator(
             id=pb_message.id,
-            store_type=pb_message.storeType,
+            store_type=pb_message.store_type,
             namespace=pb_message.namespace,
             name=pb_message.name,
             path=pb_message.path,
-            total_partitions=pb_message.totalPartitions,
-            partitioner=pb_message.partitioner,
+            total_partitions=pb_message.total_partitions,
+            key_serdes_type=pb_message.key_serdes_type,
+            value_serdes_type=pb_message.value_serdes_type,
+            partitioner_type=pb_message.partitioner_type,
         )
 
     def to_path(self, delim=DEFAULT_PATH_DELIM):
@@ -510,7 +542,7 @@ class ErStoreLocator(RpcMessage):
         return duplicate
 
     def __repr__(self):
-        return f"<ErStoreLocator(id={self._id}, store_type={self._store_type}, namespace={self._namespace}, name={self._name}, path={self._path}, total_partitions={self._total_partitions}, partitioner={self._partitioner}) at {hex(id(self))}>"
+        return f"<ErStoreLocator(id={self._id}, store_type={self._store_type}, namespace={self._namespace}, name={self._name}, path={self._path}, total_partitions={self._total_partitions}, partitioner_type={self._partitioner_type}) at {hex(id(self))}>"
 
 
 class ErPartition(RpcMessage):
@@ -597,7 +629,7 @@ class ErPartition(RpcMessage):
 
 
 class ErStore(RpcMessage):
-    def __init__(self, store_locator: ErStoreLocator, partitions: list = None, options: dict = None):
+    def __init__(self, store_locator: ErStoreLocator, partitions: List[ErPartition] = None, options: dict = None):
         if partitions is None:
             partitions = []
         if options is None:
@@ -606,21 +638,36 @@ class ErStore(RpcMessage):
         self._partitions = partitions
         self._options = options
 
+    def create_partition(self, i):
+        processor = self.get_partition(i).processor
+        return ErPartition(id=i, store_locator=self._store_locator, processor=processor)
+
+    @property
+    def store_locator(self):
+        return self._store_locator
+
     @property
     def num_partitions(self):
         return self._store_locator.num_partitions
 
     def get_partition(self, partition_id: int) -> ErPartition:
+        if len(self._partitions) <= 0:
+            raise ValueError(f"no partitions in store: {self._store_locator}, populate partitions first")
+        if partition_id < 0 or partition_id >= len(self._partitions):
+            raise ValueError(f"partition_id out of range: {partition_id}, total partitions: {len(self._partitions)}")
         return self._partitions[partition_id]
 
     @property
-    def partitioner_type(self) -> str:
+    def partitioner_type(self) -> int:
         return self._store_locator.partitioner_type
 
-    def get_partitioner(self):
-        from eggroll.core.partitioner import create_partitioner
+    @property
+    def key_serdes_type(self) -> int:
+        return self._store_locator.key_serdes_type
 
-        return create_partitioner(self.partitioner_type, self.num_partitions)
+    @property
+    def value_serdes_type(self) -> int:
+        return self._store_locator.value_serdes_type
 
     def to_proto(self):
         return meta_pb2.Store(
@@ -695,13 +742,139 @@ class ErStoreList(RpcMessage):
         return f"ErStoreList(stores={_repr_list(self._stores)})"
 
 
+class ErPartitioner(RpcMessage):
+    def __init__(self, type: int, body=b""):
+        self._type = type
+        self._body = body
+
+    @classmethod
+    def from_func(cls, type, func):
+        import cloudpickle
+
+        return cls(type=type, body=cloudpickle.dumps(func))
+
+    def load_with_cloudpickle(self):
+        import cloudpickle
+
+        return cloudpickle.loads(self._body)
+
+    def to_proto(self):
+        return meta_pb2.Partitioner(type=self._type, body=self._body)
+
+    def to_proto_string(self):
+        return self.to_proto().SerializeToString()
+
+    @staticmethod
+    def from_proto(pb_message):
+        return ErPartitioner(type=pb_message.type, body=pb_message.body)
+
+    @staticmethod
+    def from_proto_string(pb_string):
+        pb_message = meta_pb2.Partitioner()
+        msg_len = pb_message.ParseFromString(pb_string)
+        return ErPartitioner.from_proto(pb_message)
+
+
+class ErSerdes(RpcMessage):
+    def __init__(self, type: int, body=b""):
+        self._type = type
+        self._body = body
+
+    @classmethod
+    def from_func(cls, type, func):
+        import cloudpickle
+
+        return cls(type=type, body=cloudpickle.dumps(func))
+
+    def load_with_cloudpickle(self):
+        import cloudpickle
+
+        return cloudpickle.loads(self._body)
+
+    def to_proto(self):
+        return meta_pb2.Serdes(type=self._type, body=self._body)
+
+    def to_proto_string(self):
+        return self.to_proto().SerializeToString()
+
+    @staticmethod
+    def from_proto(pb_message):
+        return ErSerdes(type=pb_message.type, body=pb_message.body)
+
+    @staticmethod
+    def from_proto_string(pb_string):
+        pb_message = meta_pb2.Serdes()
+        msg_len = pb_message.ParseFromString(pb_string)
+        return ErPartitioner.from_proto(pb_message)
+
+
+class ErJobIO(RpcMessage):
+    def __init__(
+        self,
+        store: ErStore,
+        key_serdes: ErSerdes = None,
+        value_serdes: ErSerdes = None,
+        partitioner: ErPartitioner = None,
+    ):
+        self._store = store
+        self._key_serdes = key_serdes
+        self._value_serdes = value_serdes
+        self._partitioner = partitioner
+
+    @property
+    def store(self):
+        return self._store
+
+    @property
+    def num_partitions(self):
+        return self._store.num_partitions
+
+    @property
+    def partitioner(self):
+        return self._partitioner
+
+    @property
+    def key_serdes(self):
+        return self._key_serdes
+
+    @property
+    def value_serdes(self):
+        return self._value_serdes
+
+    def to_proto(self):
+        return meta_pb2.JobIO(
+            store=self._store.to_proto(),
+            key_serdes=_to_proto(self._key_serdes),
+            value_serdes=_to_proto(self._value_serdes),
+            partitioner=_to_proto(self._partitioner),
+        )
+
+    def to_proto_string(self):
+        return self.to_proto().SerializeToString()
+
+    @staticmethod
+    def from_proto(pb_message: meta_pb2.JobIO):
+        return ErJobIO(
+            store=ErStore.from_proto(pb_message.store),
+            key_serdes=_from_proto(ErSerdes.from_proto, pb_message.key_serdes),
+            value_serdes=_from_proto(ErSerdes.from_proto, pb_message.value_serdes),
+            partitioner=_from_proto(ErPartitioner.from_proto, pb_message.partitioner),
+        )
+
+    @staticmethod
+    def from_proto_string(pb_string):
+        pb_message = meta_pb2.JobIO()
+        msg_len = pb_message.ParseFromString(pb_string)
+        return ErJobIO.from_proto(pb_message)
+
+
 class ErJob(RpcMessage):
     def __init__(
         self,
         id: str,
         name: str = "",
-        inputs: list = None,
-        outputs: list = None,
+        inputs: List[ErJobIO] = None,
+        outputs: List[ErJobIO] = None,
         functors: list = None,
         options: dict = None,
     ):
@@ -734,7 +907,7 @@ class ErJob(RpcMessage):
         return len(self._inputs) > 0
 
     @property
-    def first_input(self) -> ErStore:
+    def first_input(self) -> ErJobIO:
         return self._inputs[0]
 
     @property
@@ -742,7 +915,7 @@ class ErJob(RpcMessage):
         return len(self._inputs) > 1
 
     @property
-    def second_input(self) -> ErStore:
+    def second_input(self) -> ErJobIO:
         return self._inputs[1]
 
     @property
@@ -750,7 +923,7 @@ class ErJob(RpcMessage):
         return len(self._outputs) > 0
 
     @property
-    def first_output(self) -> ErStore:
+    def first_output(self) -> ErJobIO:
         return self._outputs[0]
 
     @property
@@ -795,8 +968,8 @@ class ErJob(RpcMessage):
         return ErJob(
             id=pb_message.id,
             name=pb_message.name,
-            inputs=_map_and_listify(ErStore.from_proto, pb_message.inputs),
-            outputs=_map_and_listify(ErStore.from_proto, pb_message.outputs),
+            inputs=_map_and_listify(ErJobIO.from_proto, pb_message.inputs),
+            outputs=_map_and_listify(ErJobIO.from_proto, pb_message.outputs),
             functors=_map_and_listify(ErFunctor.from_proto, pb_message.functors),
             options=dict(pb_message.options),
         )
@@ -818,6 +991,52 @@ class ErJob(RpcMessage):
             f"options={repr(self._options)}) "
             f"at {hex(id(self))}>"
         )
+
+    def decompose_tasks(self):
+        from .utils import generate_task_id
+
+        input_total_partitions = self.first_input.num_partitions
+        output_total_partitions = self.first_output.num_partitions if self.has_first_output else 0
+        total_partitions = max(input_total_partitions, output_total_partitions)
+        tasks = []
+        for i in range(total_partitions):
+            task_input_partitions = []
+            task_output_partitions = []
+            task_endpoint = None
+
+            def _fill_partitions(job_ios: List[ErJobIO], partitions, target_endpoint):
+                for job_io in job_ios:
+                    partition = job_io.store.get_partition(i)
+                    partitions.append(partition)
+                    endpoint = partition.processor.command_endpoint
+                    if target_endpoint is None:
+                        target_endpoint = endpoint
+                    elif target_endpoint != endpoint:
+                        raise ValueError(f"store {job_io.store} partition {i} has different processor endpoint")
+                return target_endpoint
+
+            if i < input_total_partitions:
+                task_endpoint = _fill_partitions(self._inputs, task_input_partitions, task_endpoint)
+            if i < output_total_partitions:
+                task_endpoint = _fill_partitions(self._outputs, task_output_partitions, task_endpoint)
+            if not task_endpoint:
+                raise ValueError(f"task endpoint is null for task {i}")
+
+            tasks.append(
+                (
+                    [
+                        ErTask(
+                            id=generate_task_id(self.id, i),
+                            name=f"{self.name}",
+                            inputs=task_input_partitions,
+                            outputs=task_output_partitions,
+                            job=self,
+                        )
+                    ],
+                    task_endpoint,
+                ),
+            )
+        return tasks
 
 
 class ErTask(RpcMessage):

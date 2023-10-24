@@ -12,30 +12,35 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
-import logging
+import functools
+import queue
 import os
 import time
 import typing
+from typing import Callable, Tuple, Iterable, List, Type
 import uuid
 from concurrent.futures import wait, FIRST_EXCEPTION
 from threading import Thread
-import random
 
-import cloudpickle
 
 from eggroll.core.aspects import _method_profile_logger
 from eggroll.core.client import CommandClient
 from eggroll.core.command.command_model import CommandURI
 from eggroll.core.constants import StoreTypes
 from eggroll.core.datastructure.broker import FifoBroker
-from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, ErTask, ErPair, ErPartition
+from eggroll.core.meta_model import ErJob, ErStore, ErFunctor, ErTask, ErPartitioner, ErJobIO, ErSerdes
 from eggroll.core.utils import generate_job_id, generate_task_id
 from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
-from eggroll.core.partitioner import partitioner
+from eggroll.core.transfer_model import (
+    ErRollSitePullGetHeaderRequest,
+    ErRollSitePullGetHeaderResponse,
+    ErRollSitePullGetPartitionStatusRequest,
+    ErRollSitePullGetPartitionStatusResponse,
+    ErRollSitePullClearStatusRequest,
+)
 from eggroll.utils.log_utils import get_logger
 from eggroll.core.model.task import (
-    CountRequest,
+    CountResponse,
     GetRequest,
     GetResponse,
     PutRequest,
@@ -45,8 +50,6 @@ from eggroll.core.model.task import (
     DeleteResponse,
     MapPartitionsWithIndexRequest,
     ReduceResponse,
-    AggregateRequest,
-    AggregateResponse,
     WithStoresResponse,
 )
 
@@ -65,32 +68,26 @@ class RollPair(object):
     RUN_JOB = "runJob"
     RUN_TASK = "runTask"
 
-    AGGREGATE = "aggregate"
-    COLLAPSE_PARTITIONS = "collapsePartitions"
     CLEANUP = "cleanup"
     COUNT = "count"
     DELETE = "delete"
     DESTROY = "destroy"
-    FILTER = "filter"
-    FLAT_MAP = "flatMap"
     GET = "get"
     GET_ALL = "getAll"
     GLOM = "glom"
-    JOIN = "join"
-    MAP = "map"
-    MAP_PARTITIONS = "mapPartitions"
-    MAP_PARTITIONS_WITH_INDEX = "mapPartitionsWithIndex"
-    MAP_VALUES = "mapValues"
+    MAP_REDUCE_PARTITIONS_WITH_INDEX = "mapReducePartitionsWithIndex"
+    BINARY_SORTED_MAP_PARTITIONS_WITH_INDEX = "binarySortedMapPartitionsWithIndex"
     PUT = "put"
     PUT_ALL = "putAll"
     PUT_BATCH = "putBatch"
     REDUCE = "reduce"
-    SAMPLE = "sample"
-    SUBTRACT_BY_KEY = "subtractByKey"
-    UNION = "union"
+
+    WITH_STORES = "withStores"
+    PullGetHeader = "pullGetHeader"
+    PullGetPartitionStatus = "pullGetPartitionStatus"
+    PullClearStatus = "pullClearStatus"
 
     RUN_TASK_URI = CommandURI(f"{EGG_PAIR_URI_PREFIX}/{RUN_TASK}")
-    SERIALIZED_NONE = cloudpickle.dumps(None)
 
     def __setstate__(self, state):
         self.gc_enable = None
@@ -112,12 +109,6 @@ class RollPair(object):
         self.gc_recorder.record(er_store)
         self.destroyed = False
         self._partitioner = None
-
-    @property
-    def partitioner(self):
-        if self._partitioner is None:
-            self._partitioner = self._store.get_partitioner()
-        return self._partitioner
 
     def __del__(self):
         if "EGGROLL_GC_DISABLE" in os.environ and os.environ["EGGROLL_GC_DISABLE"] == "1":
@@ -143,96 +134,6 @@ class RollPair(object):
     def __repr__(self):
         return f"<{self.__class__.__name__}(_store={self._store}) at {hex(id(self))}>"
 
-    @staticmethod
-    def __check_partition(input_partitions, output_partitions, shuffle=False):
-        if not shuffle:
-            return
-        if input_partitions != output_partitions:
-            raise ValueError(
-                f"input partitions:{input_partitions}, output partitions:{output_partitions}," f"must be the same!"
-            )
-
-    def __repartition_with(self, other):
-        self_partition = self.get_partitions()
-        other_partition = other.get_partitions()
-
-        should_shuffle = False
-        if len(self._store._partitions) != len(other._store._partitions):
-            should_shuffle = True
-        else:
-            for i in range(len(self._store._partitions)):
-                if self._store._partitions[i]._processor._id != other._store._partitions[i]._processor._id:
-                    should_shuffle = True
-
-        if other_partition != self_partition or should_shuffle:
-            self_name = self.get_name()
-            self_count = self.count()
-            other_name = other.get_name()
-            other_count = other.count()
-
-            L.debug(
-                f"repartition start: self rp={self_name} partitions={self_partition}, "
-                f"other={other_name}: partitions={other_partition}, repartitioning"
-            )
-
-            if self_count < other_count:
-                shuffle_rp = self
-                shuffle_rp_count = self_count
-                shuffle_rp_name = self_name
-                shuffle_total_partitions = self_partition
-                shuffle_rp_partitions = self._store._partitions
-
-                not_shuffle_rp = other
-                not_shuffle_rp_count = other_count
-                not_shuffle_rp_name = other_name
-                not_shuffle_total_partitions = other_partition
-                not_shuffle_rp_partitions = other._store._partitions
-            else:
-                not_shuffle_rp = self
-                not_shuffle_rp_count = self_count
-                not_shuffle_rp_name = self_name
-                not_shuffle_total_partitions = self_partition
-                not_shuffle_rp_partitions = self._store._partitions
-
-                shuffle_rp = other
-                shuffle_rp_count = other_count
-                shuffle_rp_name = other_name
-                shuffle_total_partitions = other_partition
-                shuffle_rp_partitions = other._store._partitions
-
-            L.trace(
-                f"repartition selection: rp={shuffle_rp_name} count={shuffle_rp_count}, "
-                f"rp={not_shuffle_rp_name} count={not_shuffle_rp_count}. "
-                f"repartitioning {shuffle_rp_name}"
-            )
-            store = ErStore(
-                store_locator=ErStoreLocator(
-                    store_type=shuffle_rp.get_store_type(),
-                    namespace=shuffle_rp.get_namespace(),
-                    name=str(uuid.uuid1()),
-                    total_partitions=not_shuffle_total_partitions,
-                ),
-                partitions=not_shuffle_rp_partitions,
-            )
-            res_rp = shuffle_rp.map(lambda k, v: (k, v), output=store)
-            res_rp.disable_gc()
-
-            if L.isEnabledFor(logging.DEBUG):
-                L.debug(
-                    f"repartition end: rp to shuffle={shuffle_rp_name}, "
-                    f"count={shuffle_rp_count}, partitions={shuffle_total_partitions}; "
-                    f"rp NOT shuffled={not_shuffle_rp_name}, "
-                    f"count={not_shuffle_rp_count}, partitions={not_shuffle_total_partitions}' "
-                    f"res rp={res_rp.get_name()}, "
-                    f"count={res_rp.count()}, partitions={res_rp.get_partitions()}"
-                )
-            store_shuffle = res_rp.get_store()
-            return (
-                [store_shuffle, other.get_store()] if self_count < other_count else [self.get_store(), store_shuffle]
-            )
-        else:
-            return [self._store, other._store]
-
     def enable_gc(self):
         self.gc_enable = True
 
@@ -240,61 +141,46 @@ class RollPair(object):
         self.gc_enable = False
 
     def get_partitions(self):
-        return self._store._store_locator._total_partitions
+        return self._store.num_partitions
+
+    @property
+    def num_partitions(self) -> int:
+        return self._store.num_partitions
 
     def get_name(self):
-        return self._store._store_locator._name
+        return self._store.store_locator.name
 
     def get_namespace(self):
-        return self._store._store_locator._namespace
+        return self._store.store_locator.namespace
 
     def get_store(self):
         return self._store
 
     def get_store_type(self):
-        return self._store._store_locator._store_type
+        return self._store.store_locator.store_type
 
-    def _run_job(
+    def _run_unary_unit_job(
         self,
         job: ErJob,
-        output_types: list = None,
-        command_uri: CommandURI = RUN_TASK_URI,
-        create_output_if_missing: bool = True,
-    ):
-        from eggroll.core.utils import _map_and_listify
-
-        start = time.time()
-        L.debug(
-            f"[RUNJOB] calling: job_id={job._id}, name={job._name}, inputs={_map_and_listify(lambda i: f'namespace={i._store_locator._namespace}, name={i._store_locator._name}, store_type={i._store_locator._store_type}, total_partitions={i._store_locator._total_partitions}', job._inputs)}"
-        )
-        futures = self.ctx.get_session().submit_job(
-            job=job,
-            output_types=output_types,
-            command_uri=command_uri,
-            create_output_if_missing=create_output_if_missing,
-        )
-
-        results = list()
-        for future in futures:
-            results.append(future.result())
-        elapsed = time.time() - start
-        L.debug(
-            f"[RUNJOB] called (elapsed={elapsed}): job_id={job._id}, name={job._name}, inputs={_map_and_listify(lambda i: f'namespace={i._store_locator._namespace}, name={i._store_locator._name}, store_type={i._store_locator._store_type}, total_partitions={i._store_locator._total_partitions}', job._inputs)}"
-        )
+        output_types: List[Type[T]] = None,
+    ) -> List[List[T]]:
+        if output_types is None:
+            output_types = [ErTask]
+        tasks = job.decompose_tasks()
+        futures = self._command_client.async_call(args=tasks, output_types=output_types, command_uri=self.RUN_TASK_URI)
+        done, not_done = wait(futures, return_when=FIRST_EXCEPTION)
+        results = [future.result() for future in done]
+        if len(not_done) > 0:
+            for future in not_done:
+                future.cancel()
         return results
-
-    def __get_output_from_result(self, results):
-        return results[0][0]._job._outputs[0]
 
     """
       storage api
     """
 
-    def _process_task_on_key(self, key: bytes, job_name, functor_body, response_type: typing.Type[T]) -> T:
-        partition_id = self.partitioner(key)
+    def _process_task_on_key(self, partition_id: int, job_name, request, response_type: typing.Type[T]) -> T:
         partition = self._store.get_partition(partition_id)
-        egg = self.ctx.route_to_egg(partition)
-
         job_id = generate_job_id(self._session_id, job_name)
         task = ErTask(
             id=generate_task_id(job_id, partition_id),
@@ -303,32 +189,48 @@ class RollPair(object):
             job=ErJob(
                 id=job_id,
                 name=job_name,
-                inputs=[self._store],
-                functors=[ErFunctor(name=job_name, body=functor_body)],
+                inputs=[ErJobIO(self._store)],
+                functors=[ErFunctor(name=job_name, body=request.to_proto_string())],
             ),
         )
         task_resp = self._command_client.simple_sync_send(
             input=task,
             output_type=response_type,
-            endpoint=egg.command_endpoint,
+            endpoint=partition.processor.command_endpoint,
             command_uri=RollPair.RUN_TASK_URI,
         )
         return task_resp
 
     @_method_profile_logger
-    def get(self, k):
+    def get(self, k: bytes, partitioner: Callable[[bytes, int], int]):
+        partition_id = partitioner(k, self.num_partitions)
         response = self._process_task_on_key(
-            key=k, job_name=RollPair.GET, functor_body=GetRequest(key=k).to_proto_string(), response_type=GetResponse
+            partition_id=partition_id,
+            job_name=RollPair.GET,
+            request=GetRequest(key=k),
+            response_type=GetResponse,
         )
         return response.value if response.exists else None
 
     @_method_profile_logger
-    def put(self, k, v) -> bool:
+    def put(self, k, v, partitioner: Callable[[bytes, int], int]) -> bool:
+        partition_id = partitioner(k, self.num_partitions)
         response = self._process_task_on_key(
-            key=k,
+            partition_id=partition_id,
             job_name=RollPair.PUT,
-            functor_body=PutRequest(key=k, value=v).to_proto_string(),
+            request=PutRequest(key=k, value=v),
             response_type=PutResponse,
+        )
+        return response.success
+
+    @_method_profile_logger
+    def delete(self, k: bytes, partitioner: Callable[[bytes, int], int]) -> bool:
+        partitioner_id = partitioner(k, self.num_partitions)
+        response = self._process_task_on_key(
+            partition_id=partitioner_id,
+            job_name=RollPair.DELETE,
+            request=DeleteRequest(key=k),
+            response_type=DeleteResponse,
         )
         return response.success
 
@@ -338,117 +240,89 @@ class RollPair(object):
             raise ValueError(f"limit:{limit} must be positive int")
         if limit is None:
             limit = -1
-
         job_id = generate_job_id(self._session_id, RollPair.GET_ALL)
-
-        def send_command():
-            job = ErJob(
+        self._run_unary_unit_job(
+            job=ErJob(
                 id=job_id,
                 name=RollPair.GET_ALL,
-                inputs=[self._store],
+                inputs=[ErJobIO(self._store)],
                 functors=[ErFunctor(name=RollPair.GET_ALL, body=GetAllRequest(limit=limit).to_proto_string())],
             )
-
-            task_results = self._run_job(job=job)
-            er_store = self.__get_output_from_result(task_results)
-
-            return er_store
-
-        send_command()
-
-        populated_store = self.ctx.populate_processor(self._store)
+        )
         transfer_pair = TransferPair(transfer_id=job_id)
         done_cnt = 0
-        for k, v in transfer_pair.gather(populated_store):
+        for k, v in transfer_pair.gather(self._store):
             done_cnt += 1
             yield k, v
 
     @_method_profile_logger
-    def put_all(self, items):
+    def put_all(self, kv_list: Iterable[Tuple[bytes, bytes]], partitioner: Callable[[bytes, int], int]):
         job_id = generate_job_id(self._session_id, RollPair.PUT_ALL)
 
         # TODO:1: consider multiprocessing scenario. parallel size should be sent to egg_pair to set write signal count
         def send_command():
-            job = ErJob(id=job_id, name=RollPair.PUT_ALL, inputs=[self._store], outputs=[self._store], functors=[])
+            job = ErJob(
+                id=job_id,
+                name=RollPair.PUT_ALL,
+                inputs=[ErJobIO(self._store)],
+                outputs=[ErJobIO(self._store)],
+                functors=[],
+            )
+            self._run_unary_unit_job(job)
 
-            task_results = self._run_job(job)
-
-            return self.__get_output_from_result(task_results)
-
-        th = Thread(target=send_command, name=f"roll_pair-send_command-{job_id}")
+        th = DaemonThreadWithExceptionPropagate.thread(target=send_command, name=f"put_all-send_command-{job_id}")
         th.start()
-        populated_store = self.ctx.populate_processor(self._store)
         shuffler = TransferPair(job_id)
         fifo_broker = FifoBroker()
         bb = BatchBroker(fifo_broker)
-        scatter_future = shuffler.scatter(fifo_broker, self.partitioner, populated_store)
+        scatter_future = shuffler.scatter(fifo_broker, partitioner, self._store)
 
-        try:
-            for k, v in items:
+        with bb:
+            for k, v in kv_list:
                 bb.put(item=(k, v))
-        finally:
-            bb.signal_write_finish()
 
-        scatter_future.result()
-        th.join()
-        return RollPair(populated_store, self.ctx)
+        _wait_all_done(scatter_future, th)
+        return RollPair(self._store, self.ctx)
 
     @_method_profile_logger
     def count(self) -> int:
         job_id = generate_job_id(self._session_id, tag=RollPair.COUNT)
-        job = ErJob(id=job_id, name=RollPair.COUNT, inputs=[self._store])
-        task_results = self._run_job(job=job, output_types=[CountRequest], create_output_if_missing=False)
+        job = ErJob(id=job_id, name=RollPair.COUNT, inputs=[ErJobIO(self._store)])
+        task_results = self._run_unary_unit_job(job, output_types=[CountResponse])
         total = 0
         for task_result in task_results:
             partition_count = task_result[0]
             total += partition_count.value
         return total
 
-    # todo:1: move to command channel to utilize batch command
     @_method_profile_logger
-    def destroy(self, options: dict = None):
-        if len(self.ctx.get_session()._cluster_manager_client.get_store(self.get_store())._partitions) == 0:
+    def destroy(self):
+        if self.destroyed:
             L.exception(f"store:{self.get_store()} has been destroyed before")
             raise ValueError(f"store:{self.get_store()} has been destroyed before")
-
-        if options is None:
-            options = {}
-
-        job = ErJob(
-            id=generate_job_id(self._session_id, RollPair.DESTROY),
-            name=RollPair.DESTROY,
-            inputs=[self._store],
-            outputs=[self._store],
-            functors=[],
-            options=options,
+        self._run_unary_unit_job(
+            ErJob(
+                id=generate_job_id(self._session_id, RollPair.DESTROY),
+                name=RollPair.DESTROY,
+                inputs=[ErJobIO(self._store)],
+                functors=[],
+            )
         )
-
-        task_results = self._run_job(job=job, create_output_if_missing=False)
-        self.ctx.get_session()._cluster_manager_client.delete_store(self._store)
+        self.ctx.get_session().cluster_manager_client.delete_store(self._store)
         L.debug(f"{RollPair.DESTROY}={self._store}")
         self.destroyed = True
 
     @_method_profile_logger
-    def delete(self, k) -> bool:
-        response = self._process_task_on_key(
-            key=k,
-            job_name=RollPair.DELETE,
-            functor_body=DeleteRequest(key=k).to_proto_string(),
-            response_type=DeleteResponse,
-        )
-        return response.success
-
-    @_method_profile_logger
-    def take(self, n: int, options: dict = None):
+    def take(self, num: int, options: dict = None):
         if options is None:
             options = {}
-        if n <= 0:
-            n = 1
+        if num <= 0:
+            num = 1
 
         keys_only = options.get("keys_only", False)
         ret = []
         count = 0
-        for item in self.get_all(limit=n):
+        for item in self.get_all(limit=num):
             if keys_only:
                 if item:
                     ret.append(item[0])
@@ -457,219 +331,178 @@ class RollPair(object):
             else:
                 ret.append(item)
             count += 1
-            if count == n:
+            if count == num:
                 break
         return ret
 
-    @_method_profile_logger
-    def first(self, options: dict = None):
-        if options is None:
-            options = {}
-        resp = self.take(1, options=options)
-        if resp:
-            return resp[0]
-        else:
-            return None
-
-    @_method_profile_logger
-    def save_as(self, name=None, namespace=None, partition=None, options: dict = None):
-        if partition is not None and partition <= 0:
-            raise ValueError("partition cannot <= 0")
-
-        if not namespace:
-            namespace = self.get_namespace()
-
-        if not name:
-            if self.get_namespace() == namespace:
-                forked_store_locator = self.get_store()._store_locator.fork()
-                name = forked_store_locator._name
-            else:
-                name = self.get_name()
-
-        if not partition:
-            partition = self.get_partitions()
-
-        if options is None:
-            options = {}
-
-        store_type = options.get("store_type", self.ctx.default_store_type)
-        refresh_nodes = options.get("refresh_nodes")
-
-        saved_as_store = ErStore(
-            store_locator=ErStoreLocator(
-                store_type=store_type, namespace=namespace, name=name, total_partitions=partition
-            )
+    def copy_as(self, name: str, namespace: str, store_type: str):
+        key_serdes_type = self.get_store().key_serdes_type
+        value_serdes_type = self.get_store().value_serdes_type
+        partitioner_type = self.get_store().partitioner_type
+        num_partitions = self.num_partitions
+        return self.map_reduce_partitions_with_index(
+            map_partition_op=lambda i, v: v,
+            reduce_partition_op=None,
+            shuffle=False,
+            input_key_serdes=None,
+            input_key_serdes_type=key_serdes_type,
+            input_value_serdes=None,
+            input_value_serdes_type=value_serdes_type,
+            input_partitioner=None,
+            input_partitioner_type=partitioner_type,
+            output_key_serdes=None,
+            output_key_serdes_type=key_serdes_type,
+            output_value_serdes=None,
+            output_value_serdes_type=value_serdes_type,
+            output_partitioner=None,
+            output_partitioner_type=partitioner_type,
+            output_num_partitions=num_partitions,
+            output_name=name,
+            output_namespace=namespace,
+            output_store_type=store_type,
         )
-
-        if partition == self.get_partitions() and not refresh_nodes:
-            return self.map_values(lambda v: v, output=saved_as_store, options=options)
-        else:
-            return self.map(lambda k, v: (k, v), output=saved_as_store, options=options)
 
     """
         computing api
     """
 
-    # def _maybe_set_output(self, output):
-    #     outputs = []
-    #     if output:
-    #         RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
-    #         outputs.append(output)
-    #     elif self.get_store_type() != StoreTypes.ROLLPAIR_IN_MEMORY and self.ctx.in_memory_output:
-    #         store = self.ctx._load_store(
-    #             name=str(uuid.uuid1()),
-    #             namespace=None,
-    #             store_type=StoreTypes.ROLLPAIR_IN_MEMORY,
-    #             total_partitions=self.get_partitions(),
-    #             partitioner=None,
-    #             create_if_missing=True,
-    #         )
-    #         outputs.append(store)
-    #     return outputs
-
     @_method_profile_logger
-    def map_partitions_with_index(self, map_op, reduce_op, shuffle: bool):
-        if not shuffle and reduce_op:
-            raise ValueError(f"shuffle cannot be False when reduce_op is not None: {reduce_op}")
-        map_functor = ErFunctor(name=RollPair.MAP_PARTITIONS_WITH_INDEX, body=cloudpickle.dumps(map_op))
+    def map_reduce_partitions_with_index(
+        self,
+        map_partition_op,
+        reduce_partition_op,
+        shuffle,
+        input_key_serdes,
+        input_key_serdes_type,
+        input_value_serdes,
+        input_value_serdes_type,
+        input_partitioner,
+        input_partitioner_type,
+        output_key_serdes,
+        output_key_serdes_type,
+        output_value_serdes,
+        output_value_serdes_type,
+        output_partitioner,
+        output_partitioner_type,
+        output_num_partitions,
+        output_namespace=None,
+        output_name=None,
+        output_store_type=None,
+    ):
+        if output_namespace is None:
+            output_namespace = self.get_namespace()
+        if output_name is None:
+            output_name = str(uuid.uuid1())
+        if output_store_type is None:
+            output_store_type = self.get_store_type()
+        if not shuffle:
+            if input_key_serdes_type != output_key_serdes_type:
+                raise ValueError("key serdes type changed without shuffle")
+            if self.num_partitions != output_num_partitions:
+                raise ValueError("partition num changed without shuffle")
+            if input_partitioner_type != output_partitioner_type:
+                raise ValueError("partitioner type changed without shuffle")
+
+        map_functor = ErFunctor.from_func(name=RollPair.MAP_REDUCE_PARTITIONS_WITH_INDEX, func=map_partition_op)
+        reduce_functor = ErFunctor.from_func(name=RollPair.MAP_REDUCE_PARTITIONS_WITH_INDEX, func=reduce_partition_op)
         shuffle = ErFunctor(
-            name=f"{RollPair.MAP_PARTITIONS_WITH_INDEX}_{shuffle}",
+            name=f"{RollPair.MAP_REDUCE_PARTITIONS_WITH_INDEX}_{shuffle}",
             body=MapPartitionsWithIndexRequest(shuffle=shuffle).to_proto_string(),
         )
-        reduce_functor = ErFunctor(name=RollPair.MAP_PARTITIONS_WITH_INDEX, body=cloudpickle.dumps(reduce_op))
-        job_id = generate_job_id(self._session_id, RollPair.MAP_PARTITIONS_WITH_INDEX)
+        job_id = generate_job_id(self._session_id, RollPair.MAP_REDUCE_PARTITIONS_WITH_INDEX)
+        output_store = self.ctx.create_store(
+            id=self._store.store_locator.id,
+            name=output_name,
+            namespace=output_namespace,
+            total_partitions=output_num_partitions,
+            store_type=output_store_type,
+            key_serdes_type=output_key_serdes_type,
+            value_serdes_type=output_value_serdes_type,
+            partitioner_type=output_partitioner_type,
+            options={},
+        )
+        output_store = self.ctx.get_session().get_or_create_store(output_store)
         job = ErJob(
             id=job_id,
-            name=RollPair.MAP_PARTITIONS_WITH_INDEX,
-            inputs=[self._store],
-            outputs=[],
+            name=RollPair.MAP_REDUCE_PARTITIONS_WITH_INDEX,
+            inputs=[
+                ErJobIO(
+                    self._store,
+                    key_serdes=ErSerdes.from_func(input_key_serdes_type, input_key_serdes),
+                    value_serdes=ErSerdes.from_func(input_value_serdes_type, input_value_serdes),
+                    partitioner=ErPartitioner.from_func(input_partitioner_type, input_partitioner),
+                )
+            ],
+            outputs=[
+                ErJobIO(
+                    output_store,
+                    key_serdes=ErSerdes.from_func(output_key_serdes_type, output_key_serdes),
+                    value_serdes=ErSerdes.from_func(output_value_serdes_type, output_value_serdes),
+                    partitioner=ErPartitioner.from_func(output_partitioner_type, output_partitioner),
+                )
+            ],
             functors=[map_functor, shuffle, reduce_functor],
         )
-        task_future = self._run_job(job=job)
-        er_store = self.__get_output_from_result(task_future)
-        return RollPair(er_store, self.ctx)
+        self._run_unary_unit_job(job=job)
+        return RollPair(output_store, self.ctx)
 
     @_method_profile_logger
     def reduce(self, func):
-        total_partitions = self._store.num_partitions
         job_id = generate_job_id(self._session_id, tag=RollPair.REDUCE)
-        reduce_op = ErFunctor(name=RollPair.REDUCE, body=cloudpickle.dumps(func))
+        reduce_op = ErFunctor.from_func(name=RollPair.REDUCE, func=func)
         job = ErJob(
             id=job_id,
             name=RollPair.REDUCE,
-            inputs=[self.ctx.populate_processor(self._store)],
+            inputs=[ErJobIO(self._store)],
             functors=[reduce_op],
         )
-        args = list()
-        for i in range(total_partitions):
-            partition_input = job.first_input.get_partition(i)
-            task = ErTask(id=generate_task_id(job_id, i), name=job.name, inputs=[partition_input], job=job)
-            args.append(([task], partition_input.processor.command_endpoint))
-        futures = self._command_client.async_call(
-            args=args,
-            output_types=[ReduceResponse],
-            command_uri=CommandURI(f"{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}"),
-        )
-        done = wait(futures, return_when=FIRST_EXCEPTION).done
-        result = None
-        first = True
-        for future in done:
-            pair = future.result()[0]
-            seq_op_result = pair.value
-            if seq_op_result is not None:
-                if not first:
-                    result = func(result, seq_op_result)
-                else:
-                    result = seq_op_result
-                    first = False
-
-        return result
+        results = self._run_unary_unit_job(job, output_types=[ReduceResponse])
+        results = [r[0].value for r in results if r[0].value]
+        if len(results) == 0:
+            return None
+        return functools.reduce(func, results)
 
     @_method_profile_logger
-    def aggregate(self, zero_value, seq_op, comb_op):
-        total_partitions = self._store.num_partitions
-        job_id = generate_job_id(self._session_id, tag=RollPair.AGGREGATE)
-        zero_value = ErFunctor(name=RollPair.AGGREGATE, body=AggregateRequest(zero_value).to_proto_string())
-        seq_op = ErFunctor(name=RollPair.AGGREGATE, body=cloudpickle.dumps(seq_op))
-        job = ErJob(
-            id=job_id,
-            name=RollPair.AGGREGATE,
-            inputs=[self.ctx.populate_processor(self._store)],
-            functors=[zero_value, seq_op],
+    def binary_sorted_map_partitions_with_index(
+        self,
+        other: "RollPair",
+        binary_map_partitions_with_index_op: Callable[[int, Iterable, Iterable], Iterable],
+        key_serdes,
+        key_serdes_type,
+        partitioner,
+        partitioner_type,
+        first_input_value_serdes,
+        first_input_value_serdes_type,
+        second_input_value_serdes,
+        second_input_value_serdes_type,
+        output_value_serdes,
+        output_value_serdes_type,
+    ):
+        output_store = self._store.fork()
+        output_store = self.ctx.get_session().get_or_create_store(output_store)
+        functor = ErFunctor.from_func(
+            name=RollPair.BINARY_SORTED_MAP_PARTITIONS_WITH_INDEX, func=binary_map_partitions_with_index_op
         )
-        args = []
-        for i in range(total_partitions):
-            partition_input = job.first_input.get_partition(i)
-            task = ErTask(id=generate_task_id(job_id, i), name=job.name, inputs=[partition_input], job=job)
-            args.append(([task], partition_input.processor.command_endpoint))
-
-        futures = self._command_client.async_call(
-            args=args,
-            output_types=[AggregateResponse],
-            command_uri=self.RUN_TASK_URI,
-        )
-
-        done = wait(futures, return_when=FIRST_EXCEPTION).done
-
-        result = None
-        first = True
-        for future in done:
-            response = future.result()[0]
-            seq_op_result = response.value
-            if not first:
-                result = comb_op(result, seq_op_result)
-            else:
-                result = seq_op_result
-                first = False
-
-        return result
-
-    @_method_profile_logger
-    def union(self, other, func=lambda v1, v2: v1, output=None, options: dict = None):
-        if options is None:
-            options = {}
-
-        inputs = self.__repartition_with(other)
-
-        functor = ErFunctor(name=RollPair.UNION, body=cloudpickle.dumps(func))
         job = ErJob(
-            id=generate_job_id(self._session_id, RollPair.UNION),
-            name=RollPair.UNION,
-            inputs=inputs,
-            outputs=[],
+            id=generate_job_id(self._session_id, RollPair.BINARY_SORTED_MAP_PARTITIONS_WITH_INDEX),
+            name=RollPair.BINARY_SORTED_MAP_PARTITIONS_WITH_INDEX,
+            inputs=[ErJobIO(self._store), ErJobIO(other._store)],
+            outputs=[ErJobIO(output_store)],
             functors=[functor],
         )
-
-        task_future = self._run_job(job=job)
-        er_store = self.__get_output_from_result(task_future)
-        return RollPair(er_store, self.ctx)
+        self._run_unary_unit_job(job=job)
+        return RollPair(output_store, self.ctx)
 
     @_method_profile_logger
-    def join(self, other, func, options: dict = None):
-        inputs = self.__repartition_with(other)
-        functor = ErFunctor(name=RollPair.JOIN, body=cloudpickle.dumps(func))
-
-        job = ErJob(
-            id=generate_job_id(self._session_id, RollPair.JOIN),
-            name=RollPair.JOIN,
-            inputs=inputs,
-            outputs=[],
-            functors=[functor],
-            options={},
-        )
-
-        task_results = self._run_job(job=job)
-        er_store = self.__get_output_from_result(task_results)
-
-        return RollPair(er_store, self.ctx)
-
-    @_method_profile_logger
-    def with_stores(self, func, others=None, options: dict = None):
+    def with_stores(self, func, others: List["RollPair"] = None, options: dict = None, description: str = None):
         if options is None:
             options = {}
-        tag = "withStores"
+        tag = f"{RollPair.WITH_STORES}-{description}" if description else RollPair.WITH_STORES
+        stores = [self._store]
         if others is None:
             others = []
+        for other in others:
+            stores.append(other._store)
         total_partitions = self.get_partitions()
         for other in others:
             if other.get_partitions() != total_partitions:
@@ -677,30 +510,136 @@ class RollPair(object):
         job_id = generate_job_id(self._session_id, tag=tag)
         job = ErJob(
             id=job_id,
-            name=tag,
-            inputs=[self.ctx.populate_processor(rp.get_store()) for rp in [self] + others],
-            functors=[ErFunctor(name=tag, body=cloudpickle.dumps(func))],
+            name=RollPair.WITH_STORES,
+            inputs=[ErJobIO(store) for store in stores],
+            functors=[ErFunctor.from_func(name=RollPair.WITH_STORES, func=func)],
             options=options,
         )
-        args = list()
-        for i in range(total_partitions):
-            partition_self = job.first_input.get_partition(i)
-            task = ErTask(
-                id=generate_task_id(job_id, i),
-                name=job.name,
-                inputs=[store._partitions[i] for store in job._inputs],
-                job=job,
-            )
-            args.append(([task], partition_self.processor.command_endpoint))
+        responses = self._run_unary_unit_job(job=job, output_types=[WithStoresResponse])
+        results = []
+        for response in responses:
+            response = response[0]
+            results.append((response.id, response.value))
+        return results
 
-        futures = self._command_client.async_call(
-            args=args,
-            output_types=[WithStoresResponse],
-            command_uri=CommandURI(f"{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}"),
+    @_method_profile_logger
+    def pull_get_header(self, tag: str, timeout: float, description: str = None):
+        job_tag = f"{RollPair.PullGetHeader}-{description}" if description else RollPair.PullGetHeader
+        stores = [self._store]
+        job_id = generate_job_id(self._session_id, tag=job_tag)
+        job = ErJob(
+            id=job_id,
+            name=RollPair.PullGetHeader,
+            inputs=[ErJobIO(store) for store in stores],
+            functors=[
+                ErFunctor(
+                    name=RollPair.PullGetHeader,
+                    body=ErRollSitePullGetHeaderRequest(tag=tag, timeout=timeout).to_proto_string(),
+                )
+            ],
+            options={},
         )
+        responses = self._run_unary_unit_job(job=job, output_types=[ErRollSitePullGetHeaderResponse])
+        results = []
+        for response in responses:
+            response = response[0]
+            results.append(response.header)
+        return results
 
-        result = list()
-        for future in futures:
-            response = future.result()[0]
-            result.append((response.id, response.value))
-        return result
+    @_method_profile_logger
+    def pull_get_partition_status(self, tag: str, timeout: float, description: str = None):
+        job_tag = (
+            f"{RollPair.PullGetPartitionStatus}-{description}" if description else RollPair.PullGetPartitionStatus
+        )
+        stores = [self._store]
+        job_id = generate_job_id(self._session_id, tag=job_tag)
+        job = ErJob(
+            id=job_id,
+            name=RollPair.PullGetPartitionStatus,
+            inputs=[ErJobIO(store) for store in stores],
+            functors=[
+                ErFunctor(
+                    name=RollPair.PullGetPartitionStatus,
+                    body=ErRollSitePullGetPartitionStatusRequest(tag=tag, timeout=timeout).to_proto_string(),
+                )
+            ],
+            options={},
+        )
+        responses = self._run_unary_unit_job(job=job, output_types=[ErRollSitePullGetPartitionStatusResponse])
+        all_finished = True
+        pull_status = {}
+        total_batches = 0
+        total_pairs = 0
+        for task_response in responses:
+            response = task_response[0]
+            if not response.is_finished:
+                all_finished = False
+            pull_status[response.partition_id] = response
+            total_batches += response.total_batches
+            total_pairs += response.total_pairs
+        return pull_status, all_finished, total_batches, total_pairs
+
+    @_method_profile_logger
+    def pull_clear_status(self, tag: str, description: str = None):
+        job_tag = f"{RollPair.PullClearStatus}-{description}" if description else RollPair.PullClearStatus
+        stores = [self._store]
+        job_id = generate_job_id(self._session_id, tag=job_tag)
+        job = ErJob(
+            id=job_id,
+            name=RollPair.PullClearStatus,
+            inputs=[ErJobIO(store) for store in stores],
+            functors=[
+                ErFunctor(
+                    name=RollPair.PullClearStatus,
+                    body=ErRollSitePullClearStatusRequest(tag=tag).to_proto_string(),
+                )
+            ],
+            options={},
+        )
+        self._run_unary_unit_job(job=job, output_types=[ErRollSitePullGetPartitionStatusResponse])
+
+
+class DaemonThreadWithExceptionPropagate:
+    @classmethod
+    def thread(cls, target, name, args=()):
+        q = queue.Queue()
+        th = Thread(target=_thread_target_wrapper(target), name=name, args=[q, *args], daemon=True)
+        return cls(q, th)
+
+    def __init__(self, q, thread):
+        self.q = q
+        self.thread = thread
+
+    def start(self):
+        self.thread.start()
+
+    def done(self):
+        return not self.thread.is_alive()
+
+    def result(self):
+        self.thread.join()
+        e = self.q.get()
+        if e:
+            raise e
+
+
+def _thread_target_wrapper(target):
+    def wrapper(q: queue.Queue, *args):
+        try:
+            target(*args)
+        except Exception as e:
+            q.put(e)
+        else:
+            q.put(None)
+
+    return wrapper
+
+
+def _wait_all_done(*futures):
+    has_call_result = [False] * len(futures)
+    while not all(has_call_result):
+        for i, f in enumerate(futures):
+            if not has_call_result[i] and f.done():
+                f.result()
+                has_call_result[i] = True
+        time.sleep(0.1)

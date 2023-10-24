@@ -183,22 +183,21 @@ def _exception_logger(func):
     def wrapper(*args, **kw):
         try:
             return func(*args, **kw)
-        except:
+        except Exception as e:
             msg = (
-                f"\n\n==== detail start, at {time_now()} ====\n"
+                f"\n\n==== detail start, at {time_now('%Y-%m-%d %H:%M:%S %f')} ====\n"
                 f"{traceback.format_exc()}"
                 f"\n==== detail end ====\n\n"
             )
-            # LOGGER.error(msg)
             print(msg)
-            raise RuntimeError(msg)
+            raise RuntimeError(msg) from e
 
     return wrapper
 
 
 def get_stack():
     return (
-        f"\n\n==== stack start, at {time_now()} ====\n"
+        f"\n\n==== stack start, at {time_now('%Y-%m-%d %H:%M:%S %f')}"
         f"{''.join(traceback.format_stack())}"
         f"\n==== stack end ====\n\n"
     )

@@ -14,11 +14,11 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tegg.proto\x12\x1b\x63om.webank.eggroll.core.egg\"\x1d\n\x0c\x43ountRequest\x12\r\n\x05value\x18\x01 \x01(\x03\"\x19\n\nGetRequest\x12\x0b\n\x03key\x18\x01 \x01(\x0c\"9\n\x0bGetResponse\x12\x0b\n\x03key\x18\x01 \x01(\x0c\x12\r\n\x05value\x18\x02 \x01(\x0c\x12\x0e\n\x06\x65xists\x18\x03 \x01(\x08\"(\n\nPutRequest\x12\x0b\n\x03key\x18\x01 \x01(\x0c\x12\r\n\x05value\x18\x02 \x01(\x0c\":\n\x0bPutResponse\x12\x0b\n\x03key\x18\x01 \x01(\x0c\x12\r\n\x05value\x18\x02 \x01(\x0c\x12\x0f\n\x07success\x18\x03 \x01(\x08\"\x1e\n\rGetAllRequest\x12\r\n\x05limit\x18\x01 \x01(\x03\"\x1c\n\rDeleteRequest\x12\x0b\n\x03key\x18\x01 \x01(\x0c\".\n\x0e\x44\x65leteResponse\x12\x0b\n\x03key\x18\x01 \x01(\x0c\x12\x0f\n\x07success\x18\x02 \x01(\x08\"0\n\x1dMapPartitionsWithIndexRequest\x12\x0f\n\x07shuffle\x18\x01 \x01(\x08\"+\n\x0eReduceResponse\x12\n\n\x02id\x18\x01 \x01(\x03\x12\r\n\x05value\x18\x02 \x01(\x0c\"&\n\x10\x41ggregateRequest\x12\x12\n\nzero_value\x18\x01 \x01(\x0c\".\n\x11\x41ggregateResponse\x12\n\n\x02id\x18\x01 \x01(\x03\x12\r\n\x05value\x18\x02 \x01(\x0c\"/\n\x12WithStoresResponse\x12\n\n\x02id\x18\x01 \x01(\x03\x12\r\n\x05value\x18\x02 \x01(\x0c\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tegg.proto\x12\x1b\x63om.webank.eggroll.core.egg\"\x1e\n\rCountResponse\x12\r\n\x05value\x18\x01 \x01(\x03\"\x19\n\nGetRequest\x12\x0b\n\x03key\x18\x01 \x01(\x0c\"9\n\x0bGetResponse\x12\x0b\n\x03key\x18\x01 \x01(\x0c\x12\r\n\x05value\x18\x02 \x01(\x0c\x12\x0e\n\x06\x65xists\x18\x03 \x01(\x08\"(\n\nPutRequest\x12\x0b\n\x03key\x18\x01 \x01(\x0c\x12\r\n\x05value\x18\x02 \x01(\x0c\":\n\x0bPutResponse\x12\x0b\n\x03key\x18\x01 \x01(\x0c\x12\r\n\x05value\x18\x02 \x01(\x0c\x12\x0f\n\x07success\x18\x03 \x01(\x08\"\x1e\n\rGetAllRequest\x12\r\n\x05limit\x18\x01 \x01(\x03\"\x1c\n\rDeleteRequest\x12\x0b\n\x03key\x18\x01 \x01(\x0c\".\n\x0e\x44\x65leteResponse\x12\x0b\n\x03key\x18\x01 \x01(\x0c\x12\x0f\n\x07success\x18\x02 \x01(\x08\"0\n\x1dMapPartitionsWithIndexRequest\x12\x0f\n\x07shuffle\x18\x01 \x01(\x08\"+\n\x0eReduceResponse\x12\n\n\x02id\x18\x01 \x01(\x03\x12\r\n\x05value\x18\x02 \x01(\x0c\"&\n\x10\x41ggregateRequest\x12\x12\n\nzero_value\x18\x01 \x01(\x0c\".\n\x11\x41ggregateResponse\x12\n\n\x02id\x18\x01 \x01(\x03\x12\r\n\x05value\x18\x02 \x01(\x0c\"/\n\x12WithStoresResponse\x12\n\n\x02id\x18\x01 \x01(\x03\x12\r\n\x05value\x18\x02 \x01(\x0c\x62\x06proto3')
 
 
 
-_COUNTREQUEST = DESCRIPTOR.message_types_by_name['CountRequest']
+_COUNTRESPONSE = DESCRIPTOR.message_types_by_name['CountResponse']
 _GETREQUEST = DESCRIPTOR.message_types_by_name['GetRequest']
 _GETRESPONSE = DESCRIPTOR.message_types_by_name['GetResponse']
 _PUTREQUEST = DESCRIPTOR.message_types_by_name['PutRequest']
@@ -31,12 +31,12 @@ _REDUCERESPONSE = DESCRIPTOR.message_types_by_name['ReduceResponse']
 _AGGREGATEREQUEST = DESCRIPTOR.message_types_by_name['AggregateRequest']
 _AGGREGATERESPONSE = DESCRIPTOR.message_types_by_name['AggregateResponse']
 _WITHSTORESRESPONSE = DESCRIPTOR.message_types_by_name['WithStoresResponse']
-CountRequest = _reflection.GeneratedProtocolMessageType('CountRequest', (_message.Message,), {
-  'DESCRIPTOR' : _COUNTREQUEST,
+CountResponse = _reflection.GeneratedProtocolMessageType('CountResponse', (_message.Message,), {
+  'DESCRIPTOR' : _COUNTRESPONSE,
   '__module__' : 'egg_pb2'
-  # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.egg.CountRequest)
+  # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.egg.CountResponse)
   })
-_sym_db.RegisterMessage(CountRequest)
+_sym_db.RegisterMessage(CountResponse)
 
 GetRequest = _reflection.GeneratedProtocolMessageType('GetRequest', (_message.Message,), {
   'DESCRIPTOR' : _GETREQUEST,
@@ -125,30 +125,30 @@ _sym_db.RegisterMessage(WithStoresResponse)
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
-  _COUNTREQUEST._serialized_start=42
-  _COUNTREQUEST._serialized_end=71
-  _GETREQUEST._serialized_start=73
-  _GETREQUEST._serialized_end=98
-  _GETRESPONSE._serialized_start=100
-  _GETRESPONSE._serialized_end=157
-  _PUTREQUEST._serialized_start=159
-  _PUTREQUEST._serialized_end=199
-  _PUTRESPONSE._serialized_start=201
-  _PUTRESPONSE._serialized_end=259
-  _GETALLREQUEST._serialized_start=261
-  _GETALLREQUEST._serialized_end=291
-  _DELETEREQUEST._serialized_start=293
-  _DELETEREQUEST._serialized_end=321
-  _DELETERESPONSE._serialized_start=323
-  _DELETERESPONSE._serialized_end=369
-  _MAPPARTITIONSWITHINDEXREQUEST._serialized_start=371
-  _MAPPARTITIONSWITHINDEXREQUEST._serialized_end=419
-  _REDUCERESPONSE._serialized_start=421
-  _REDUCERESPONSE._serialized_end=464
-  _AGGREGATEREQUEST._serialized_start=466
-  _AGGREGATEREQUEST._serialized_end=504
-  _AGGREGATERESPONSE._serialized_start=506
-  _AGGREGATERESPONSE._serialized_end=552
-  _WITHSTORESRESPONSE._serialized_start=554
-  _WITHSTORESRESPONSE._serialized_end=601
+  _COUNTRESPONSE._serialized_start=42
+  _COUNTRESPONSE._serialized_end=72
+  _GETREQUEST._serialized_start=74
+  _GETREQUEST._serialized_end=99
+  _GETRESPONSE._serialized_start=101
+  _GETRESPONSE._serialized_end=158
+  _PUTREQUEST._serialized_start=160
+  _PUTREQUEST._serialized_end=200
+  _PUTRESPONSE._serialized_start=202
+  _PUTRESPONSE._serialized_end=260
+  _GETALLREQUEST._serialized_start=262
+  _GETALLREQUEST._serialized_end=292
+  _DELETEREQUEST._serialized_start=294
+  _DELETEREQUEST._serialized_end=322
+  _DELETERESPONSE._serialized_start=324
+  _DELETERESPONSE._serialized_end=370
+  _MAPPARTITIONSWITHINDEXREQUEST._serialized_start=372
+  _MAPPARTITIONSWITHINDEXREQUEST._serialized_end=420
+  _REDUCERESPONSE._serialized_start=422
+  _REDUCERESPONSE._serialized_end=465
+  _AGGREGATEREQUEST._serialized_start=467
+  _AGGREGATEREQUEST._serialized_end=505
+  _AGGREGATERESPONSE._serialized_start=507
+  _AGGREGATERESPONSE._serialized_end=553
+  _WITHSTORESRESPONSE._serialized_start=555
+  _WITHSTORESRESPONSE._serialized_end=602
 # @@protoc_insertion_point(module_scope)

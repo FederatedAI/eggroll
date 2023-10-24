@@ -1,9 +1,7 @@
-import cloudpickle
-
 from eggroll.core.meta_model import ErJob
-from eggroll.core.meta_model import ErTask, ErPair
-from eggroll.utils.log_utils import get_logger
+from eggroll.core.meta_model import ErTask
 from eggroll.core.model.task import WithStoresResponse
+from eggroll.utils.log_utils import get_logger
 
 L = get_logger()
 

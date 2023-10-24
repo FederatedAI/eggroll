@@ -2,21 +2,21 @@ import logging
 
 from eggroll.core.meta_model import ErTask
 from eggroll.roll_pair.tasks._aggregate import _Aggregate
+from eggroll.roll_pair.tasks._binary_sorted_map_partitions_with_index import _BinarySortedMapPartitionsWithIndex
 from eggroll.roll_pair.tasks._count import _Count
 from eggroll.roll_pair.tasks._delete import _Delete
 from eggroll.roll_pair.tasks._destroy import _Destroy
 from eggroll.roll_pair.tasks._get import _Get
 from eggroll.roll_pair.tasks._get_all import _GetAll
-from eggroll.roll_pair.tasks._join import _MergeJoin
-from eggroll.roll_pair.tasks._map_partitions_with_index import (
-    _MapPartitionsWithIndex,
-)
+from eggroll.roll_pair.tasks._map_partitions_with_index import _MapReducePartitionsWithIndex
 from eggroll.roll_pair.tasks._put import _Put
 from eggroll.roll_pair.tasks._put_all import _PutAll
 from eggroll.roll_pair.tasks._put_batch import _PutBatch
 from eggroll.roll_pair.tasks._reduce import _Reduce
-from eggroll.roll_pair.tasks._union import _MergeUnion
 from eggroll.roll_pair.tasks._with_stores import _WithStores
+from eggroll.roll_pair.tasks.roll_site._pull_get_header import _PullGetHeader
+from eggroll.roll_pair.tasks.roll_site._pull_get_partition_status import _PullGetPartitionStatus
+from eggroll.roll_pair.tasks.roll_site._pull_clear_status import _PullClearStatus
 from eggroll.utils.log_utils import get_logger
 
 _mapping = {}
@@ -45,13 +45,20 @@ _mapping.update(
 )
 _mapping.update(
     {
-        "mapPartitionsWithIndex": _MapPartitionsWithIndex,
+        "mapReducePartitionsWithIndex": _MapReducePartitionsWithIndex,
     }
 )
 _mapping.update(
     {
-        "join": _MergeJoin,
-        "union": _MergeUnion,
+        "binarySortedMapPartitionsWithIndex": _BinarySortedMapPartitionsWithIndex,
+    }
+)
+
+_mapping.update(
+    {
+        "pullGetHeader": _PullGetHeader,
+        "pullGetPartitionStatus": _PullGetPartitionStatus,
+        "pullClearStatus": _PullClearStatus,
     }
 )
 
@@ -64,9 +71,7 @@ class EggTaskHandler(object):
 
     def run_task(self, task: ErTask):
         if L.isEnabledFor(logging.TRACE):
-            L.trace(
-                f"[RUNTASK] start. task_name={task.name}, inputs={task._inputs}, outputs={task._outputs}, task_id={task.id}"
-            )
+            L.trace(f"[RUNTASK] start. task={task}")
         else:
             L.debug(f"[RUNTASK] start. task_name={task.name}, task_id={task.id}")
         handler = _mapping.get(task.name, None)
@@ -75,9 +80,7 @@ class EggTaskHandler(object):
         result = handler.run(self.data_dir, task.job, task)
 
         if L.isEnabledFor(logging.TRACE):
-            L.trace(
-                f"[RUNTASK] end. task_name={task.name}, inputs={task._inputs}, outputs={task._outputs}, task_id={task.id}"
-            )
+            L.trace(f"[RUNTASK] end. task={task}")
         else:
             L.debug(f"[RUNTASK] end. task_name={task.name}, task_id={task.id}")
         if result is None:
