@@ -102,7 +102,7 @@ class _BatchStreamStatus:
         return bss
 
     @classmethod
-    def wait_finish(cls, tag, timeout):
+    def wait_finish(cls, tag, timeout) -> BSS:
         bss = cls.get_or_create(tag)
         finished = bss._stream_finish_event.wait(timeout)
         if finished:

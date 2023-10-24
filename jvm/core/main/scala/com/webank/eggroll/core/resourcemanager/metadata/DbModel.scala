@@ -11,8 +11,9 @@ case class DbStoreLocator(id: Long = -1,
                           name: String = StringConstants.EMPTY,
                           path: String = StringConstants.EMPTY,
                           totalPartitions: Int = 0,
-                          partitioner: String = StringConstants.EMPTY,
-                          serdes: String = StringConstants.EMPTY)
+                          keySerdesType: Int = 0,
+                          valueSerdesType: Int = 0,
+                          partitionerType: Int = 0)
 
 case class DbStorePartition(storePartitionId: Long = -1,
                             storeLocatorId: Long = -1,

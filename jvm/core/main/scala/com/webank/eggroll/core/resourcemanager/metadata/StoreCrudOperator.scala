@@ -72,6 +72,7 @@ class StoreCrudOperator extends CrudOperator with Logging {
 object StoreCrudOperator extends Logging {
   private lazy val dbc = BaseDao.dbc
   private val nodeIdToNode = new ConcurrentHashMap[java.lang.Long, DbServerNode]()
+
   private[metadata] def doGetStore(input: ErStore): ErStore = {
     val inputOptions = input.options
 
@@ -96,9 +97,10 @@ object StoreCrudOperator extends Logging {
         name = rs.getString("name"),
         path = rs.getString("path"),
         totalPartitions = rs.getInt("total_partitions"),
-        partitioner = rs.getString("partitioner"),
-        serdes = rs.getString("serdes")
-      )), queryStoreLocator, params:_*).toList
+        keySerdesType = rs.getInt("key_serdes_type"),
+        valueSerdesType = rs.getInt("value_serdes_type"),
+        partitionerType = rs.getInt("partitioner_type")
+      )), queryStoreLocator, params: _*).toList
 
     if (storeLocatorResult.isEmpty) {
       return null
@@ -121,7 +123,7 @@ object StoreCrudOperator extends Logging {
     val missingNodeId = ArrayBuffer[Long]()
     val partitionAtNodeIds = ArrayBuffer[Long]()
 
-    for (i <- 0 until storePartitionResult.size){
+    for (i <- 0 until storePartitionResult.size) {
       val nodeId = storePartitionResult(i).nodeId
       if (!nodeIdToNode.containsKey(nodeId)) missingNodeId += nodeId
       partitionAtNodeIds += nodeId
@@ -134,7 +136,7 @@ object StoreCrudOperator extends Logging {
         .append(s" and node_type = '${ServerNodeTypes.NODE_MANAGER}'")
         .append(s" and server_node_id in (")
 
-      for(i <- 0 until missingNodeId.length){
+      for (i <- 0 until missingNodeId.length) {
         if (first) first = false else queryServerNode.append(", ")
         queryServerNode.append("?")
       }
@@ -152,14 +154,14 @@ object StoreCrudOperator extends Logging {
         updatedAt = rs.getDate("updated_at")
       )),
         queryServerNode.toString(),
-        missingNodeId:_*).toList
+        missingNodeId: _*).toList
 
       if (nodeResult.isEmpty) {
         logError(s"No valid node for this store: ${inputStoreLocator}} sql : ${queryServerNode.toString()} missingId ${missingNodeId}")
         throw new IllegalStateException(s"No valid node for this store: ${inputStoreLocator}}")
       }
 
-      for (i <- 0 until nodeResult.length){
+      for (i <- 0 until nodeResult.length) {
         val serverNodeId = nodeResult(i).id
         nodeIdToNode.putIfAbsent(serverNodeId, nodeResult(i))
       }
@@ -171,8 +173,9 @@ object StoreCrudOperator extends Logging {
       name = store.name,
       path = store.path,
       totalPartitions = store.totalPartitions,
-      partitioner = store.partitioner,
-      serdes = store.serdes)
+      keySerdesType = store.keySerdesType,
+      valueSerdesType = store.valueSerdesType,
+      partitionerType = store.partitionerType)
 
     val storeOpts = dbc.query(
       rs => rs.map(
@@ -194,9 +197,9 @@ object StoreCrudOperator extends Logging {
 
     // process output partitions
     val outputPartitions = storePartitionResult.map(p => ErPartition(
-        id = p.partitionId,
-        storeLocator = outputStoreLocator,
-        processor = ErProcessor(id = p.partitionId.toLong, serverNodeId = p.nodeId)))
+      id = p.partitionId,
+      storeLocator = outputStoreLocator,
+      processor = ErProcessor(id = p.partitionId.toLong, serverNodeId = p.nodeId)))
 
     ErStore(storeLocator = outputStoreLocator, partitions = outputPartitions.toArray, options = outputOptions)
   }
@@ -209,18 +212,19 @@ object StoreCrudOperator extends Logging {
 
     val sql = "insert into store_locator " +
       "(store_type, namespace, name, path, total_partitions, " +
-      "partitioner, serdes, status) values (?, ?, ?, ?, ?, ?, ?, ?)"
+      "key_serdes_type, value_serdes_type, partitioner_type, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?)"
     val newStoreLocator = dbc.update(conn, sql,
       inputStoreLocator.storeType,
       inputStoreLocator.namespace,
       inputStoreLocator.name,
       inputStoreLocator.path,
       inputStoreLocator.totalPartitions,
-      inputStoreLocator.partitioner,
-      inputStoreLocator.serdes,
+      inputStoreLocator.keySerdesType,
+      inputStoreLocator.valueSerdesType,
+      inputStoreLocator.partitionerType,
       StoreStatus.NORMAL)
 
-    if (newStoreLocator.isEmpty){
+    if (newStoreLocator.isEmpty) {
       throw new CrudException(s"Illegal rows affected returned when creating store locator: 0")
     }
 
@@ -271,7 +275,7 @@ object StoreCrudOperator extends Logging {
     val newOptions = new ConcurrentHashMap[String, String]()
     if (inputOptions != null) newOptions.putAll(inputOptions)
     val itOptions = newOptions.entrySet().iterator()
-    while(itOptions.hasNext){
+    while (itOptions.hasNext) {
       val entry = itOptions.next()
       dbc.update(conn,
         "insert into store_option(store_locator_id, name, data) values (?, ?, ?)",

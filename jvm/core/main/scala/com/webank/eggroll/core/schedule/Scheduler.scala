@@ -22,7 +22,7 @@ import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.command.CommandClient
 import com.webank.eggroll.core.constant.SessionConfKeys
 import com.webank.eggroll.core.datastructure.{RpcMessage, TaskPlan}
-import com.webank.eggroll.core.meta.{ErEndpoint, ErPartition, ErStore, ErTask}
+import com.webank.eggroll.core.meta.{ErEndpoint, ErJobIO, ErPartition, ErStore, ErTask}
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{IdUtils, Logging}
@@ -32,7 +32,6 @@ import scala.collection.mutable
 trait Scheduler extends Logging {
 
 }
-
 
 
 // todo:3: add another layer of abstraction if coupling with ErJob is proved a bad practice or
@@ -68,8 +67,8 @@ object JobRunner {
 
   def decomposeJob(taskPlan: TaskPlan): Array[(Array[RpcMessage], ErEndpoint)] = {
     val job = taskPlan.job
-    val inputStores: Array[ErStore] = job.inputs
-    val outputStores: Array[ErStore] = job.outputs
+    val inputStores: Array[ErStore] = job.inputs.map(_.store)
+    val outputStores: Array[ErStore] = job.outputs.map(_.store)
 
     val inputTotalPartitions = inputStores.head.storeLocator.totalPartitions
     val outputTotalPartitions = outputStores.head.storeLocator.totalPartitions
@@ -81,9 +80,10 @@ object JobRunner {
 
     val result = new mutable.ArrayBuffer[(Array[RpcMessage], ErEndpoint)](largerPartitionSize)
 
+
     val populatedJob = job.copy(
-        inputs = populateProcessor(job.inputs),
-        outputs = populateProcessor(job.outputs))
+      inputs = populateProcessor(job.inputs.map(_.store)).zip(job.inputs).map { case (s, input) => input.copy(store = s) },
+      outputs = populateProcessor(job.outputs.map(_.store)).zip(job.outputs).map { case (s, output) => output.copy(store = s) })
 
     for (i <- 0 until largerPartitionSize) {
       val inputPartitions = mutable.ArrayBuffer[ErPartition]()
