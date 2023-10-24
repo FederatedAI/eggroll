@@ -156,3 +156,157 @@ class RollSiteHeader(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["batchSeq", b"batchSeq", "dataType", b"dataType", "dstPartyId", b"dstPartyId", "dstRole", b"dstRole", "name", b"name", "options", b"options", "partitionId", b"partitionId", "rollSiteSessionId", b"rollSiteSessionId", "srcPartyId", b"srcPartyId", "srcRole", b"srcRole", "stage", b"stage", "streamSeq", b"streamSeq", "tag", b"tag", "totalBatches", b"totalBatches", "totalPartitions", b"totalPartitions", "totalStreams", b"totalStreams"]) -> None: ...
 
 global___RollSiteHeader = RollSiteHeader
+
+@typing_extensions.final
+class RollSitePullGetHeaderRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TAG_FIELD_NUMBER: builtins.int
+    TIMEOUT_FIELD_NUMBER: builtins.int
+    tag: builtins.str
+    timeout: builtins.float
+    def __init__(
+        self,
+        *,
+        tag: builtins.str = ...,
+        timeout: builtins.float = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["tag", b"tag", "timeout", b"timeout"]) -> None: ...
+
+global___RollSitePullGetHeaderRequest = RollSitePullGetHeaderRequest
+
+@typing_extensions.final
+class RollSitePullGetHeaderResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    HEADER_FIELD_NUMBER: builtins.int
+    @property
+    def header(self) -> global___RollSiteHeader: ...
+    def __init__(
+        self,
+        *,
+        header: global___RollSiteHeader | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["header", b"header"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["header", b"header"]) -> None: ...
+
+global___RollSitePullGetHeaderResponse = RollSitePullGetHeaderResponse
+
+@typing_extensions.final
+class RollSitePullGetPartitionStatusRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TAG_FIELD_NUMBER: builtins.int
+    TIMEOUT_FIELD_NUMBER: builtins.int
+    tag: builtins.str
+    timeout: builtins.float
+    def __init__(
+        self,
+        *,
+        tag: builtins.str = ...,
+        timeout: builtins.float = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["tag", b"tag", "timeout", b"timeout"]) -> None: ...
+
+global___RollSitePullGetPartitionStatusRequest = RollSitePullGetPartitionStatusRequest
+
+@typing_extensions.final
+class RollSitePullGetPartitionStatusResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing_extensions.final
+    class IntKeyIntValuePair(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.int
+        value: builtins.int
+        def __init__(
+            self,
+            *,
+            key: builtins.int = ...,
+            value: builtins.int = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    @typing_extensions.final
+    class RollSitePullGetPartitionStatusResponseStatus(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        TAG_FIELD_NUMBER: builtins.int
+        IS_FINISHED_FIELD_NUMBER: builtins.int
+        TOTAL_BATCHES_FIELD_NUMBER: builtins.int
+        BATCH_SEQ_TO_PAIR_COUNTER_FIELD_NUMBER: builtins.int
+        TOTAL_STREAMS_FIELD_NUMBER: builtins.int
+        STREAM_SEQ_TO_PAIR_COUNTER_FIELD_NUMBER: builtins.int
+        STREAM_SEQ_TO_BATCH_SEQ_FIELD_NUMBER: builtins.int
+        TOTAL_PAIRS_FIELD_NUMBER: builtins.int
+        DATA_TYPE_FIELD_NUMBER: builtins.int
+        tag: builtins.str
+        is_finished: builtins.bool
+        total_batches: builtins.int
+        @property
+        def batch_seq_to_pair_counter(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___RollSitePullGetPartitionStatusResponse.IntKeyIntValuePair]: ...
+        total_streams: builtins.int
+        @property
+        def stream_seq_to_pair_counter(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___RollSitePullGetPartitionStatusResponse.IntKeyIntValuePair]: ...
+        @property
+        def stream_seq_to_batch_seq(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___RollSitePullGetPartitionStatusResponse.IntKeyIntValuePair]: ...
+        total_pairs: builtins.int
+        data_type: builtins.str
+        def __init__(
+            self,
+            *,
+            tag: builtins.str = ...,
+            is_finished: builtins.bool = ...,
+            total_batches: builtins.int = ...,
+            batch_seq_to_pair_counter: collections.abc.Iterable[global___RollSitePullGetPartitionStatusResponse.IntKeyIntValuePair] | None = ...,
+            total_streams: builtins.int = ...,
+            stream_seq_to_pair_counter: collections.abc.Iterable[global___RollSitePullGetPartitionStatusResponse.IntKeyIntValuePair] | None = ...,
+            stream_seq_to_batch_seq: collections.abc.Iterable[global___RollSitePullGetPartitionStatusResponse.IntKeyIntValuePair] | None = ...,
+            total_pairs: builtins.int = ...,
+            data_type: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["batch_seq_to_pair_counter", b"batch_seq_to_pair_counter", "data_type", b"data_type", "is_finished", b"is_finished", "stream_seq_to_batch_seq", b"stream_seq_to_batch_seq", "stream_seq_to_pair_counter", b"stream_seq_to_pair_counter", "tag", b"tag", "total_batches", b"total_batches", "total_pairs", b"total_pairs", "total_streams", b"total_streams"]) -> None: ...
+
+    PARTITION_ID_FIELD_NUMBER: builtins.int
+    STATUS_FIELD_NUMBER: builtins.int
+    partition_id: builtins.int
+    @property
+    def status(self) -> global___RollSitePullGetPartitionStatusResponse.RollSitePullGetPartitionStatusResponseStatus: ...
+    def __init__(
+        self,
+        *,
+        partition_id: builtins.int = ...,
+        status: global___RollSitePullGetPartitionStatusResponse.RollSitePullGetPartitionStatusResponseStatus | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["status", b"status"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["partition_id", b"partition_id", "status", b"status"]) -> None: ...
+
+global___RollSitePullGetPartitionStatusResponse = RollSitePullGetPartitionStatusResponse
+
+@typing_extensions.final
+class RollSitePullClearStatusRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TAG_FIELD_NUMBER: builtins.int
+    tag: builtins.str
+    def __init__(
+        self,
+        *,
+        tag: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["tag", b"tag"]) -> None: ...
+
+global___RollSitePullClearStatusRequest = RollSitePullClearStatusRequest
+
+@typing_extensions.final
+class RollSitePullClearStatusResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(
+        self,
+    ) -> None: ...
+
+global___RollSitePullClearStatusResponse = RollSitePullClearStatusResponse

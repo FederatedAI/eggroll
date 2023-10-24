@@ -23,7 +23,7 @@ from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
 from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, ArrayByteBuffer
 from eggroll.core.transfer.transfer_service import TransferClient, TransferService
 from eggroll.core.utils import _exception_logger
-from eggroll.core.meta_model import ErPartition
+from eggroll.core.meta_model import ErPartition, ErStore
 
 from eggroll.core.utils import generate_task_id
 from eggroll.utils.log_utils import get_logger
@@ -150,7 +150,7 @@ class TransferPair(object):
         return generate_task_id(job_id=self.__transfer_id, partition_id=partition_id)
 
     @_exception_logger
-    def scatter(self, input_broker, partition_function, output_store):
+    def scatter(self, input_broker, partitioner, output_store):
         """
         scatter input_broker to output_store
 
@@ -176,7 +176,7 @@ class TransferPair(object):
                     k: stack.enter_context(BatchBroker(v)) for k, v in shuffle_write_targets.items()
                 }
                 for k, v in BatchBroker(input_broker):
-                    partition_id = partition_function(k)
+                    partition_id = partitioner(k, total_partitions)
                     shuffle_write_target_batch_brokers[partition_id].put((k, v))
                     done_count += 1
                 L.trace(
@@ -308,12 +308,13 @@ class TransferPair(object):
 
         return self._executor_pool.submit(do_store, store_partition, is_shuffle, total_writers, reduce_op)
 
-    def gather(self, store):
+    def gather(self, store: ErStore):
         L.trace(f"gather start for transfer_id={self.__transfer_id}, store={store}")
         client = TransferClient()
-        for partition in store._partitions:
-            tag = self.__generate_tag(partition._id)
+        for i in range(store.num_partitions):
+            partition = store.get_partition(i)
+            tag = self.__generate_tag(partition.id)
             L.trace(f"gather for tag={tag}, partition={partition}")
-            target_endpoint = partition._processor._transfer_endpoint
+            target_endpoint = partition.processor.transfer_endpoint
             batches = (b.data for b in client.recv(endpoint=target_endpoint, tag=tag, broker=None))
             yield from TransferPair.bin_batch_to_pair(batches)

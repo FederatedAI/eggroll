@@ -29,7 +29,7 @@ else:
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
 @typing_extensions.final
-class CountRequest(google.protobuf.message.Message):
+class CountResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     VALUE_FIELD_NUMBER: builtins.int
@@ -41,7 +41,7 @@ class CountRequest(google.protobuf.message.Message):
     ) -> None: ...
     def ClearField(self, field_name: typing_extensions.Literal["value", b"value"]) -> None: ...
 
-global___CountRequest = CountRequest
+global___CountResponse = CountResponse
 
 @typing_extensions.final
 class GetRequest(google.protobuf.message.Message):

@@ -392,7 +392,6 @@
   <modules>
     <module>core</module>
     <module>roll_pair</module>
-    <module>roll_frame</module>
     <module>roll_site</module>
   </modules>
   

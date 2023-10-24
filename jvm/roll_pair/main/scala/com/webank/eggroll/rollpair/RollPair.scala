@@ -57,8 +57,9 @@ class RollPairContext(val session: ErSession,
       name = name,
       storeType = storeType,
       totalPartitions = totalPartitions,
-      partitioner = options.getOrElse(StringConstants.PARTITIONER, PartitionerTypes.BYTESTRING_HASH),
-      serdes = options.getOrElse(StringConstants.SERDES, defaultSerdesType)
+      keySerdesType = 0,
+      valueSerdesType = 0,
+      partitionerType = 0
     ), options = options.asJava)
     val loaded = session.clusterManagerClient.getOrCreateStore(store)
     new RollPair(loaded, this)
@@ -95,72 +96,73 @@ class RollPair(val store: ErStore,
 
     val jobId = IdUtils.generateJobId(sessionId = ctx.session.sessionId,
     tag = options.getOrElse("job_id_tag", StringConstants.EMPTY))
-    val job = ErJob(id = jobId,
-      name = RollPair.PUT_ALL,
-      inputs = Array(store),
-      outputs = Array(store),
-      functors = Array.empty,
-      options = options ++ Map(SessionConfKeys.CONFKEY_SESSION_ID -> ctx.session.sessionId, "fed_transfer" -> "true"))
-
-    val transferBatchBuilder = Transfer.TransferBatch.newBuilder()
-    val transferHeaderBuilder = Transfer.TransferHeader.newBuilder()
-
-    for (packet <- packets) {
-      val rollSiteHeader = RollSiteHeader.parseFrom(
-          packet.getHeader.getTask.getModel.getName.getBytes(
-          StandardCharsets.ISO_8859_1)).fromProto()
-
-      val partitionId = rollSiteHeader.options("partition_id").toInt
-
-      val broker = if (transferFutures(partitionId) == null) {
-        val partition = store.partitions(partitionId)
-        val egg = ctx.session.routeToEgg(partition)
-        val task = ErTask(id = IdUtils.generateTaskId(job.id, partitionId, RollPair.PUT_BATCH),
-          name = RollPair.PUT_ALL,
-          inputs = Array(partition),
-          outputs = Array(partition),
-          job = job)
-
-        val commandFuture = RollPairContext.executor.submit(new Callable[ErTask] {
-          override def call(): ErTask = {
-            logTrace(s"thread started for put batch taskId=${task.id}")
-            val commandClient = new CommandClient(egg.commandEndpoint)
-            val result = commandClient.call[ErTask](RollPair.EGG_RUN_TASK_COMMAND, task)
-            logTrace(s"thread ended for put batch taskId=${task.id}")
-            result
-          }
-        })
-        commandFutures.update(partitionId, commandFuture)
-
-        val newBroker = new FifoBroker[Transfer.TransferBatch]()
-        brokers.update(partitionId, newBroker)
-
-        val internalTransferClient = new InternalTransferClient(egg.transferEndpoint)
-        transferFutures.update(partitionId, internalTransferClient.sendAsync(newBroker))
-
-        newBroker
-      } else {
-        brokers(partitionId)
-      }
-
-      val batch = transferBatchBuilder.setHeader(transferHeaderBuilder.setId(packet.getHeader.getSeq.toInt))
-        .setData(packet.getBody.getValue)
-        .build()
-
-      broker.broker.put(batch)
-    }
-
-    brokers.foreach(b => {
-      if (b != null) b.signalWriteFinish()
-    })
-
-    transferFutures.foreach(f => {
-      if (f != null) f.get()
-    })
-
-    commandFutures.foreach(f => {
-      if (f != null) f.get()
-    })
+    return
+//    val job = ErJob(id = jobId,
+//      name = RollPair.PUT_ALL,
+//      inputs = Array(store),
+//      outputs = Array(store),
+//      functors = Array.empty,
+//      options = options ++ Map(SessionConfKeys.CONFKEY_SESSION_ID -> ctx.session.sessionId, "fed_transfer" -> "true"))
+//
+//    val transferBatchBuilder = Transfer.TransferBatch.newBuilder()
+//    val transferHeaderBuilder = Transfer.TransferHeader.newBuilder()
+//
+//    for (packet <- packets) {
+//      val rollSiteHeader = RollSiteHeader.parseFrom(
+//          packet.getHeader.getTask.getModel.getName.getBytes(
+//          StandardCharsets.ISO_8859_1)).fromProto()
+//
+//      val partitionId = rollSiteHeader.options("partition_id").toInt
+//
+//      val broker = if (transferFutures(partitionId) == null) {
+//        val partition = store.partitions(partitionId)
+//        val egg = ctx.session.routeToEgg(partition)
+//        val task = ErTask(id = IdUtils.generateTaskId(job.id, partitionId, RollPair.PUT_BATCH),
+//          name = RollPair.PUT_ALL,
+//          inputs = Array(partition),
+//          outputs = Array(partition),
+//          job = job)
+//
+//        val commandFuture = RollPairContext.executor.submit(new Callable[ErTask] {
+//          override def call(): ErTask = {
+//            logTrace(s"thread started for put batch taskId=${task.id}")
+//            val commandClient = new CommandClient(egg.commandEndpoint)
+//            val result = commandClient.call[ErTask](RollPair.EGG_RUN_TASK_COMMAND, task)
+//            logTrace(s"thread ended for put batch taskId=${task.id}")
+//            result
+//          }
+//        })
+//        commandFutures.update(partitionId, commandFuture)
+//
+//        val newBroker = new FifoBroker[Transfer.TransferBatch]()
+//        brokers.update(partitionId, newBroker)
+//
+//        val internalTransferClient = new InternalTransferClient(egg.transferEndpoint)
+//        transferFutures.update(partitionId, internalTransferClient.sendAsync(newBroker))
+//
+//        newBroker
+//      } else {
+//        brokers(partitionId)
+//      }
+//
+//      val batch = transferBatchBuilder.setHeader(transferHeaderBuilder.setId(packet.getHeader.getSeq.toInt))
+//        .setData(packet.getBody.getValue)
+//        .build()
+//
+//      broker.broker.put(batch)
+//    }
+//
+//    brokers.foreach(b => {
+//      if (b != null) b.signalWriteFinish()
+//    })
+//
+//    transferFutures.foreach(f => {
+//      if (f != null) f.get()
+//    })
+//
+//    commandFutures.foreach(f => {
+//      if (f != null) f.get()
+//    })
   }
 
 
@@ -285,7 +287,7 @@ class RollPair(val store: ErStore,
 
 object RollPair {
   val ROLL_PAIR_URI_PREFIX = "v1/roll-pair"
-  val EGG_PAIR_URI_PREFIX = "v1/egg-pair"
+  val EGG_PAIR_URI_PREFIX = "v1/eggs-pair"
 
   val RUN_JOB = "runJob"
   val RUN_TASK = "runTask"

@@ -181,12 +181,12 @@ class ClusterManagerClient(object):
             command_uri=MetadataCommands.CREATE_OR_UPDATE_SERVER_NODE,
         )
 
-    def get_store(self, input: ErStore):
+    def get_store(self, input: ErStore) -> ErStore:
         return self.__do_sync_request_internal(
             input=input, output_type=ErStore, command_uri=MetadataCommands.GET_STORE
         )
 
-    def get_or_create_store(self, input: ErStore):
+    def get_or_create_store(self, input: ErStore) -> ErStore:
         return self.__do_sync_request_internal(
             input=input,
             output_type=ErStore,

@@ -17,7 +17,7 @@ from eggroll.core.base_model import RpcMessage
 from eggroll.core.proto import egg_pb2
 
 
-class CountRequest(RpcMessage):
+class CountResponse(RpcMessage):
     def __init__(self, value: int):
         self._value = value
 
@@ -26,20 +26,20 @@ class CountRequest(RpcMessage):
         return self._value
 
     def to_proto(self):
-        return egg_pb2.CountRequest(value=self._value)
+        return egg_pb2.CountResponse(value=self._value)
 
     def to_proto_string(self):
         return self.to_proto().SerializeToString()
 
     @staticmethod
     def from_proto(pb_message):
-        return CountRequest(value=pb_message.value)
+        return CountResponse(value=pb_message.value)
 
     @staticmethod
     def from_proto_string(pb_string):
-        pb_message = egg_pb2.CountRequest()
+        pb_message = egg_pb2.CountResponse()
         pb_message.ParseFromString(pb_string)
-        return CountRequest.from_proto(pb_message)
+        return CountResponse.from_proto(pb_message)
 
     def __repr__(self):
         return f"<CountRequest(count={self._value}) at {hex(id(self))}>"

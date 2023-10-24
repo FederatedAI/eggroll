@@ -20,7 +20,7 @@ syntax = "proto3";
 
 package com.webank.eggroll.core.egg;
 
-message CountRequest {
+message CountResponse {
     int64 value = 1;
 }
 

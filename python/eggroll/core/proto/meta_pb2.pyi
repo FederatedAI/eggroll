@@ -238,6 +238,42 @@ class Functor(google.protobuf.message.Message):
 global___Functor = Functor
 
 @typing_extensions.final
+class Partitioner(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TYPE_FIELD_NUMBER: builtins.int
+    BODY_FIELD_NUMBER: builtins.int
+    type: builtins.int
+    body: builtins.bytes
+    def __init__(
+        self,
+        *,
+        type: builtins.int = ...,
+        body: builtins.bytes = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["body", b"body", "type", b"type"]) -> None: ...
+
+global___Partitioner = Partitioner
+
+@typing_extensions.final
+class Serdes(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TYPE_FIELD_NUMBER: builtins.int
+    BODY_FIELD_NUMBER: builtins.int
+    type: builtins.int
+    body: builtins.bytes
+    def __init__(
+        self,
+        *,
+        type: builtins.int = ...,
+        body: builtins.bytes = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["body", b"body", "type", b"type"]) -> None: ...
+
+global___Serdes = Serdes
+
+@typing_extensions.final
 class Pair(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -276,34 +312,37 @@ class StoreLocator(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     ID_FIELD_NUMBER: builtins.int
-    STORETYPE_FIELD_NUMBER: builtins.int
+    STORE_TYPE_FIELD_NUMBER: builtins.int
     NAMESPACE_FIELD_NUMBER: builtins.int
     NAME_FIELD_NUMBER: builtins.int
     PATH_FIELD_NUMBER: builtins.int
-    TOTALPARTITIONS_FIELD_NUMBER: builtins.int
-    PARTITIONER_FIELD_NUMBER: builtins.int
-    SERDES_FIELD_NUMBER: builtins.int
+    TOTAL_PARTITIONS_FIELD_NUMBER: builtins.int
+    KEY_SERDES_TYPE_FIELD_NUMBER: builtins.int
+    VALUE_SERDES_TYPE_FIELD_NUMBER: builtins.int
+    PARTITIONER_TYPE_FIELD_NUMBER: builtins.int
     id: builtins.int
-    storeType: builtins.str
+    store_type: builtins.str
     namespace: builtins.str
     name: builtins.str
     path: builtins.str
-    totalPartitions: builtins.int
-    partitioner: builtins.str
-    serdes: builtins.str
+    total_partitions: builtins.int
+    key_serdes_type: builtins.int
+    value_serdes_type: builtins.int
+    partitioner_type: builtins.int
     def __init__(
         self,
         *,
         id: builtins.int = ...,
-        storeType: builtins.str = ...,
+        store_type: builtins.str = ...,
         namespace: builtins.str = ...,
         name: builtins.str = ...,
         path: builtins.str = ...,
-        totalPartitions: builtins.int = ...,
-        partitioner: builtins.str = ...,
-        serdes: builtins.str = ...,
+        total_partitions: builtins.int = ...,
+        key_serdes_type: builtins.int = ...,
+        value_serdes_type: builtins.int = ...,
+        partitioner_type: builtins.int = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "name", b"name", "namespace", b"namespace", "partitioner", b"partitioner", "path", b"path", "serdes", b"serdes", "storeType", b"storeType", "totalPartitions", b"totalPartitions"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "key_serdes_type", b"key_serdes_type", "name", b"name", "namespace", b"namespace", "partitioner_type", b"partitioner_type", "path", b"path", "store_type", b"store_type", "total_partitions", b"total_partitions", "value_serdes_type", b"value_serdes_type"]) -> None: ...
 
 global___StoreLocator = StoreLocator
 
@@ -410,8 +449,37 @@ class CallInfo(google.protobuf.message.Message):
 global___CallInfo = CallInfo
 
 @typing_extensions.final
+class JobIO(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    STORE_FIELD_NUMBER: builtins.int
+    KEY_SERDES_FIELD_NUMBER: builtins.int
+    VALUE_SERDES_FIELD_NUMBER: builtins.int
+    PARTITIONER_FIELD_NUMBER: builtins.int
+    @property
+    def store(self) -> global___Store: ...
+    @property
+    def key_serdes(self) -> global___Serdes: ...
+    @property
+    def value_serdes(self) -> global___Serdes: ...
+    @property
+    def partitioner(self) -> global___Partitioner: ...
+    def __init__(
+        self,
+        *,
+        store: global___Store | None = ...,
+        key_serdes: global___Serdes | None = ...,
+        value_serdes: global___Serdes | None = ...,
+        partitioner: global___Partitioner | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["key_serdes", b"key_serdes", "partitioner", b"partitioner", "store", b"store", "value_serdes", b"value_serdes"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["key_serdes", b"key_serdes", "partitioner", b"partitioner", "store", b"store", "value_serdes", b"value_serdes"]) -> None: ...
+
+global___JobIO = JobIO
+
+@typing_extensions.final
 class Job(google.protobuf.message.Message):
-    """todo: add job / task status"""
+    """todo: add  / task status"""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -440,9 +508,9 @@ class Job(google.protobuf.message.Message):
     id: builtins.str
     name: builtins.str
     @property
-    def inputs(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___Store]: ...
+    def inputs(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___JobIO]: ...
     @property
-    def outputs(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___Store]: ...
+    def outputs(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___JobIO]: ...
     @property
     def functors(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___Functor]: ...
     @property
@@ -452,8 +520,8 @@ class Job(google.protobuf.message.Message):
         *,
         id: builtins.str = ...,
         name: builtins.str = ...,
-        inputs: collections.abc.Iterable[global___Store] | None = ...,
-        outputs: collections.abc.Iterable[global___Store] | None = ...,
+        inputs: collections.abc.Iterable[global___JobIO] | None = ...,
+        outputs: collections.abc.Iterable[global___JobIO] | None = ...,
         functors: collections.abc.Iterable[global___Functor] | None = ...,
         options: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
     ) -> None: ...
