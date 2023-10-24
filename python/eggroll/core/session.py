@@ -17,6 +17,7 @@ import random
 import time
 from concurrent.futures import wait, FIRST_EXCEPTION
 from copy import deepcopy
+from typing import List, Tuple
 
 import psutil
 
@@ -28,7 +29,7 @@ from eggroll.core.conf_keys import SessionConfKeys, ClusterManagerConfKeys
 from eggroll.core.constants import SessionStatus, ProcessorTypes, DeployModes
 from eggroll.core.datastructure.threadpool import ErThreadUnpooledExecutor
 from eggroll.core.meta_model import ErJob, ErTask
-from eggroll.core.meta_model import ErSessionMeta, ErPartition, ErStore
+from eggroll.core.meta_model import ErSessionMeta, ErPartition, ErStore, ErEndpoint
 from eggroll.core.utils import generate_task_id, calculate_rank_in_node
 from eggroll.core.utils import get_self_ip, time_now, DEFAULT_DATETIME_FORMAT
 from eggroll.core.utils import get_stack
@@ -38,7 +39,7 @@ from eggroll.utils.log_utils import get_logger
 L = get_logger()
 
 
-def session_init(session_id, options: dict = None):
+def session_init(session_id, options: dict = None) -> "ErSession":
     er_session = ErSession(session_id=session_id, options=options)
     return er_session
 
@@ -235,6 +236,10 @@ class ErSession(object):
             else:
                 raise ValueError(f"processor type {processor_type} not supported in roll pair")
 
+    @property
+    def cluster_manager_client(self):
+        return self._cluster_manager_client
+
     def get_rank_in_node(self, partition_id, server_node_id):
         processor_count_of_node = len(self._eggs[server_node_id])
         cluster_node_count = len(self._eggs)
@@ -243,7 +248,7 @@ class ErSession(object):
         return rank_in_node
 
     def route_to_egg(self, partition: ErPartition):
-        server_node_id = partition._processor._server_node_id
+        server_node_id = partition.processor._server_node_id
         rank_in_node = partition._rank_in_node
         if partition._rank_in_node is None or rank_in_node < 0:
             rank_in_node = self.get_rank_in_node(partition_id=partition._id, server_node_id=server_node_id)
@@ -263,27 +268,42 @@ class ErSession(object):
         populated_partitions = list()
         for p in store._partitions:
             server_node_id = p._processor._server_node_id
-            rank_in_node = self.get_rank_in_node(p._id, p._processor._server_node_id)
+            rank_in_node = self.get_rank_in_node(p.id, p.processor._server_node_id)
             pp = ErPartition(
-                id=p._id,
-                store_locator=p._store_locator,
+                id=p.id,
+                store_locator=p.store_locator,
                 processor=self.route_to_egg_by_rank(server_node_id, rank_in_node),
                 rank_in_node=rank_in_node,
             )
             populated_partitions.append(pp)
-        return ErStore(store_locator=store._store_locator, partitions=populated_partitions, options=store._options)
+        return ErStore(store_locator=store.store_locator, partitions=populated_partitions, options=store._options)
+
+    def get_or_create_store(self, store: ErStore):
+        store = self._cluster_manager_client.get_or_create_store(store)
+        return self.populate_processor(store)
 
     def submit_job(
         self,
         job: ErJob,
+        output_key_serdes_type,
+        output_value_serdes_type,
         output_types: list = None,
         command_uri: CommandURI = None,
         create_output_if_missing=True,
     ):
         if not output_types:
             output_types = [ErTask]
-        final_job = self.populate_output_store(job) if create_output_if_missing else job
+        final_job = (
+            self.populate_output_store(job, output_key_serdes_type, output_value_serdes_type)
+            if create_output_if_missing
+            else job
+        )
         tasks = self._decompose_job(final_job)
+        command_client = CommandClient()
+        return command_client.async_call(args=tasks, output_types=output_types, command_uri=command_uri)
+
+    @staticmethod
+    def submit_tasks(tasks: List[Tuple[List[ErTask], ErEndpoint]], output_types: List, command_uri: CommandURI):
         command_client = CommandClient()
         return command_client.async_call(args=tasks, output_types=output_types, command_uri=command_uri)
 
@@ -349,7 +369,7 @@ class ErSession(object):
 
         return result
 
-    def populate_output_store(self, job: ErJob):
+    def populate_output_store(self, job: ErJob, output_key_serdes_type, output_value_serdes_type):
         is_output_blank = not job._outputs or not job.first_output
         is_output_not_populated = is_output_blank or not job.first_output._partitions
         if is_output_not_populated:
@@ -364,6 +384,8 @@ class ErSession(object):
             else:
                 if not final_output_proposal._partitions:
                     final_output_proposal._partitions = job._inputs[0]._partitions
+            final_output_proposal._store_locator._key_serdes = output_key_serdes_type
+            final_output_proposal._store_locator._value_serdes = output_value_serdes_type
         else:
             final_output_proposal = job._outputs[0]
 

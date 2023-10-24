@@ -47,8 +47,10 @@ class GcRecorder(object):
             if not rp_namespace_name:
                 continue
             L.trace(f"GC thread destroying rp={rp_namespace_name}")
-            self.record_rpc.load(
-                namespace=rp_namespace_name[0], name=rp_namespace_name[1], create_if_missing=True
+            self.record_rpc.load_rp(
+                namespace=rp_namespace_name[0],
+                name=rp_namespace_name[1],
+                store_type=StoreTypes.ROLLPAIR_IN_MEMORY,
             ).destroy()
 
         L.info(f"GC should_stop={self.should_stop}, stopping GC thread")

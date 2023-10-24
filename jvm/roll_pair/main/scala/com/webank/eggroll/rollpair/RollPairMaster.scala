@@ -32,7 +32,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 class RollPairMaster() {
-  val scheduler = ListScheduler()
+  //  val scheduler = ListScheduler()
   lazy val clusterManagerClient = new ClusterManagerClient()
   val cmPort: Int = StaticErConf.getProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "0").toInt
 
@@ -44,9 +44,9 @@ class RollPairMaster() {
     StaticErConf.addProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, cmPort.toString)
     finalInputs.sizeHint(inputJob.inputs.length)
     inputJob.inputs.foreach(input => {
-      val inputStoreWithPartitions = clusterManagerClient.getStore(input)
+      val inputStoreWithPartitions = clusterManagerClient.getStore(input.store)
       if (inputStoreWithPartitions == null) {
-        val sl = input.storeLocator
+        val sl = input.store.storeLocator
         throw new IllegalArgumentException(s"input store ${sl.storeType}-${sl.namespace}-${sl.name} does not exist")
       }
       finalInputs += inputStoreWithPartitions
@@ -54,21 +54,23 @@ class RollPairMaster() {
     val finalInputTemplate = finalInputs.head
     val outputTotalPartitions =
       if (inputJob.outputs.isEmpty) finalInputTemplate.storeLocator.totalPartitions
-      else inputJob.outputs.head.storeLocator.totalPartitions
+      else inputJob.outputs.head.store.storeLocator.totalPartitions
     val outputStoreProposal = if (isOutputSpecified) {
       val specifiedOutput = inputJob.outputs.head
-      if (specifiedOutput.partitions.isEmpty) {
-        val outputStoreLocator = specifiedOutput.storeLocator.copy(totalPartitions = outputTotalPartitions)
+      if (specifiedOutput.store.partitions.isEmpty) {
+        val outputStoreLocator = specifiedOutput.store.storeLocator.copy(totalPartitions = outputTotalPartitions)
         ErStore(storeLocator = outputStoreLocator)
       } else {
-        specifiedOutput
+        specifiedOutput.store
       }
     } else {
       val outputStoreLocator = finalInputTemplate.storeLocator.fork()
       ErStore(storeLocator = outputStoreLocator.copy(totalPartitions = outputTotalPartitions))
     }
     val outputStoreWithPartitions = clusterManagerClient.getOrCreateStore(outputStoreProposal)
-    val taskPlanJob = inputJob.copy(inputs = finalInputs.toArray, outputs = Array(outputStoreWithPartitions))
+    val taskPlanJob = inputJob.copy(
+      inputs = inputJob.inputs.zip(finalInputs).map { case (job_input, store) => job_input.copy(store = store) },
+      outputs = Array(ErJobIO(outputStoreWithPartitions)))
 
     val taskPlanConstructor = RollPairMaster.taskPlanConstructors.getOrElseUpdate(inputJob.name, {
       val constructor = Class.forName(s"com.webank.eggroll.core.schedule.${inputJob.name.capitalize}TaskPlan")

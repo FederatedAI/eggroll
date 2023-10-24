@@ -11,7 +11,7 @@ from eggroll.roll_pair.transfer_pair import BatchBroker
 from eggroll.roll_pair.transfer_pair import TransferPair
 
 
-class _MapPartitionsWithIndex(object):
+class _MapReducePartitionsWithIndex(object):
     @classmethod
     def run(cls, data_dir, job: ErJob, task: ErTask):
         shuffle = job.second_functor.deserialized_as(MapPartitionsWithIndexRequest).shuffle
@@ -57,11 +57,12 @@ class _MapPartitionsWithIndex(object):
                 shuffle_write_broker = stack.enter_context(FifoBroker())
 
                 # shuffle scatter: shuffle_write_broker -> target partition broker
+                output_partitioner = job.first_output.partitioner.load_with_cloudpickle()
                 features.append(
                     shuffler.scatter(
                         input_broker=shuffle_write_broker,
-                        partition_function=job.first_output.get_partitioner(),
-                        output_store=job.first_output,
+                        partitioner=output_partitioner,
+                        output_store=job.first_output.store,
                     )
                 )
 
@@ -70,7 +71,7 @@ class _MapPartitionsWithIndex(object):
                     stack.enter_context(task.first_input.get_adapter(data_dir)).iteritems()
                 )
                 task_shuffle_write_batch_broker = stack.enter_context(BatchBroker(shuffle_write_broker))
-                partition_id = task.id
+                partition_id = task.first_input.id
                 value = map_op(partition_id, task_input_iterator)
 
                 if isinstance(value, typing.Iterable):
@@ -98,12 +99,10 @@ class _MapPartitionsWithIndex(object):
         with contextlib.ExitStack() as stack:
             input_adapter = stack.enter_context(task.first_input.get_adapter(data_dir))
             input_iterator = stack.enter_context(input_adapter.iteritems())
-
             output_adapter = stack.enter_context(task.first_output.get_adapter(data_dir))
             output_write_batch = stack.enter_context(output_adapter.new_batch())
             partition_id = task.id
             value = map_op(partition_id, input_iterator)
-
             if isinstance(value, typing.Iterable):
                 for k1, v1 in value:
                     output_write_batch.put(k1, v1)

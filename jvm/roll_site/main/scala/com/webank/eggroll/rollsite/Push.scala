@@ -19,14 +19,13 @@
 package com.webank.eggroll.rollsite
 
 import java.util.concurrent.{CountDownLatch, Future, TimeUnit, TimeoutException}
-
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
 import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.command.CommandClient
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeaderFromPbMessage
-import com.webank.eggroll.core.meta.{ErJob, ErRollSiteHeader, ErTask}
+import com.webank.eggroll.core.meta.{ErJob, ErJobIO, ErRollSiteHeader, ErTask}
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
 import com.webank.eggroll.core.transfer.{GrpcClientUtils, Transfer, TransferServiceGrpc}
 import com.webank.eggroll.core.util.{IdUtils, Logging, ToStringUtils}
@@ -60,7 +59,8 @@ class DispatchPushReqSO(eggSiteServicerPushRespSO_forwardPushToPollingRespSO: St
     val myPartyId = RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()
     val dstPartyId = req.getHeader.getDst.getPartyId
     val dstRole = req.getHeader.getDst.getRole
-    val logMsg = s"DispatchPushReqSO.ensureInited. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}"
+    val logMsg = s"DispatchPushReqSO.ensureInited. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}, " +
+      s"dstPartyId=${dstPartyId}, dstRole=${dstRole}, myPartyId=${myPartyId}"
     delegateSO =  if (myPartyId.equals(dstPartyId)) {
       if (isLogTraceEnabled()) {
         logTrace(s"${logMsg}, hop=SINK")
@@ -177,8 +177,8 @@ class PutBatchSinkPushReqSO(eggSiteServicerPushRespSO_forwardPushToPollingRespSO
     val job = ErJob(
       id = jobId,
       name = RollPair.PUT_BATCH,
-      inputs = Array(rp.store),
-      outputs = Array(rp.store),
+      inputs = Array(),
+      outputs = Array(ErJobIO(rp.store)),
       functors = Array.empty,
       options = rsHeader.options ++ Map(SessionConfKeys.CONFKEY_SESSION_ID -> ctx.session.sessionId))
 
@@ -199,7 +199,7 @@ class PutBatchSinkPushReqSO(eggSiteServicerPushRespSO_forwardPushToPollingRespSO
     putBatchSinkPushReqSO = stub.send(new PutBatchSinkPushRespSO(metadata, commandFuture, eggSiteServicerPushRespSO_forwardPushToPollingRespSO, finishLatch))
 
     inited = true
-    logDebug(s"PutBatchSinkPushReqSO.ensureInited called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+    logDebug(s"PutBatchSinkPushReqSO.ensureInited called. rsKey=${rsKey}, rs/Users/sage/eggroll/jvm/roll_pair/test/scala/com/webank/eggroll/rollpair/io/TestRollPair.scalaHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
   override def onNext(request: Proxy.Packet): Unit = {

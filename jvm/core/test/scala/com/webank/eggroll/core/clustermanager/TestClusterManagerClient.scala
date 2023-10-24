@@ -185,8 +185,9 @@ class TestClusterManager {
       namespace = "namespace",
       name = System.currentTimeMillis().toString,
       totalPartitions = 4,
-      partitioner = PartitionerTypes.BYTESTRING_HASH,
-      serdes = SerdesTypes.PICKLE)
+      keySerdesType = 0,
+      valueSerdesType = 0,
+      partitionerType = 0)
 
     val result = clusterManagerClient.getOrCreateStore(input)
 

@@ -62,7 +62,7 @@ class EggPair extends Logging {
 
       // todo:2: encapsulates to shuffle command
       val shuffleBroker = new LinkedBlockingBroker[(Array[Byte], Array[Byte])]()
-      val shuffler = new DefaultShuffler(task.job.id, shuffleBroker, outputStore, outputPartition, p)
+      val shuffler = new DefaultShuffler(task.job.id, shuffleBroker, outputStore.store, outputPartition, p)
 
       shuffler.start()
       inputAdapter.iterate().foreach(t => {
@@ -76,51 +76,55 @@ class EggPair extends Logging {
       val shuffleFinished = shuffler.waitUntilFinished(10, TimeUnit.MINUTES)
 
       logInfo(s"total partitioned: ${shuffler.getTotalPartitionedCount()}")
-    } else if (task.name == "reduce") {
-      val f: (Array[Byte], Array[Byte]) => Array[Byte] = EggPair.functorSerdes.deserialize(functors.head.body)
-
-      val inputPartition = task.inputs.head
-      val inputStore = new RocksdbSortedKvAdapter(EggPair.getDbPath(inputPartition))
-      var seqOpResult: Array[Byte] = null
-
-      for (tmp <- inputStore.iterate()) {
-        if (seqOpResult != null) {
-          seqOpResult = f(seqOpResult, tmp._2)
-        } else {
-          seqOpResult = tmp._2
-        }
-      }
-
-      // send seqOp result to "0"
-      val partitionId = task.inputs.head.id
-      val transferTag = task.job.name
-      if (0 == partitionId) {
-        val partitionSize = task.job.inputs.head.partitions.size
-        val queue = TransferService.getOrCreateBroker(transferTag, partitionSize)
-
-        var combOpResult = seqOpResult
-
-        for (i <- 1 until partitionSize) {
-          // todo:2: bind with configurations
-          val transferBatch = queue.poll(10, TimeUnit.MINUTES)
-          val seqOpResult = transferBatch.getData.toByteArray
-
-          combOpResult = f(combOpResult, seqOpResult)
-        }
-
-        val outputPartition = task.outputs.head
-        val outputAdapter = new RocksdbSortedKvAdapter(EggPair.getDbPath(outputPartition))
-
-        outputAdapter.put("result".getBytes(), combOpResult)
-        outputAdapter.close()
-      } else {
-        val transferClient = new GrpcTransferClient()
-
-        transferClient.sendSingle(data = seqOpResult, tag = transferTag, processor = task.outputs.head.processor)
-      }
-
-      inputStore.close()
-    } else if (task.name == "join") {
+    }
+//    else if (task.name == "reduce") {
+//
+//      val f: (Array[Byte], Array[Byte]) => Array[Byte] = EggPair.functorSerdes.deserialize(functors.head.body)
+//
+//      val inputPartition = task.inputs.head
+//      val inputStore = new RocksdbSortedKvAdapter(EggPair.getDbPath(inputPartition))
+//      var seqOpResult: Array[Byte] = null
+//
+//      for (tmp <- inputStore.iterate()) {
+//        if (seqOpResult != null) {
+//          seqOpResult = f(seqOpResult, tmp._2)
+//        } else {
+//          seqOpResult = tmp._2
+//        }
+//      }
+//
+//      // send seqOp result to "0"
+//      val partitionId = task.inputs.head.id
+//      val transferTag = task.job.name
+//      if (0 == partitionId) {
+//        val partitionSize = task.job.inputs.head.store.partitions.size
+//        val queue = TransferService.getOrCreateBroker(transferTag, partitionSize)
+//
+//        var combOpResult = seqOpResult
+//
+//        for (i <- 1 until partitionSize) {
+//          // todo:2: bind with configurations
+//          val transferBatch = queue.poll(10, TimeUnit.MINUTES)
+//          val seqOpResult = transferBatch.getData.toByteArray
+//
+//          combOpResult = f(combOpResult, seqOpResult)
+//        }
+//
+//        val outputPartition = task.outputs.head
+//        val outputAdapter = new RocksdbSortedKvAdapter(EggPair.getDbPath(outputPartition))
+//
+//        outputAdapter.put("result".getBytes(), combOpResult)
+//        outputAdapter.close()
+//      }
+//      else {
+//        val transferClient = new GrpcTransferClient()
+//
+//        transferClient.sendSingle(data = seqOpResult, tag = transferTag, processor = task.outputs.head.processor)
+//      }
+//
+//      inputStore.close()
+//    }
+  else if (task.name == "join") {
       val f: (Array[Byte], Array[Byte]) => Array[Byte] = EggPair.functorSerdes.deserialize(functors.head.body)
 
       val leftPartition = task.inputs.head
