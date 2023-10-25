@@ -275,7 +275,8 @@ class Task(BaseEggrollAPI):
                     ret = {"code": res.code, "message": f"info error"}
                     result_queue.put(ret)
         except Exception as e:
-            ret = {"message": ret["status"]}
+            ret = self.query_status(session_id)
+            ret = {"status": ret["status"]}
             result_queue.put(ret)
 
     def cancel_stream(self, session_id, stream, flag):
