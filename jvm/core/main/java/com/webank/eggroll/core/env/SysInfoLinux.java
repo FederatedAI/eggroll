@@ -166,8 +166,21 @@ public class SysInfoLinux extends SysInfo {
     shellExecutorClk.execute();
     String cmdReturnString = shellExecutorClk.getOutput();
     if (StringUtils.isNotEmpty(cmdReturnString))
-      result = cmdReturnString.split("\n").length-1;
-  }catch(Exception ignore){}
+    {
+      String[] elems = cmdReturnString.split("\n");
+      for(String  elem:elems){
+        if(elem.contains("NVIDIA")){
+          result=result+1;
+        }
+      }
+    }
+    if(result==0){
+      System.err.println("nvidia-smi cmd return "+cmdReturnString);
+    }
+
+  }catch(Exception ignore){
+    }
+    System.err.println("nvidia-smi gpu return "+result);
     return result;
   }
 
