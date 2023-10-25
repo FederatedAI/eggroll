@@ -152,7 +152,6 @@ object ClusterResourceManager extends Logging{
         }catch {
           case  e:Throwable => {
             logError("dispatch resource error: "+e.getMessage)
-            e.printStackTrace()
           }
         }
 
@@ -163,9 +162,9 @@ object ClusterResourceManager extends Logging{
 
 
   var  maxResourceCountThread =  new  Thread(()=> {
+    logInfo("SYSTEM-RESOURCE-COUNT-THREAD start")
     while (true) {
       try{
-
         var serverNodes = getServerNodeWithResource();
         countMaxResource(serverNodes:Array[ErServerNode])
         serverNodes.map(   node=>{
@@ -174,7 +173,6 @@ object ClusterResourceManager extends Logging{
       }catch {
         case  e:Throwable => {
           logError("count resource error: "+e.getMessage)
-          e.printStackTrace()
         }
       }
       Thread.sleep(EGGROLL_RESOURCE_COUNT_INTERVAL.get().toInt)
@@ -206,7 +204,6 @@ object ClusterResourceManager extends Logging{
         }catch {
           case e:Throwable  =>
               logError(s"lock clean error ${e.getMessage}")
-           // e.printStackTrace()
         }
       })
       Thread.sleep(EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL.get().toInt)

@@ -104,16 +104,17 @@ object ClusterManagerService extends Logging {
             residualHeartbeatMap.remove(k)
           } catch {
             case e: Throwable =>
-                  e.printStackTrace()
                   logError(s"kill residual processor error: ${e.getMessage}")
           }
         })
       }
       catch {
         case e: Throwable =>
-          e.printStackTrace()
+          logError("")
+      }finally {
+        Thread.sleep(CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt)
       }
-      Thread.sleep(CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt)
+
     }
   },"REDIDUAL_PROCESS_CHECK_THREAD"
 )
@@ -130,8 +131,10 @@ object ClusterManagerService extends Logging {
         case e: Throwable =>
           e.printStackTrace()
 
+      }finally {
+        Thread.sleep(CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt)
       }
-      Thread.sleep(CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt)
+
     }
   }
   ,"NODE_PROCESS_CHECK_THREAD")
@@ -241,14 +244,16 @@ object ClusterManagerService extends Logging {
                 catch {
                   case e: Throwable=>
                   logError(s"session watcher handle session ${session.id} error ${e.getMessage}")
-                  e.printStackTrace()
+//                  e.printStackTrace()
                 }
             }
-            Thread.sleep(EGGROLL_SESSION_STATUS_CHECK_INTERVAL_MS.get().toLong)
+
           }catch {
             case e: Throwable=>
                   logError(s"session watcher handle error ${e.getMessage}")
-                 e.printStackTrace()
+//                 e.printStackTrace()
+          }finally {
+            Thread.sleep(EGGROLL_SESSION_STATUS_CHECK_INTERVAL_MS.get().toLong)
           }
         }
       }
