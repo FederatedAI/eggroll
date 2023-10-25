@@ -96,35 +96,53 @@ class Task(BaseEggrollAPI):
 
     def query_status(self, session_id):
         query_job_status_request = deepspeed_pb2.QueryJobStatusRequest(session_id=session_id)
-        return self._get_client().do_sync_request(
+        response = self._get_client().do_sync_request(
             query_job_status_request,
             output_type=deepspeed_pb2.QueryJobStatusResponse,
             command_uri=JobCommands.QUERY_JOB_STATUS,
         )
+        if not response.status:
+            return {"code": 0, "message": f"session_id:{session_id} is not exists"}
+        return {"status": response.status}
 
-    def query_session(self, session_id):
+    def query_job(self, session_id):
         query_job_request = deepspeed_pb2.QueryJobRequest(session_id=session_id)
         query_response = self._get_client().do_sync_request(
             query_job_request, output_type=deepspeed_pb2.QueryJobResponse, command_uri=JobCommands.QUERY_JOB
         )
         return query_response
 
-    def kill(self, session_id):
+    def kill_job(self, session_id):
+        status = self.query_status(session_id=session_id)
+        if not status.get("status"):
+            return status
         kill_job_request = deepspeed_pb2.KillJobRequest(session_id=session_id)
-        kill_response = self._get_client().do_sync_request(
+        response = self._get_client().do_sync_request(
             kill_job_request, output_type=deepspeed_pb2.KillJobResponse, command_uri=JobCommands.KILL_JOB
         )
-        return kill_response
+        response = {"session_id":response.session_id}
+        return response
+
+    def stop_job(self, session_id):
+        status = self.query_status(session_id=session_id)
+        if not status.get("status"):
+            return status
+        stop_job_request = deepspeed_pb2.StopJobRequest(session_id=session_id)
+        response = self._get_client().do_sync_request(
+            stop_job_request, output_type=deepspeed_pb2.StopJobResponse, command_uri=JobCommands.STOP_JOB
+        )
+        response = {"session_id": response.session_id}
+        return response
 
     def await_finished(self, session_id, timeout: int = 0, poll_interval: int = 1):
         deadline = time.time() + timeout
         query_response = self.query_status(session_id)
         while timeout <= 0 or time.time() < deadline:
-            if query_response.status not in {SessionStatus.NEW, SessionStatus.ACTIVE}:
+            if query_response.get("status", "") not in {SessionStatus.NEW, SessionStatus.ACTIVE}:
                 break
             query_response = self.query_status(session_id)
             time.sleep(poll_interval)
-        return query_response.status
+        return query_response["status"]
 
     def download_job(
             self,
@@ -235,7 +253,7 @@ class Task(BaseEggrollAPI):
             compress_level: int = 1,
     ):
         query_status = self.query_status(session_id)
-        if not query_status.status:
+        if not query_status.get("status"):
             raise ValueError(f'not found session_id:{session_id}')
         download_job_response = self.download_job_v2(session_id, ranks, content_type, compress_method, compress_level)
         for key, value in download_job_response.items():
@@ -243,8 +261,8 @@ class Task(BaseEggrollAPI):
             with open(path, "wb") as f:
                 f.write(value)
 
-    @staticmethod
-    def writer(stream, session_id, result_queue):
+    # @staticmethod
+    def writer(self, stream, session_id, result_queue):
         try:
             for res in stream:
                 if str(res.code) == "0":
@@ -257,7 +275,7 @@ class Task(BaseEggrollAPI):
                     ret = {"code": res.code, "message": f"info error"}
                     result_queue.put(ret)
         except Exception as e:
-            ret = {"code": "112", "message": f" grpc off "}
+            ret = {"message": ret["status"]}
             result_queue.put(ret)
 
     def cancel_stream(self, session_id, stream, flag):
