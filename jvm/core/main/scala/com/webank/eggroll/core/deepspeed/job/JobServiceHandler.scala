@@ -404,7 +404,7 @@ object JobServiceHandler extends Logging {
       }
       logInfo(s"killing job send to node over $sessionId")
       var now = System.currentTimeMillis()
-      smDao.updateSessionMain(sessionMeta.copy(status = SessionStatus.ERROR), afterCall = defaultSessionCallback)
+      smDao.updateSessionMain(sessionMeta.copy(status = SessionStatus.KILLED), afterCall = defaultSessionCallback)
       var cost = System.currentTimeMillis()-now
       logInfo(s"killing job update session main over $sessionId ,cost $cost")
     }finally {
