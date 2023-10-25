@@ -206,6 +206,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
             } else {
                 try {
                     Thread.sleep(MetaInfo.EGGROLL_RESOURCE_DISPATCH_INTERVAL);
+                    continue;
                 } catch (Exception e) {
                     log.error("Thread.sleep error");
                 }
@@ -248,6 +249,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                             if (!enough) {
                                 switch (resourceApplication.getResourceExhaustedStrategy()) {
                                     case Dict.IGNORE:
+                                        resourceDispartcherFlag = false;
                                         continue;
                                     case Dict.WAITING:
                                         Thread.sleep(MetaInfo.EGGROLL_RESOURCE_DISPATCH_INTERVAL);
@@ -257,7 +259,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                                         resourceApplication.getStatus().set(1);
                                         resourceApplication.countDown();
                                         applicationQueue.getBroker().remove();
-                                        flag = false;
+                                        resourceDispartcherFlag = false;
                                         return;
                                 }
                             }
@@ -305,6 +307,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                 } catch (Exception e) {
                     log.error("dispatch resource error: ", e);
                 }
+                resourceDispartcherFlag = false;
             }
         }
         log.error("!!!!!!!!!!!!!!!!!!!resource dispatch thread quit!!!!!!!!!!!!!!!!");
