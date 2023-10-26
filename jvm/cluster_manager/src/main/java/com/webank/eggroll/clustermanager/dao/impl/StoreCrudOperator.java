@@ -140,32 +140,22 @@ public class StoreCrudOperator {
         String inputStoreType = inputStoreLocator.getStoreType();
         ErStore inputWithoutType = ObjectUtils.clone(input);
         inputWithoutType.getStoreLocator().setStoreType(StringConstants.EMPTY);
-        ErStore existing = doGetStore(inputWithoutType);
-        if (existing != null) {
-            if (!existing.getStoreLocator().getStoreType().equals(inputStoreType)) {
-                logger.warn("store namespace: " + inputStoreLocator.getNamespace() + ", name: " +
-                        inputStoreLocator.getName() + " already exist with store type: " +
-                        existing.getStoreLocator().getStoreType() + ". requires type: " +
-                        inputStoreLocator.getStoreType());
-            }
-            return existing;
-        } else {
-            try {
-                LockUtils.lock(storeLockMap,input.getStoreLocator().buildKey());
-                existing = doGetStore(inputWithoutType);
-                if (existing != null) {
-                    if (!existing.getStoreLocator().getStoreType().equals(inputStoreType)) {
-                        logger.warn("store namespace: " + inputStoreLocator.getNamespace() + ", name: " +
-                                inputStoreLocator.getName() + " already exist with store type: " +
-                                existing.getStoreLocator().getStoreType() + ". requires type: " +
-                                inputStoreLocator.getStoreType());
-                    }
-                    return existing;
+        try {
+            LockUtils.lock(storeLockMap, input.getStoreLocator().buildKey());
+            ErStore existing = doGetStore(inputWithoutType);
+            if (existing != null) {
+                if (!existing.getStoreLocator().getStoreType().equals(inputStoreType)) {
+                    logger.warn("store namespace: " + inputStoreLocator.getNamespace() + ", name: " +
+                            inputStoreLocator.getName() + " already exist with store type: " +
+                            existing.getStoreLocator().getStoreType() + ". requires type: " +
+                            inputStoreLocator.getStoreType());
                 }
+                return existing;
+            } else {
                 return doCreateStore(input);
-            } finally {
-                LockUtils.unLock(storeLockMap,input.getStoreLocator().buildKey());
             }
+        } finally {
+            LockUtils.unLock(storeLockMap, input.getStoreLocator().buildKey());
         }
     }
 
