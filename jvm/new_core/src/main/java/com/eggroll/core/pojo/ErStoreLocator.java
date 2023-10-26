@@ -13,7 +13,7 @@ import java.util.UUID;
 
 
 @Data
-public class ErStoreLocator implements RpcMessage,Cloneable {
+public class ErStoreLocator implements RpcMessage, Cloneable {
     Logger log = LoggerFactory.getLogger(ErStoreLocator.class);
 
     private Long id;
@@ -25,7 +25,7 @@ public class ErStoreLocator implements RpcMessage,Cloneable {
     private String partitioner;
     private String serdes;
 
-    public ErStoreLocator(){
+    public ErStoreLocator() {
 
     }
 
@@ -52,8 +52,8 @@ public class ErStoreLocator implements RpcMessage,Cloneable {
         }
     }
 
-    public ErStoreLocator fork(){
-        return fork(Dict.EMPTY,StringConstants.UNDERLINE);
+    public ErStoreLocator fork() {
+        return fork(Dict.EMPTY, StringConstants.UNDERLINE);
     }
 
     public ErStoreLocator fork(String postfix, String delimiter) {
@@ -70,7 +70,7 @@ public class ErStoreLocator implements RpcMessage,Cloneable {
         return new ErStoreLocator(this.id, this.storeType, this.namespace, newName, this.path, this.totalPartitions, this.partitioner, this.serdes);
     }
 
-    public Meta.StoreLocator toProto(){
+    public Meta.StoreLocator toProto() {
         Meta.StoreLocator.Builder builder = Meta.StoreLocator.newBuilder();
         builder.setId(this.id)
                 .setStoreType(this.storeType)
@@ -83,7 +83,7 @@ public class ErStoreLocator implements RpcMessage,Cloneable {
         return builder.build();
     }
 
-    public static ErStoreLocator fromProto(Meta.StoreLocator storeLocator){
+    public static ErStoreLocator fromProto(Meta.StoreLocator storeLocator) {
         ErStoreLocator erStoreLocator = new ErStoreLocator();
         erStoreLocator.deserialize(storeLocator.toByteArray());
 
@@ -99,17 +99,17 @@ public class ErStoreLocator implements RpcMessage,Cloneable {
     public void deserialize(byte[] data) {
         try {
             Meta.StoreLocator storeLocator = Meta.StoreLocator.parseFrom(data);
-           this.id=storeLocator.getId();
-           this.storeType=storeLocator.getStoreType();
-           this.namespace=storeLocator.getNamespace();
-           this.name=storeLocator.getName();
-           this.path=storeLocator.getPath();
-           this.totalPartitions=storeLocator.getTotalPartitions();
-           this.partitioner=storeLocator.getPartitioner();
-           this.serdes=storeLocator.getSerdes();
-            } catch (Exception e) {
-                log.error("deserialize error : ", e);
-            }
+            this.id = storeLocator.getId();
+            this.storeType = storeLocator.getStoreType();
+            this.namespace = storeLocator.getNamespace();
+            this.name = storeLocator.getName();
+            this.path = storeLocator.getPath();
+            this.totalPartitions = storeLocator.getTotalPartitions();
+            this.partitioner = storeLocator.getPartitioner();
+            this.serdes = storeLocator.getSerdes();
+        } catch (Exception e) {
+            log.error("deserialize error : ", e);
+        }
     }
 
     @Override
@@ -117,7 +117,7 @@ public class ErStoreLocator implements RpcMessage,Cloneable {
         return super.clone();
     }
 
-    public String buildKey(){
+    public String buildKey() {
         return (this.namespace == null ? "" : this.namespace) + "_" +
                 (this.name == null ? "" : this.name) + "_" +
                 (this.storeType == null ? "" : this.storeType);

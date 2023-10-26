@@ -25,7 +25,7 @@ public class RendezvousStoreAddResponse implements RpcMessage {
     }
 
     @Override
-    public void deserialize(byte[] data){
+    public void deserialize(byte[] data) {
         try {
             Deepspeed.StoreAddResponse src = Deepspeed.StoreAddResponse.parseFrom(data);
             this.amount = src.getAmount();

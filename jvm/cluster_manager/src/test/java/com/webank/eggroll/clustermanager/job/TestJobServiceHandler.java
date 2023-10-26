@@ -19,13 +19,13 @@ import static com.eggroll.core.grpc.CommandUri.*;
 
 public class TestJobServiceHandler {
 
-    ErEndpoint endpoint = new ErEndpoint(NetUtils.getLocalHost(),4670);
+    ErEndpoint endpoint = new ErEndpoint(NetUtils.getLocalHost(), 4670);
 
     @Inject
     JobServiceHandler jobServiceHandler;
 
-    public byte[] sendGrpc(ErEndpoint endpoint , String uri ,RpcMessage message){
-        byte[] response = new CommandClient().call(new Context(),endpoint, uri, message.serialize());
+    public byte[] sendGrpc(ErEndpoint endpoint, String uri, RpcMessage message) {
+        byte[] response = new CommandClient().call(new Context(), endpoint, uri, message.serialize());
         return response;
     }
 
@@ -33,7 +33,7 @@ public class TestJobServiceHandler {
     public void testSubmitJob() throws InterruptedException {
         SubmitJobRequest request = new SubmitJobRequest();
         request.setJobType(JobProcessorTypes.DeepSpeed.getName());
-        request.setSessionId("testSubmit_"+ System.currentTimeMillis());
+        request.setSessionId("testSubmit_" + System.currentTimeMillis());
         request.setWorldSize(2);
         request.setName("TestSubmit");
         request.setCommandArguments(new ArrayList<>());
@@ -98,7 +98,7 @@ public class TestJobServiceHandler {
     public void testPrepareJobDownload() {
         PrepareJobDownloadRequest request = new PrepareJobDownloadRequest();
         request.setSessionId("testPrepareJobDownload_" + System.currentTimeMillis());
-        List<Integer> ranksList = Arrays.asList(new Integer[]{1,2,3});
+        List<Integer> ranksList = Arrays.asList(new Integer[]{1, 2, 3});
         request.setRanks(ranksList);
         byte[] bytes = sendGrpc(endpoint, prepareJobDownload, request);
         PrepareJobDownloadResponse response = new PrepareJobDownloadResponse();

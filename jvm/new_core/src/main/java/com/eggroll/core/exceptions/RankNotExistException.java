@@ -2,7 +2,7 @@ package com.eggroll.core.exceptions;
 
 import lombok.Data;
 
-public class RankNotExistException extends EggRollBaseException{
+public class RankNotExistException extends EggRollBaseException {
     public RankNotExistException(String message) {
         super(message);
     }

@@ -24,7 +24,7 @@ public class ContainerParam {
     private String startCmd;
     private String staticConfPath;
 
-    public ContainerParam(String sessionId,String moduleName, Long processorId) {
+    public ContainerParam(String sessionId, String moduleName, Long processorId) {
 
         // exePath
 //        if (moduleName != null && !moduleName.isEmpty()) {
@@ -49,7 +49,7 @@ public class ContainerParam {
         serverNodeId = String.valueOf(NodeManagerMeta.serverNodeId);
         boot = MetaInfo.BOOTSTRAP_ROOT_SCRIPT == null ? "bin/eggroll_boot." + (isWindows ? "py" : "sh") : MetaInfo.BOOTSTRAP_ROOT_SCRIPT;
         logsDir = MetaInfo.EGGROLL_LOGS_DIR;
-        cmPort =  MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT;
+        cmPort = MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT;
         pythonPath = MetaInfo.EGGROLL_SESSION_PYTHON_PATH;
         pythonVenv = MetaInfo.EGGROLL_SESSION_PYTHON_VENV;
         staticConfPath = MetaInfo.STATIC_CONF_PATH;

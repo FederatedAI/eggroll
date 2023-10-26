@@ -14,7 +14,7 @@ public class ResourceOptions implements RpcMessage {
     public Deepspeed.ResourceOptions toProto() {
         Deepspeed.ResourceOptions.Builder builder = Deepspeed.ResourceOptions.newBuilder();
         builder.setTimeoutSeconds(this.timeoutSeconds);
-        if(this.resourceExhaustedStrategy!=null){
+        if (this.resourceExhaustedStrategy != null) {
             builder.setResourceExhaustedStrategy(this.resourceExhaustedStrategy);
         }
 

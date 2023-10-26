@@ -41,72 +41,72 @@ import java.util.Set;
 @Singleton
 public class MybatisPlusConfigurationProvider implements Provider<Configuration>, ConfigurationSettingListener {
 
-    Logger  logger = LoggerFactory.getLogger(MybatisPlusConfigurationProvider.class);
+    Logger logger = LoggerFactory.getLogger(MybatisPlusConfigurationProvider.class);
 
     private final Environment environment;
     @Inject(
-        optional = true
+            optional = true
     )
     @Named("mybatis.configuration.lazyLoadingEnabled")
     private boolean lazyLoadingEnabled = false;
     @Inject(
-        optional = true
+            optional = true
     )
     @Named("mybatis.configuration.aggressiveLazyLoading")
     private boolean aggressiveLazyLoading = true;
     @Inject(
-        optional = true
+            optional = true
     )
     @Named("mybatis.configuration.multipleResultSetsEnabled")
     private boolean multipleResultSetsEnabled = true;
     @Inject(
-        optional = true
+            optional = true
     )
     @Named("mybatis.configuration.useGeneratedKeys")
     private boolean useGeneratedKeys = false;
     @Inject(
-        optional = true
+            optional = true
     )
     @Named("mybatis.configuration.useColumnLabel")
     private boolean useColumnLabel = true;
     @Inject(
-        optional = true
+            optional = true
     )
     @Named("mybatis.configuration.cacheEnabled")
     private boolean cacheEnabled = true;
     @Inject(
-        optional = true
+            optional = true
     )
     @Named("mybatis.configuration.defaultExecutorType")
     private ExecutorType defaultExecutorType;
     @Inject(
-        optional = true
+            optional = true
     )
     @Named("mybatis.configuration.autoMappingBehavior")
     private AutoMappingBehavior autoMappingBehavior;
     @Inject(
-        optional = true
+            optional = true
     )
     @Named("mybatis.configuration.callSettersOnNulls")
     private boolean callSettersOnNulls;
     @Inject(
-        optional = true
+            optional = true
     )
     @Named("mybatis.configuration.defaultStatementTimeout")
     @Nullable
     private Integer defaultStatementTimeout;
     @Inject(
-        optional = true
+            optional = true
     )
     @Named("mybatis.configuration.mapUnderscoreToCamelCase")
     private boolean mapUnderscoreToCamelCase;
     @Inject(
-        optional = true
+            optional = true
     )
     @Named("mybatis.configuration.failFast")
     private boolean failFast;
     @Inject(
-        optional = true
+            optional = true
     )
     private DatabaseIdProvider databaseIdProvider;
     @Inject
@@ -126,7 +126,9 @@ public class MybatisPlusConfigurationProvider implements Provider<Configuration>
         this.environment = environment;
     }
 
-    /** @deprecated */
+    /**
+     * @deprecated
+     */
     @Deprecated
     public void setEnvironment(Environment environment) {
     }
@@ -176,26 +178,26 @@ public class MybatisPlusConfigurationProvider implements Provider<Configuration>
         configuration.setObjectWrapperFactory(new MybatisMapWrapperFactory());
 
         configuration.setLogImpl(Log4j2Impl.class);
-       // configuration.setLogImpl(StdOutImpl.class);
+        // configuration.setLogImpl(StdOutImpl.class);
 
         configuration.setCacheEnabled(MetaInfo.EGGROLL_MYBATIS_cache_enabled);
 
-        Set<Class<?>> classes  =getClasses(MetaInfo.EGGROLL_MYBATIS_MAPPER_PACKAGE);
+        Set<Class<?>> classes = getClasses(MetaInfo.EGGROLL_MYBATIS_MAPPER_PACKAGE);
 
-        for(Class<?> clazz:classes){
+        for (Class<?> clazz : classes) {
             try {
 
                 configuration.addMapper(clazz);
-                logger.info("mybatis plus add class {}",clazz);
-            }catch(Exception e){
+                logger.info("mybatis plus add class {}", clazz);
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
 
         Iterator var2 = this.configurationSettings.iterator();
 
-        while(var2.hasNext()) {
-            ConfigurationSetting setting = (ConfigurationSetting)var2.next();
+        while (var2.hasNext()) {
+            ConfigurationSetting setting = (ConfigurationSetting) var2.next();
             setting.applyConfigurationSetting(configuration);
         }
 
@@ -206,8 +208,8 @@ public class MybatisPlusConfigurationProvider implements Provider<Configuration>
 
             var2 = this.mapperConfigurationSettings.iterator();
 
-            while(var2.hasNext()) {
-                MapperConfigurationSetting setting = (MapperConfigurationSetting)var2.next();
+            while (var2.hasNext()) {
+                MapperConfigurationSetting setting = (MapperConfigurationSetting) var2.next();
                 setting.applyConfigurationSetting(configuration);
             }
 

@@ -37,7 +37,7 @@ public class SessionOptionService extends EggRollBaseServiceImpl<SessionOptionMa
 
     public void removeBySessionId(String sessionId) {
         QueryWrapper<SessionOption> removeWrapper = new QueryWrapper<>();
-        removeWrapper.lambda().eq(SessionOption::getSessionId,sessionId);
+        removeWrapper.lambda().eq(SessionOption::getSessionId, sessionId);
         this.remove(removeWrapper);
     }
 }

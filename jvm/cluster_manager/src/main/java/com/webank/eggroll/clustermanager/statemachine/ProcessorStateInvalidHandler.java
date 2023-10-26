@@ -8,7 +8,7 @@ import com.webank.eggroll.clustermanager.cluster.ClusterManagerService;
 import com.webank.eggroll.clustermanager.processor.DefaultProcessorManager;
 
 @Singleton
-public class ProcessorStateInvalidHandler extends AbstractProcessorStateHandler{
+public class ProcessorStateInvalidHandler extends AbstractProcessorStateHandler {
     @Inject
     ClusterManagerService clusterManagerService;
 

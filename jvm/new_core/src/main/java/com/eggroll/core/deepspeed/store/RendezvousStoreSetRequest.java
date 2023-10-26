@@ -14,7 +14,7 @@ public class RendezvousStoreSetRequest implements RpcMessage {
 
     @Override
     public byte[] serialize() {
-                Deepspeed.StoreSetRequest.Builder builder = Deepspeed.StoreSetRequest.newBuilder()
+        Deepspeed.StoreSetRequest.Builder builder = Deepspeed.StoreSetRequest.newBuilder()
                 .setPrefix(this.getPrefix())
                 .setKey(ByteString.copyFrom(this.getKey()));
         builder.setValue(ByteString.copyFrom(this.getValue()));

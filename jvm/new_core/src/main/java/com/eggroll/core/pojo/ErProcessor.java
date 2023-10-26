@@ -90,7 +90,7 @@ public class ErProcessor implements RpcMessage {
             }
             this.options = processor.getOptionsMap();
             this.pid = processor.getPid();
-            this.tag= processor.getTag();
+            this.tag = processor.getTag();
         } catch (InvalidProtocolBufferException e) {
 
         }

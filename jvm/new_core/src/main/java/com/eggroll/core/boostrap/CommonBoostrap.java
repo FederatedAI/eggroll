@@ -15,15 +15,15 @@ public class CommonBoostrap {
 
     static Logger logger = LoggerFactory.getLogger(CommonBoostrap.class);
 
-    public static void init(String[] args,String module){
-        if(StringUtils.isBlank(System.getProperty("module"))){
+    public static void init(String[] args, String module) {
+        if (StringUtils.isBlank(System.getProperty("module"))) {
             System.setProperty("module", module);
         }
         CommandLine cmd = CommandArgsUtils.parseArgs(args);
         String confPath;
-        if(cmd!=null){
+        if (cmd != null) {
             confPath = cmd.getOptionValue('c', "./conf/eggroll.properties");
-        }else{
+        } else {
             confPath = "./conf/eggroll.properties";
         }
         logger.info("load config file {}", confPath);

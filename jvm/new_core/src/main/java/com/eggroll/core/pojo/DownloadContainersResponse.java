@@ -54,7 +54,7 @@ public class DownloadContainersResponse implements RpcMessage {
             if (CollectionUtils.isNotEmpty(containerContentList)) {
                 List<ContainerContent> containerContentsList = new ArrayList<>();
                 containerContentList.forEach(containerContent -> {
-                    ContainerContent content = new ContainerContent(containerContent.getContent().toByteArray(),containerContent.getCompressMethod());
+                    ContainerContent content = new ContainerContent(containerContent.getContent().toByteArray(), containerContent.getCompressMethod());
                     containerContentsList.add(content);
                 });
                 this.containerContents = containerContentsList;

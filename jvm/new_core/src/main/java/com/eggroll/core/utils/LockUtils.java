@@ -10,8 +10,8 @@ public class LockUtils {
 
     static Logger logger = LoggerFactory.getLogger(LockUtils.class);
 
-    public static <T> void lock(ConcurrentHashMap<T, ReentrantLock> lockMap, T key){
-        if(lockMap == null){
+    public static <T> void lock(ConcurrentHashMap<T, ReentrantLock> lockMap, T key) {
+        if (lockMap == null) {
             throw new RuntimeException("lockMap is null");
         }
         ReentrantLock lock;
@@ -23,13 +23,13 @@ public class LockUtils {
         lock.lock();
     }
 
-    public static <T> void unLock(ConcurrentHashMap<T, ReentrantLock> lockMap, T key){
-        if(lockMap == null){
+    public static <T> void unLock(ConcurrentHashMap<T, ReentrantLock> lockMap, T key) {
+        if (lockMap == null) {
             throw new RuntimeException("lockMap is null");
         }
 //        logger.info("unlock key {}",key);
-        ReentrantLock  lock = lockMap.get(key);
-        if(lock!=null){
+        ReentrantLock lock = lockMap.get(key);
+        if (lock != null) {
             lock.unlock();
         }
     }

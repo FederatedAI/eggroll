@@ -37,7 +37,6 @@ public class ClusterExtendTransferService extends ExtendTransferServerGrpc.Exten
     private String ERROR_STATUS = "ERROR";
 
 
-
     @Override
     public StreamObserver<Extend.GetLogRequest> getLog(StreamObserver<Extend.GetLogResponse> responseObserver) {
         return new StreamObserver<Extend.GetLogRequest>() {
@@ -50,7 +49,7 @@ public class ClusterExtendTransferService extends ExtendTransferServerGrpc.Exten
                 try {
                     if (INIT_STATUS.equals(status)) {
                         status = PREPARE_STATUS;
-                        log.info("receive get log request {}",request.toString());
+                        log.info("receive get log request {}", request.toString());
 
                         if (StringUtils.isNotEmpty(request.getRank()) && Integer.parseInt(request.getRank()) > 0) {
                             index = Integer.parseInt(request.getRank());
@@ -60,21 +59,21 @@ public class ClusterExtendTransferService extends ExtendTransferServerGrpc.Exten
                         List<SessionRanks> rankInfos = sessionRanksService.list(sessionRank);
 
                         if (rankInfos == null || rankInfos.size() == 0) {
-                            log.error("can not found rank info for session {}",request.getSessionId());
+                            log.error("can not found rank info for session {}", request.getSessionId());
                             throw new Exception("can not found rank info for session " + request.getSessionId());
                         }
-                        List<SessionRanks> nodeIdMeta  = rankInfos.stream().filter(rank -> rank.getLocalRank().intValue() == index).collect(Collectors.toList());
+                        List<SessionRanks> nodeIdMeta = rankInfos.stream().filter(rank -> rank.getLocalRank().intValue() == index).collect(Collectors.toList());
                         if (nodeIdMeta == null || nodeIdMeta.size() == 0) {
-                            log.error("can not found rank info for session {} rank {}",request.getSessionId(),index);
+                            log.error("can not found rank info for session {} rank {}", request.getSessionId(), index);
                             throw new RankNotExistException("can not found rank info for session " + request.getSessionId() + " rank " + index);
                         }
                         SessionRanks rankInfo = nodeIdMeta.get(0);
 
                         ErServerNode erServerNode = serverNodeService.getByIdFromCache(rankInfo.getServerNodeId());
 
-                        log.info("prepare to send log request to {} {}",erServerNode.getEndpoint().getHost(),erServerNode.getEndpoint().getPort());
+                        log.info("prepare to send log request to {} {}", erServerNode.getEndpoint().getHost(), erServerNode.getEndpoint().getPort());
                         ErEndpoint erEndpoint = new ErEndpoint(erServerNode.getEndpoint().getHost(), erServerNode.getEndpoint().getPort());
-                        ManagedChannel managedChannel = GrpcConnectionFactory.createManagedChannel(erEndpoint,true);
+                        ManagedChannel managedChannel = GrpcConnectionFactory.createManagedChannel(erEndpoint, true);
                         ExtendTransferServerGrpc.ExtendTransferServerStub stub = ExtendTransferServerGrpc.newStub(managedChannel);
                         requestSb = stub.getLog(responseObserver);
                         status = RUNNING_STATUS;

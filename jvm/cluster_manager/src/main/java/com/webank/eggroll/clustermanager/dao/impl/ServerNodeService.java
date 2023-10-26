@@ -25,41 +25,43 @@ import java.util.stream.Collectors;
 @Singleton
 public class ServerNodeService extends EggRollBaseServiceImpl<ServerNodeMapper, ServerNode> {
     Logger logger = LoggerFactory.getLogger(ServerNodeService.class);
-    LoadingCache<Long,ErServerNode> cache ;
-    ServerNodeService(){
-        cache=  CacheBuilder.newBuilder()
+    LoadingCache<Long, ErServerNode> cache;
+
+    ServerNodeService() {
+        cache = CacheBuilder.newBuilder()
                 .maximumSize(1000)
                 .expireAfterWrite(300, TimeUnit.SECONDS)
-                .build(new CacheLoader<Long,ErServerNode>(){
+                .build(new CacheLoader<Long, ErServerNode>() {
                     @Override
                     public ErServerNode load(Long serverNodeId) throws Exception {
-                        logger.info("node server miss cache, try to load from db , id {}",serverNodeId);
-                        ServerNode  serverNode = getById(serverNodeId);
-                        if(serverNode!=null){
-                            return  serverNode.toErServerNode();
-                        }else{
+                        logger.info("node server miss cache, try to load from db , id {}", serverNodeId);
+                        ServerNode serverNode = getById(serverNodeId);
+                        if (serverNode != null) {
+                            return serverNode.toErServerNode();
+                        } else {
                             return null;
                         }
                     }
                 });
     }
-    public ErServerNode getByIdFromCache(Long serverNodeId){
-        ErServerNode  result= null;
+
+    public ErServerNode getByIdFromCache(Long serverNodeId) {
+        ErServerNode result = null;
         try {
             result = this.cache.get(serverNodeId);
         } catch (Exception e) {
 
         }
-        if(result==null)
-            logger.info("server node cache {}",cache.asMap());
-        return  result;
+        if (result == null)
+            logger.info("server node cache {}", cache.asMap());
+        return result;
     }
 
 
     @Inject
     NodeResourceService nodeResourceService;
 
-    public ServerNode getByEndPoint( ErEndpoint input) {
+    public ServerNode getByEndPoint(ErEndpoint input) {
         ServerNode serverNode = new ServerNode();
         serverNode.setHost(input.getHost());
         serverNode.setPort(input.getPort());
@@ -69,7 +71,7 @@ public class ServerNodeService extends EggRollBaseServiceImpl<ServerNodeMapper, 
 
     @Transactional
     public ServerNode createByErNode(ErServerNode input) {
-        logger.info("create new node {}",input);
+        logger.info("create new node {}", input);
         ServerNode serverNode = new ServerNode();
         serverNode.setServerNodeId(input.getId() > 0 ? input.getId() : null);
         serverNode.setName(input.getName());
@@ -115,11 +117,11 @@ public class ServerNodeService extends EggRollBaseServiceImpl<ServerNodeMapper, 
         return result;
     }
 
-    public List<ErServerNode> getServerNodesWithResource(ErServerNode input){
+    public List<ErServerNode> getServerNodesWithResource(ErServerNode input) {
         List<ErServerNode> serverNodes = getListByErServerNode(input);
         for (ErServerNode serverNode : serverNodes) {
             List<NodeResource> nodeResources = nodeResourceService.list(new QueryWrapper<NodeResource>().lambda().eq(NodeResource::getServerNodeId, serverNode.getId()));
-            if(nodeResources != null){
+            if (nodeResources != null) {
                 serverNode.setResources(nodeResources.stream().map(NodeResource::toErResource).collect(Collectors.toList()));
             }
         }

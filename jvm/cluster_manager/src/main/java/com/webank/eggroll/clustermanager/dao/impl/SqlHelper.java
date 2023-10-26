@@ -15,6 +15,7 @@ import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.core.toolkit.ExceptionUtils;
 import com.baomidou.mybatisplus.core.toolkit.GlobalConfigUtils;
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
+
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -23,6 +24,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+
 import org.apache.ibatis.exceptions.PersistenceException;
 import org.apache.ibatis.logging.Log;
 import org.apache.ibatis.reflection.ExceptionUtil;
@@ -44,7 +46,9 @@ public final class SqlHelper {
 //        return sqlSessionFactory(clazz).openSession(ExecutorType.BATCH);
 //    }
 
-    /** @deprecated */
+    /**
+     * @deprecated
+     */
 //    @Deprecated
 //    public static SqlSessionFactory sqlSessionFactory(Class<?> clazz) {
 //        return GlobalConfigUtils.currentSessionFactory(clazz);
@@ -55,7 +59,6 @@ public final class SqlHelper {
 //    public static SqlSession sqlSession(Class<?> clazz) {
 //        return SqlSessionUtils.getSqlSession(GlobalConfigUtils.currentSessionFactory(clazz));
 //    }
-
     public static TableInfo table(Class<?> clazz) {
         TableInfo tableInfo = TableInfoHelper.getTableInfo(clazz);
         Assert.notNull(tableInfo, "Error: Cannot execute table Method, ClassGenericType not found.", new Object[0]);
@@ -84,7 +87,7 @@ public final class SqlHelper {
         if (CollectionUtils.isNotEmpty(list)) {
             int size = list.size();
             if (size > 1) {
-                Log log = (Log)supplier.get();
+                Log log = (Log) supplier.get();
                 log.warn(String.format("Warn: execute Method There are  %s results.", size));
             }
 
@@ -142,7 +145,9 @@ public final class SqlHelper {
 //        }
 //    }
 
-    /** @deprecated */
+    /**
+     * @deprecated
+     */
 //    @Deprecated
 //    public static <E> boolean executeBatch(Class<?> entityClass, Log log, Collection<E> list, int batchSize, BiConsumer<SqlSession, E> consumer) {
 //        return executeBatch(sqlSessionFactory(entityClass), log, list, batchSize, consumer);
@@ -178,7 +183,6 @@ public final class SqlHelper {
 //
 //        });
 //    }
-
     public static String getSqlStatement(Class<?> mapper, SqlMethod sqlMethod) {
         return mapper.getName() + "." + sqlMethod.getMethod();
     }

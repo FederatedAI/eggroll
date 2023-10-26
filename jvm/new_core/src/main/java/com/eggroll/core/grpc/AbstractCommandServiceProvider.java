@@ -7,7 +7,7 @@ import io.grpc.stub.StreamObserver;
 
 public class AbstractCommandServiceProvider extends CommandServiceGrpc.CommandServiceImplBase {
 
-    protected  Dispatcher  dispatcher;
+    protected Dispatcher dispatcher;
 
     public void call(Command.CommandRequest request,
                      StreamObserver<Command.CommandResponse> responseObserver) {

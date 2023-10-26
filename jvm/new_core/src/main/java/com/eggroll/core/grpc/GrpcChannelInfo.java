@@ -16,8 +16,6 @@
 package com.eggroll.core.grpc;
 
 
-
-
 public class GrpcChannelInfo {
 
     int keepAliveTime;

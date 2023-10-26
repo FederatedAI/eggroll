@@ -10,70 +10,68 @@ import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import org.apache.commons.lang3.StringUtils;
 
 
-
 @Singleton
-public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta>   {
+public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta> {
 
     @Inject
-    SessionMainService   sessionMainService;
+    SessionMainService sessionMainService;
 
     @Inject
     ProcessorStateMachine processorStateMachine;
 
     @Inject
-    SessionKillHandler  sessionKillHandler;
+    SessionKillHandler sessionKillHandler;
 
     @Inject
-    SessionStopHandler  sessionStopHandler;
+    SessionStopHandler sessionStopHandler;
 
     @Inject
-    SessionActiveHandler  sessionActiveHandler;
+    SessionActiveHandler sessionActiveHandler;
 
     @Inject
-    SessionCreateHandler  sessionCreateHandler;
+    SessionCreateHandler sessionCreateHandler;
 
     @Inject
-    SessionIgnoreHandler  sessionIgnoreHandler;
+    SessionIgnoreHandler sessionIgnoreHandler;
     @Inject
-    SessionRepeatedCreateHandler  sessionRepeatedCreateHandler;
+    SessionRepeatedCreateHandler sessionRepeatedCreateHandler;
 
     @Override
     String buildStateChangeLine(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam) {
-        String  line= "";
-        ErSessionMeta  sessionInDb = sessionMainService.getSession(erSessionMeta.getId(),true,false,false);
-        if(sessionInDb!=null){
-            context.putData(Dict.SESSION_IN_DB,sessionInDb);
+        String line = "";
+        ErSessionMeta sessionInDb = sessionMainService.getSession(erSessionMeta.getId(), true, false, false);
+        if (sessionInDb != null) {
+            context.putData(Dict.SESSION_IN_DB, sessionInDb);
         }
-        if(StringUtils.isEmpty(preStateParam))
-        {
-            if(sessionInDb==null){
-                preStateParam ="";
-            }else{
-                preStateParam =  sessionInDb.getStatus();
+        if (StringUtils.isEmpty(preStateParam)) {
+            if (sessionInDb == null) {
+                preStateParam = "";
+            } else {
+                preStateParam = sessionInDb.getStatus();
             }
         }
-        line= preStateParam+"_"+desStateParam;
-        context.putLogData("session_status_change",line);
-        
-        return  line;
+        line = preStateParam + "_" + desStateParam;
+        context.putLogData("session_status_change", line);
+
+        return line;
     }
 
     @Override
-    public String getLockKey(Context context ,ErSessionMeta erSessionMeta) {
+    public String getLockKey(Context context, ErSessionMeta erSessionMeta) {
         return erSessionMeta.getId();
     }
 
     @Inject
     public void afterPropertiesSet() throws Exception {
-        this.registeStateHander("_NEW",sessionCreateHandler);
-        this.registeStateHander("NEW_NEW",sessionRepeatedCreateHandler);
-        this.registeStateHander("NEW_ACTIVE",sessionActiveHandler);
-        this.registeStateHander("NEW_KILLED",sessionKillHandler);
-        this.registeStateHander("NEW_ERROR",sessionKillHandler);
-        this.registeStateHander("ACTIVE_KILLED",sessionKillHandler);
-        this.registeStateHander("ACTIVE_ERROR",sessionKillHandler);
-        this.registeStateHander("ACTIVE_CLOSED",sessionStopHandler);
-        this.registeStateHander(IGNORE,sessionIgnoreHandler);
+        this.registeStateHander("_NEW", sessionCreateHandler);
+        this.registeStateHander("NEW_NEW", sessionRepeatedCreateHandler);
+        this.registeStateHander("NEW_ACTIVE", sessionActiveHandler);
+        this.registeStateHander("NEW_KILLED", sessionKillHandler);
+        this.registeStateHander("NEW_ERROR", sessionKillHandler);
+        this.registeStateHander("ACTIVE_KILLED", sessionKillHandler);
+        this.registeStateHander("ACTIVE_ERROR", sessionKillHandler);
+        this.registeStateHander("ACTIVE_CLOSED", sessionStopHandler);
+        this.registeStateHander(IGNORE, sessionIgnoreHandler);
     }
 
 }

@@ -1,8 +1,6 @@
 package com.eggroll.core.containers.container;
 
 
-
-
 public interface ContainerTrait {
 
     int getPid();

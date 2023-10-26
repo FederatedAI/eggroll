@@ -30,7 +30,7 @@ public class FlowProcessorService implements ContainerTrait {
     private Path workingDir;
     private long processorId;
 
-    public FlowProcessorService(String scriptPath, Path cwd, Map<String, String> extraEnv, List<String> scriptArgs,long processorId) {
+    public FlowProcessorService(String scriptPath, Path cwd, Map<String, String> extraEnv, List<String> scriptArgs, long processorId) {
         // py脚本路径
         this.scriptPath = scriptPath;
         this.command = buildCommand("python", scriptPath, scriptArgs);

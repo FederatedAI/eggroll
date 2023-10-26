@@ -52,7 +52,7 @@ public class ErProcessorBatch implements RpcMessage {
         return builder.build();
     }
 
-    public static ErProcessorBatch fromProto(Meta.ProcessorBatch processorBatch){
+    public static ErProcessorBatch fromProto(Meta.ProcessorBatch processorBatch) {
         ErProcessorBatch erProcessorBatch = new ErProcessorBatch();
         erProcessorBatch.deserialize(processorBatch.toByteArray());
         return erProcessorBatch;

@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.eggroll.core.pojo.ErResource;
 
 import java.util.Date;
+
 @TableName(value = "processor_resource", autoResultMap = true)
 public class ProcessorResource {
 
@@ -46,8 +47,8 @@ public class ProcessorResource {
         this.updatedAt = updatedAt;
     }
 
-    public ErResource  toErResource(){
-        ErResource  erResource = new ErResource();
+    public ErResource toErResource() {
+        ErResource erResource = new ErResource();
         erResource.setResourceId(this.id);
         erResource.setProcessorId(this.processorId);
         erResource.setAllocated(this.allocated);
@@ -56,7 +57,7 @@ public class ProcessorResource {
         erResource.setExtention(this.extention);
         erResource.setStatus(this.status);
         erResource.setResourceType(this.resourceType);
-        return  erResource;
+        return erResource;
     }
 
     public ProcessorResource() {

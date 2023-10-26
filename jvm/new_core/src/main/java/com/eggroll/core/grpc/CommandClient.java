@@ -12,10 +12,10 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class CommandClient {
-    public  byte[] call( Context  oriContext , ErEndpoint  erEndpoint, String uri, byte[] request){
-        Context   context =  new Context();
+    public byte[] call(Context oriContext, ErEndpoint erEndpoint, String uri, byte[] request) {
+        Context context = new Context();
         context.setUri(uri);
-        if(oriContext!=null)
+        if (oriContext != null)
             context.setSeq(oriContext.getSeq());
         context.setActionType(ActionType.CLIENT.name());
         context.setEndpoint(erEndpoint);
@@ -25,14 +25,13 @@ public class CommandClient {
             requestBuilder.setId(System.currentTimeMillis() + "").setUri(uri).addArgs(ByteString.copyFrom(request));
             Command.CommandResponse commandResponse = stub.call(requestBuilder.build());
             return commandResponse.getResults(0).toByteArray();
-        }catch (Throwable e){
-            log.error("send {} to {} error",uri,erEndpoint,e);
-            context.setThrowable( e);
+        } catch (Throwable e) {
+            log.error("send {} to {} error", uri, erEndpoint, e);
+            context.setThrowable(e);
             throw e;
-        }
-        finally {
-            if(MetaInfo.EGGROLL_FLOWLOG_PRINT_CLIENT)
-                 FlowLogUtil.printFlowLog(context);
+        } finally {
+            if (MetaInfo.EGGROLL_FLOWLOG_PRINT_CLIENT)
+                FlowLogUtil.printFlowLog(context);
         }
     }
 

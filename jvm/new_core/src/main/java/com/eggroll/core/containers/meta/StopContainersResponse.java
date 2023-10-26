@@ -24,7 +24,7 @@ public class StopContainersResponse {
         try {
             proto = Containers.StopContainersResponse.parseFrom(byteString);
         } catch (InvalidProtocolBufferException e) {
-            log.error("StopContainersResponse.deserialize() error :" ,e);
+            log.error("StopContainersResponse.deserialize() error :", e);
         }
         return new StopContainersResponse(proto.getSessionId());
     }

@@ -3,7 +3,7 @@ package com.eggroll.core.constant;
 public enum ProcessorType {
 
 
-    egg_pair ,deepspeed_download,DeepSpeed
+    egg_pair, deepspeed_download, DeepSpeed
 
 
 }

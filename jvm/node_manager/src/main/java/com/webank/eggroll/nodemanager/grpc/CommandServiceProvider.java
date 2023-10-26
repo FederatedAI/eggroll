@@ -45,17 +45,17 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     }
 
     @URI(value = stopContainers)
-    public ErSessionMeta stopContainers(Context context,ErSessionMeta sessionMeta) {
+    public ErSessionMeta stopContainers(Context context, ErSessionMeta sessionMeta) {
         return defaultProcessorManager.stopContainers(context, sessionMeta);
     }
 
     @URI(value = killContainers)
-    public ErSessionMeta killContainers(Context context,ErSessionMeta sessionMeta) {
+    public ErSessionMeta killContainers(Context context, ErSessionMeta sessionMeta) {
         return defaultProcessorManager.killContainers(context, sessionMeta);
     }
 
     @URI(value = eggpairHeartbeat)
-    public ErProcessor heartbeat(Context context,ErProcessor processor) {
+    public ErProcessor heartbeat(Context context, ErProcessor processor) {
         String nodeHost = MetaInfo.CONFKEY_NODE_MANAGER_HOST == null ? NetUtils.getLocalIp() : MetaInfo.CONFKEY_NODE_MANAGER_HOST;
         processor.getCommandEndpoint().setHost(nodeHost);
         processor.getTransferEndpoint().setHost(nodeHost);
@@ -63,45 +63,41 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     }
 
     @URI(value = checkNodeProcess)
-    public ErProcessor checkNodeProcess(Context context,ErProcessor processor) {
+    public ErProcessor checkNodeProcess(Context context, ErProcessor processor) {
         return defaultProcessorManager.checkNodeProcess(context, processor);
     }
 
 
     @URI(value = startFlowJobContainers)
-    public StartContainersResponse startFlowJobContainers(Context context,StartFlowContainersRequest startFlowContainersRequest) {
+    public StartContainersResponse startFlowJobContainers(Context context, StartFlowContainersRequest startFlowContainersRequest) {
         return defaultProcessorManager.startFlowJobContainers(startFlowContainersRequest);
     }
-
-
+    
     @URI(value = startJobContainers)
-    public StartContainersResponse startJobContainers(Context context,StartContainersRequest startContainersRequest) {
+    public StartContainersResponse startJobContainers(Context context, StartContainersRequest startContainersRequest) {
         return defaultProcessorManager.startJobContainers(startContainersRequest);
     }
 
     @URI(value = stopJobContainers)
-    public StopContainersResponse stopJobContainers(Context context,StopContainersRequest stopContainersRequest) {
+    public StopContainersResponse stopJobContainers(Context context, StopContainersRequest stopContainersRequest) {
         return defaultProcessorManager.stopJobContainers(stopContainersRequest);
     }
 
     @URI(value = killJobContainers)
-    public KillContainersResponse killJobContainers(Context context,KillContainersRequest killContainersRequest) {
+    public KillContainersResponse killJobContainers(Context context, KillContainersRequest killContainersRequest) {
         return defaultProcessorManager.killJobContainers(killContainersRequest);
     }
 
     @URI(value = downloadContainers)
-    public DownloadContainersResponse downloadContainers(Context context,DownloadContainersRequest downloadContainersRequest) {
+    public DownloadContainersResponse downloadContainers(Context context, DownloadContainersRequest downloadContainersRequest) {
         return defaultProcessorManager.downloadContainers(downloadContainersRequest);
     }
 
 
     @URI(value = nodeHeartbeat)
-    public ErProcessor nodeHeartbeat(Context context ,ErProcessor processor) {
+    public ErProcessor nodeHeartbeat(Context context, ErProcessor processor) {
         return null;
     }
-
-
-
 
 
 }

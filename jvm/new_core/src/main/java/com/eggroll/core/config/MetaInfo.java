@@ -33,26 +33,26 @@ public class MetaInfo {
     static Logger logger = LoggerFactory.getLogger(MetaInfo.class);
 
     @Config(confKey = "eggroll.security.login.username")
-    public static String USERNAME ;
+    public static String USERNAME;
     @Config(confKey = "eggroll.security.login.password")
-    public static  String PASSWORD = "";
+    public static String PASSWORD = "";
 
     @Config(confKey = "eggroll.zookeeper.register.host")
     public static String ZOOKEEPER_HOST = "";
     @Config(confKey = "eggroll.zookeeper.register.version")
     public static String ZOOKEEPER_VERSION = "";
     @Config(confKey = "eggroll.zookeeper.register.port", pattern = Dict.POSITIVE_INTEGER_PATTERN)
-    public static Integer ZOOKEEPER_PORT = 0  ;
+    public static Integer ZOOKEEPER_PORT = 0;
     @Config(confKey = "eggroll.zookeeper.register.enable", pattern = Dict.BOOLEAN_PATTERN)
-    public static Boolean ZOOKEEPER_ENABLED= false;
+    public static Boolean ZOOKEEPER_ENABLED = false;
 
     @Config(confKey = "eggroll.zookeeper.server.port", pattern = Dict.POSITIVE_INTEGER_PATTERN)
-    public static Integer ZOOKEEPER_SERVER_PORT = 0  ;
+    public static Integer ZOOKEEPER_SERVER_PORT = 0;
     @Config(confKey = "eggroll.zookeeper.server.host")
     public static String ZOOKEEPER_SERVER_HOST = "";
 
     @Config(confKey = "eggroll.jetty.server.port", pattern = Dict.POSITIVE_INTEGER_PATTERN)
-    public static Integer JETTY_SERVER_PORT = 0  ;
+    public static Integer JETTY_SERVER_PORT = 0;
 
     @Config(confKey = "grpc.server.max.concurrent.call.per.connection", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static int PROPERTY_GRPC_SERVER_MAX_CONCURRENT_CALL_PER_CONNECTION = 1000;
@@ -88,8 +88,6 @@ public class MetaInfo {
 
     @Config(confKey = "eggroll.resourcemanager.bootstrap.egg_frame.exepath")
     public static String CONFKEY_RESOURCE_MANAGER_BOOTSTRAP_EGG_FRAME_EXE_PATH = "";
-
-
 
 
     @Config(confKey = "eggroll.core.grpc.channel.cache.expire.sec", pattern = Dict.POSITIVE_INTEGER_PATTERN)
@@ -184,7 +182,6 @@ public class MetaInfo {
     public static Boolean CONFKEY_CORE_SECURITY_SECURE_CLUSTER_ENABLED = false;
     @Config(confKey = "eggroll.core.security.secure.client.auth.enabled", pattern = Dict.BOOLEAN_PATTERN)
     public static Boolean CONFKEY_CORE_SECURITY_CLIENT_AUTH_ENABLED = false;
-
 
 
     @Config(confKey = "eggroll.core.command.default.serdes.type")
@@ -309,14 +306,14 @@ public class MetaInfo {
     public static Integer EGGROLL_RESOURCE_DISPATCH_INTERVAL = 3000;
     @Config(confKey = "eggroll.resource.lock.expire.interval", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static Integer EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL = 3600000;
-    @Config(confKey="eggroll.mybatis.mapper.package")
-    public static String  EGGROLL_MYBATIS_MAPPER_PACKAGE="com.webank.eggroll.clustermanager.dao.mapper";
-    @Config(confKey="eggroll.mybatis.cache.enabled")
-    public static Boolean  EGGROLL_MYBATIS_cache_enabled = true;
-    @Config(confKey="eggroll.flowlog.print.client")
-    public static Boolean EGGROLL_FLOWLOG_PRINT_CLIENT =false;
-    @Config(confKey="eggroll.request.print")
-    public static Boolean EGGROLL_GRPC_REQUEST_PRINT=false;
+    @Config(confKey = "eggroll.mybatis.mapper.package")
+    public static String EGGROLL_MYBATIS_MAPPER_PACKAGE = "com.webank.eggroll.clustermanager.dao.mapper";
+    @Config(confKey = "eggroll.mybatis.cache.enabled")
+    public static Boolean EGGROLL_MYBATIS_cache_enabled = true;
+    @Config(confKey = "eggroll.flowlog.print.client")
+    public static Boolean EGGROLL_FLOWLOG_PRINT_CLIENT = false;
+    @Config(confKey = "eggroll.request.print")
+    public static Boolean EGGROLL_GRPC_REQUEST_PRINT = false;
 
 
     // deepspeed config

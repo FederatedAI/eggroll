@@ -13,21 +13,19 @@ public class PythonContainerRuntimeConfig {
     }
 
 
-
-
     public String getPythonExec(String key) {
         String value = null;
-        if(options!= null){
+        if (options != null) {
             value = options.get(key);
         }
 
-        if(StringUtils.isBlank(value)){
+        if (StringUtils.isBlank(value)) {
             value = MetaInfo.EGGROLL_CONTAINER_PYTHON_EXEC;
         }
 
-        if(StringUtils.isBlank(value)){
+        if (StringUtils.isBlank(value)) {
             value = MetaInfo.CONFKEY_RESOURCE_MANAGER_BOOTSTRAP_EGG_PAIR_VENV;
-            if(StringUtils.isBlank(value)){
+            if (StringUtils.isBlank(value)) {
                 throw new RuntimeException("python exec not found for key: " + key);
             }
             value += "/bin/python";

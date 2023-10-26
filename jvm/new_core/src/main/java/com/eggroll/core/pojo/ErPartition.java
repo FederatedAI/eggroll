@@ -8,15 +8,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Data
-public class ErPartition implements RpcMessage,Cloneable {
+public class ErPartition implements RpcMessage, Cloneable {
     Logger log = LoggerFactory.getLogger(ErPartition.class);
-    private int id =-1;
+    private int id = -1;
     private ErStoreLocator storeLocator;
     private ErProcessor processor;
     private int rankInNode = -1;
 
 
-    public ErPartition(){
+    public ErPartition() {
 
     }
 
@@ -36,7 +36,7 @@ public class ErPartition implements RpcMessage,Cloneable {
         return String.join(delim, storeLocatorPath, String.valueOf(id));
     }
 
-    public Meta.Partition toProto(){
+    public Meta.Partition toProto() {
         Meta.Partition.Builder builder = Meta.Partition.newBuilder();
         builder.setId(this.id)
                 .setStoreLocator(this.storeLocator.toProto())
@@ -45,7 +45,7 @@ public class ErPartition implements RpcMessage,Cloneable {
         return builder.build();
     }
 
-    public static ErPartition fromProto(Meta.Partition partition){
+    public static ErPartition fromProto(Meta.Partition partition) {
         ErPartition erPartition = new ErPartition();
         erPartition.deserialize(partition.toByteArray());
         return erPartition;
@@ -65,7 +65,7 @@ public class ErPartition implements RpcMessage,Cloneable {
             this.processor = ErProcessor.fromProto(partition.getProcessor());
             this.rankInNode = partition.getRankInNode();
         } catch (InvalidProtocolBufferException e) {
-            log.error("deserialize error : ",e);
+            log.error("deserialize error : ", e);
         }
     }
 

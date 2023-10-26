@@ -206,7 +206,7 @@ public class GetSystemInfo {
         return processCpuLoad;
     }
 
-    public static int  getAvailableProcessors(){
+    public static int getAvailableProcessors() {
         OperatingSystemMXBean osmxb = (OperatingSystemMXBean) ManagementFactoryHelper
                 .getOperatingSystemMXBean();
         return osmxb.getAvailableProcessors();
@@ -242,7 +242,7 @@ public class GetSystemInfo {
 ////    }
 
 
-    public static void getJVMRuntimeParam(){
+    public static void getJVMRuntimeParam() {
 
 //        RuntimeMXBean runtimeMXBean = ManagementFactoryHelper.getRuntimeMXBean();
 //JVM启动参数
@@ -256,8 +256,8 @@ public class GetSystemInfo {
     }
 
 
-    public  static void  getJvmThreadInfo(){
-        java.lang.management.ThreadMXBean threadMXBean =  ManagementFactoryHelper.getThreadMXBean();
+    public static void getJvmThreadInfo() {
+        java.lang.management.ThreadMXBean threadMXBean = ManagementFactoryHelper.getThreadMXBean();
         threadMXBean.getThreadCount();
         threadMXBean.getCurrentThreadCpuTime();
         threadMXBean.getCurrentThreadUserTime();
@@ -268,7 +268,7 @@ public class GetSystemInfo {
         long fullCount = 0, fullTime = 0, youngCount = 0, youngTime = 0;
         List<GarbageCollectorMXBean> gcs = ManagementFactory.getGarbageCollectorMXBeans();
         for (GarbageCollectorMXBean gc : gcs) {
-            System.err.println(gc.getName() +"" +gc.getCollectionCount());
+            System.err.println(gc.getName() + "" + gc.getCollectionCount());
 
 
         }
@@ -286,13 +286,11 @@ public class GetSystemInfo {
 //                    youngTime += gc.getCollectionTime();
 //                    break;
 //            }
-            //todo your deal code， perfcounter report or write log here
-        }
+        //todo your deal code， perfcounter report or write log here
+    }
 
 
-
-
-    public  static  void  getSystemLoad(){
+    public static void getSystemLoad() {
 
         java.lang.management.OperatingSystemMXBean operatingSystemMXBean = ManagementFactoryHelper.getOperatingSystemMXBean();
 //获取服务器的CPU个数
@@ -301,22 +299,16 @@ public class GetSystemInfo {
 //        System.out.println(operatingSystemMXBean.getSystemLoadAverage());
 
 
-
     }
 
 
-
-
-
-    public  static  void main(String[] args){
+    public static void main(String[] args) {
 
         getSystemLoad();
         reportGC();
 
 
-
     }
-
 
 
 }

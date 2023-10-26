@@ -12,13 +12,13 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Bootstrap{
+public class Bootstrap {
 
     static Logger logger = LoggerFactory.getLogger(Bootstrap.class);
     static public Injector injector;
 
     public static void main(String[] args) throws Exception {
-        CommonBoostrap.init(args,"cluster-manager");
+        CommonBoostrap.init(args, "cluster-manager");
         injector = Guice.createInjector(new ClusterModule());
         injector.getInstance(Tasks.class);
         List<String> packages = new ArrayList<>();

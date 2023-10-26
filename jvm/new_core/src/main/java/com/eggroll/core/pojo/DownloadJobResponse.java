@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Data
-public class DownloadJobResponse implements RpcMessage{
+public class DownloadJobResponse implements RpcMessage {
 
     Logger log = LoggerFactory.getLogger(DownloadJobResponse.class);
 
@@ -46,18 +46,18 @@ public class DownloadJobResponse implements RpcMessage{
     @Override
     public void deserialize(byte[] data) {
         try {
-            Deepspeed.DownloadJobResponse src =  Deepspeed.DownloadJobResponse.parseFrom(data);
+            Deepspeed.DownloadJobResponse src = Deepspeed.DownloadJobResponse.parseFrom(data);
             this.sessionId = src.getSessionId();
             List<Containers.ContainerContent> containerContentList = src.getContainerContentList();
             if (CollectionUtils.isNotEmpty(containerContentList)) {
-               List<ContainerContent> tempList = new ArrayList<>();
+                List<ContainerContent> tempList = new ArrayList<>();
                 containerContentList.forEach(containerContent -> {
-                    ContainerContent content = new ContainerContent(containerContent.getContent().toByteArray(),containerContent.getCompressMethod());
+                    ContainerContent content = new ContainerContent(containerContent.getContent().toByteArray(), containerContent.getCompressMethod());
                     tempList.add(content);
                 });
                 this.containerContents = tempList;
             }
-        }catch (Exception e) {
+        } catch (Exception e) {
             log.error("deserialize error : ", e);
         }
     }

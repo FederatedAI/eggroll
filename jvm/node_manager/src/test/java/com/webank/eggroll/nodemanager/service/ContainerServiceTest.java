@@ -37,21 +37,21 @@ public class ContainerServiceTest {
     @Test
     public void testStartContainer() {
         ErSessionMeta sessionMeta = getParam();
-        containerService.operateContainers(new Context(),sessionMeta, Dict.NODE_CMD_START);
+        containerService.operateContainers(new Context(), sessionMeta, Dict.NODE_CMD_START);
     }
 
     @Test
     public void testStopContainer() {
         ErSessionMeta sessionMeta = getParam();
-        containerService.operateContainers(new Context(),sessionMeta, Dict.NODE_CMD_START);
-        containerService.operateContainers(new Context(),sessionMeta,Dict.NODE_CMD_STOP);
+        containerService.operateContainers(new Context(), sessionMeta, Dict.NODE_CMD_START);
+        containerService.operateContainers(new Context(), sessionMeta, Dict.NODE_CMD_STOP);
     }
 
     @Test
     public void testKillContainer() {
         ErSessionMeta sessionMeta = getParam();
-        containerService.operateContainers(new Context(),sessionMeta, Dict.NODE_CMD_START);
-        containerService.operateContainers(new Context(),sessionMeta,Dict.NODE_CMD_KILL);
+        containerService.operateContainers(new Context(), sessionMeta, Dict.NODE_CMD_START);
+        containerService.operateContainers(new Context(), sessionMeta, Dict.NODE_CMD_KILL);
     }
 
 
@@ -71,7 +71,7 @@ public class ContainerServiceTest {
         byte[] serialize = deepspeedContainerConfig.serialize();
 
         Map<Long, byte[]> typedExtraConfigs = new HashMap<>();
-        typedExtraConfigs.put(1001L,serialize);
+        typedExtraConfigs.put(1001L, serialize);
         startContainersRequest.setTypedExtraConfigs(typedExtraConfigs);
 
         defaultProcessorManager.startJobContainers(startContainersRequest);

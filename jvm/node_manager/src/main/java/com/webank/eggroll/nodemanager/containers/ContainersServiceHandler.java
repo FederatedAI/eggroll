@@ -113,7 +113,7 @@ public class ContainersServiceHandler {
                 containersManager.addContainer(containerId, container);
                 containersManager.startContainer(containerId);
             } catch (Exception e) {
-                logger.error(" starting deepspeed containers failed: {}",e);
+                logger.error(" starting deepspeed containers failed: {}", e);
                 e.printStackTrace();
             }
 //            containersManager.addContainer(containerId, container);
@@ -253,26 +253,26 @@ public class ContainersServiceHandler {
         return new LogStreamHolder(System.currentTimeMillis(), command, responseObserver, "running");
     }
 
-    private ContainersManager buildContainersManager(){
+    private ContainersManager buildContainersManager() {
         final ContainersManagerBuilder builder = ContainersManager.builder();
-        builder.withStartedCallback((status,container,exception)->{
-            ProcessorStatus newStatus = container.getPid()>0?ProcessorStatus.RUNNING: ProcessorStatus.ERROR;
-            client.hearbeat(new Context(),buildHeartBeatProcessor(newStatus,container));
+        builder.withStartedCallback((status, container, exception) -> {
+            ProcessorStatus newStatus = container.getPid() > 0 ? ProcessorStatus.RUNNING : ProcessorStatus.ERROR;
+            client.hearbeat(new Context(), buildHeartBeatProcessor(newStatus, container));
         });
-        builder.withSuccessCallback((status,container,exception)->{
-            client.hearbeat(new Context(),buildHeartBeatProcessor(ProcessorStatus.FINISHED,container));
+        builder.withSuccessCallback((status, container, exception) -> {
+            client.hearbeat(new Context(), buildHeartBeatProcessor(ProcessorStatus.FINISHED, container));
         });
-        builder.withFailedCallback((status,container,exception)->{
-            client.hearbeat(new Context(),buildHeartBeatProcessor(ProcessorStatus.ERROR,container));
+        builder.withFailedCallback((status, container, exception) -> {
+            client.hearbeat(new Context(), buildHeartBeatProcessor(ProcessorStatus.ERROR, container));
         });
-        builder.withExceptionCallback((status,container,exception)->{
-            client.hearbeat(new Context(),buildHeartBeatProcessor(ProcessorStatus.KILLED,container));
+        builder.withExceptionCallback((status, container, exception) -> {
+            client.hearbeat(new Context(), buildHeartBeatProcessor(ProcessorStatus.KILLED, container));
         });
 
-       return builder.build(executor);
+        return builder.build(executor);
     }
 
-    private ErProcessor buildHeartBeatProcessor(ProcessorStatus status, ContainerTrait container){
+    private ErProcessor buildHeartBeatProcessor(ProcessorStatus status, ContainerTrait container) {
         final ErProcessor erProcessor = new ErProcessor();
         erProcessor.setId(container.getProcessorId());
         erProcessor.setPid(container.getPid());

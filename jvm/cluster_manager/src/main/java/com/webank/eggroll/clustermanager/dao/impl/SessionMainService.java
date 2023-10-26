@@ -78,7 +78,7 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
         List<SessionOption> optList = sessionOptionService.list(sessionOption);
         Map<String, String> opts = optList.stream().collect(Collectors.toMap(SessionOption::getName, SessionOption::getData));
 
-        List<SessionProcessor> processorList = sessionProcessorService.list(new LambdaQueryWrapper<SessionProcessor>().eq(SessionProcessor::getSessionId,sessionId));
+        List<SessionProcessor> processorList = sessionProcessorService.list(new LambdaQueryWrapper<SessionProcessor>().eq(SessionProcessor::getSessionId, sessionId));
         List<ErProcessor> procs = new ArrayList<>();
         for (SessionProcessor processor : processorList) {
             procs.add(processor.toErProcessor());

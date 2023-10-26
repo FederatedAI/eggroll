@@ -41,11 +41,10 @@ public class StatusCode {
     public static final String INVALID_INDEXFILE_DETAIL = "143";
     public static final String CREATE_TOPIC_ERROR = "144";
     public static final String CYCLE_ROUTE_ERROR = "145";
-    public static final String CONSUME_MSG_TIMEOUT= "146";
+    public static final String CONSUME_MSG_TIMEOUT = "146";
 
-    public static final String SESSION_INIT_ERROR= "147";
+    public static final String SESSION_INIT_ERROR = "147";
     public static final String TRANSFER_QUEUE_REDIRECT = "148";
-
 
 
 }

@@ -44,7 +44,7 @@ public class GrpcServer implements ApplicationStartedRunner {
     NodeExtendTransferService nodeExtendTransferService;
 
     public void start() throws Exception {
-        Server server = createServer("0.0.0.0", MetaInfo.CONFKEY_NODE_MANAGER_PORT, Lists.newArrayList(commandServiceProvider,nodeExtendTransferService), Lists.newArrayList(), Maps.newHashMap());
+        Server server = createServer("0.0.0.0", MetaInfo.CONFKEY_NODE_MANAGER_PORT, Lists.newArrayList(commandServiceProvider, nodeExtendTransferService), Lists.newArrayList(), Maps.newHashMap());
         server.start();
     }
 
@@ -69,7 +69,7 @@ public class GrpcServer implements ApplicationStartedRunner {
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
             @Override
             public void run() {
-                logger.info("*** shutting down gRPC server in shutdown hook. host: {}, port: {} ***",NetUtils.getLocalHost(),MetaInfo.CONFKEY_NODE_MANAGER_PORT);
+                logger.info("*** shutting down gRPC server in shutdown hook. host: {}, port: {} ***", NetUtils.getLocalHost(), MetaInfo.CONFKEY_NODE_MANAGER_PORT);
             }
         }));
 

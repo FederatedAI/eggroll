@@ -9,9 +9,8 @@ import com.webank.eggroll.clustermanager.dao.impl.SessionProcessorService;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 
 
-
 @Singleton
-public class ProcessorCreateHandler extends  AbstractProcessorStateHandler {
+public class ProcessorCreateHandler extends AbstractProcessorStateHandler {
 
 
     @Inject
@@ -19,7 +18,7 @@ public class ProcessorCreateHandler extends  AbstractProcessorStateHandler {
 
 
     @Inject
-    ResourceStateMechine  resourceStateMechine;
+    ResourceStateMechine resourceStateMechine;
 
 
     @Override
@@ -29,18 +28,18 @@ public class ProcessorCreateHandler extends  AbstractProcessorStateHandler {
 
     @Override
     public ErProcessor handle(Context context, ErProcessor data, String preStateParam, String desStateParam) {
-        return  createNewProcessor(context,data);
+        return createNewProcessor(context, data);
     }
 
-    private  ErProcessor createNewProcessor(Context context ,ErProcessor erProcessor){
+    private ErProcessor createNewProcessor(Context context, ErProcessor erProcessor) {
         erProcessor.setId(erProcessor.getId() == -1 ? null : erProcessor.getId());
         SessionProcessor sessionProcessor = new SessionProcessor(erProcessor);
         sessionProcessorService.save(sessionProcessor);
         erProcessor.setId(sessionProcessor.getProcessorId());
-        if(checkNeedChangeResource(erProcessor)) {
-            resourceStateMechine.changeStatus(context ,erProcessor, ResourceStatus.INIT.getValue(), ResourceStatus.PRE_ALLOCATED.getValue());
+        if (checkNeedChangeResource(erProcessor)) {
+            resourceStateMechine.changeStatus(context, erProcessor, ResourceStatus.INIT.getValue(), ResourceStatus.PRE_ALLOCATED.getValue());
         }
-        return  erProcessor;
+        return erProcessor;
     }
 
 

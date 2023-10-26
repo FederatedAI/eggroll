@@ -10,7 +10,7 @@ import org.quartz.impl.StdSchedulerFactory;
 public class ClusterManagerTask {
 
     @Inject
-    Quartz  quartz;
+    Quartz quartz;
 
 
     public static void runTask(Thread thread) {
@@ -32,7 +32,7 @@ public class ClusterManagerTask {
 //        }
 //    }
 
-    public static void main(String[] args)  {
+    public static void main(String[] args) {
 //        // 构建一个JobDetail实例...
 //
 //        // 构建一个Trigger，指定Trigger名称和组，规定该Job立即执行，且两秒钟重复执行一次

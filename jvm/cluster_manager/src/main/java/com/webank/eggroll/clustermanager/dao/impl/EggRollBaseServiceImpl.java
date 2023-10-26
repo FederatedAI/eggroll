@@ -24,7 +24,7 @@ public class EggRollBaseServiceImpl<M extends BaseMapper<T>, T> extends ServiceI
 
     //guice的原生saveBatch没有效果
     public boolean saveBatch(Collection<T> entityList) {
-        if(entityList !=null){
+        if (entityList != null) {
             entityList.forEach(this::save);
         }
         return true;

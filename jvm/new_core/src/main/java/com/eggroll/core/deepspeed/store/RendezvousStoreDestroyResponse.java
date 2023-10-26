@@ -23,7 +23,7 @@ public class RendezvousStoreDestroyResponse implements RpcMessage {
     }
 
     @Override
-    public void deserialize(byte[] data){
+    public void deserialize(byte[] data) {
         try {
             Deepspeed.StoreDestroyResponse src = Deepspeed.StoreDestroyResponse.parseFrom(data);
             this.success = src.getSuccess();

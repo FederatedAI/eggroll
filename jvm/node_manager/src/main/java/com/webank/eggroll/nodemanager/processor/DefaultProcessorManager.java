@@ -24,7 +24,7 @@ import java.lang.reflect.InvocationTargetException;
 
 
 @Singleton
-public class DefaultProcessorManager   implements ProcessorManager,ApplicationStartedRunner {
+public class DefaultProcessorManager implements ProcessorManager, ApplicationStartedRunner {
     Logger logger = LoggerFactory.getLogger(DefaultProcessorManager.class);
 
     private ClusterManagerClient client;
@@ -40,31 +40,31 @@ public class DefaultProcessorManager   implements ProcessorManager,ApplicationSt
 
     @Override
     public ErSessionMeta startContainers(Context context, ErSessionMeta sessionMeta) {
-        return containerService.operateContainers(context ,sessionMeta, Dict.NODE_CMD_START);
+        return containerService.operateContainers(context, sessionMeta, Dict.NODE_CMD_START);
     }
 
     @Override
     public ErSessionMeta stopContainers(Context context, ErSessionMeta sessionMeta) {
-        return containerService.operateContainers(context,sessionMeta,Dict.NODE_CMD_STOP);
+        return containerService.operateContainers(context, sessionMeta, Dict.NODE_CMD_STOP);
     }
 
     @Override
     public ErSessionMeta killContainers(Context context, ErSessionMeta sessionMeta) {
-        return containerService.operateContainers(context,sessionMeta,Dict.NODE_CMD_KILL);
+        return containerService.operateContainers(context, sessionMeta, Dict.NODE_CMD_KILL);
     }
 
     @Override
     public ErProcessor heartbeat(Context context, ErProcessor processor) {
-        return client.hearbeat(context ,processor);
+        return client.hearbeat(context, processor);
     }
 
     @Override
-    public ErProcessor checkNodeProcess(Context context, ErProcessor processor){
+    public ErProcessor checkNodeProcess(Context context, ErProcessor processor) {
         ErProcessor result = new ErProcessor();
         try {
-            BeanUtils.copyProperties(result,processor);
-        }catch (InvocationTargetException | IllegalAccessException e ) {
-            logger.error("copyProperties error: {}",e.getMessage());
+            BeanUtils.copyProperties(result, processor);
+        } catch (InvocationTargetException | IllegalAccessException e) {
+            logger.error("copyProperties error: {}", e.getMessage());
         }
 
         if (ProcessUtils.checkProcess(Integer.toString(processor.getPid()))) {
@@ -99,16 +99,15 @@ public class DefaultProcessorManager   implements ProcessorManager,ApplicationSt
     }
 
     @Override
-    public DownloadContainersResponse downloadContainers(DownloadContainersRequest downloadContainersRequest){
-       return containersServiceHandler.downloadContainers(downloadContainersRequest);
+    public DownloadContainersResponse downloadContainers(DownloadContainersRequest downloadContainersRequest) {
+        return containersServiceHandler.downloadContainers(downloadContainersRequest);
     }
-
 
 
     @Override
     public void run(String[] args) throws Exception {
         logger.info("xxxxxxxxxxxxxxxxxxxxx");
-        client =  new ClusterManagerClient(new ErEndpoint(MetaInfo.CONFKEY_CLUSTER_MANAGER_HOST,MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT));
+        client = new ClusterManagerClient(new ErEndpoint(MetaInfo.CONFKEY_CLUSTER_MANAGER_HOST, MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT));
         logger.info("oooooooooooooooooooo");
     }
 }

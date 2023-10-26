@@ -57,13 +57,13 @@ public class JobServiceHandler {
             clusterResourceManager.lockSession(sessionId);
             clusterResourceManager.getKillJobMap().put(sessionId, System.currentTimeMillis());
             if (sessionMainService.getById(sessionId) == null) {
-                log.error("can not found session {} ",sessionId);
+                log.error("can not found session {} ", sessionId);
                 return;
             }
             ErSessionMeta sessionMeta = sessionMainService.getSession(sessionId);
             if (StringUtils.equalsAny(sessionMeta.getStatus(),
-                    SessionStatus.KILLED.name(), SessionStatus.CLOSED.name(), SessionStatus.ERROR.name(),SessionStatus.FINISHED.name())) {
-                log.error(" session {} status is {}, will not send kill request to nodemanager",sessionId,sessionMeta.getStatus());
+                    SessionStatus.KILLED.name(), SessionStatus.CLOSED.name(), SessionStatus.ERROR.name(), SessionStatus.FINISHED.name())) {
+                log.error(" session {} status is {}, will not send kill request to nodemanager", sessionId, sessionMeta.getStatus());
                 return;
             }
 
@@ -82,7 +82,7 @@ public class JobServiceHandler {
                     killContainersRequest.setContainers(processorIdList);
                     new NodeManagerClient(erServerNode.getEndpoint()).killJobContainers(context, killContainersRequest);
                     final UpdateWrapper<SessionMain> updateWrapper = new UpdateWrapper<>();
-                    updateWrapper.lambda().eq(SessionMain::getSessionId,sessionId).set(SessionMain::getStatus,SessionStatus.CLOSED.name());
+                    updateWrapper.lambda().eq(SessionMain::getSessionId, sessionId).set(SessionMain::getStatus, SessionStatus.CLOSED.name());
                     sessionMainService.update(updateWrapper);
                 } catch (Exception e) {
                     log.error("killContainers error : ", e);
@@ -210,10 +210,10 @@ public class JobServiceHandler {
             submitJobResponse.setProcessors(activeProcessors);
             return submitJobResponse;
 
-        }catch (Exception e){
-            killJob(new Context(),sessionId);
+        } catch (Exception e) {
+            killJob(new Context(), sessionId);
             throw e;
-        }finally {
+        } finally {
             clusterResourceManager.unlockSession(sessionId);
         }
 
@@ -411,7 +411,7 @@ public class JobServiceHandler {
                 }
 
                 try {
-                    log.info("waiting processor :{}  start ",sessionId);
+                    log.info("waiting processor :{}  start ", sessionId);
                     Thread.sleep(3000);
                 } catch (Exception e) {
                     // 处理中断异常（可根据具体需求处理）

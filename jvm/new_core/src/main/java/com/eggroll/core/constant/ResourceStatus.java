@@ -21,9 +21,10 @@ public enum ResourceStatus {
         return value;
     }
 
-    private  ResourceStatus(String value){
+    private ResourceStatus(String value) {
         this.value = value;
     }
-    private  String value;
+
+    private String value;
 
 }

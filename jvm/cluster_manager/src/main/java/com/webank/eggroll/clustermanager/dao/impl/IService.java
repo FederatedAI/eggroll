@@ -176,7 +176,7 @@ public interface IService<T> {
     }
 
     default List<T> list() {
-        return this.list((Wrapper)Wrappers.emptyWrapper());
+        return this.list((Wrapper) Wrappers.emptyWrapper());
     }
 
     default List<T> list(IPage<T> page) {
@@ -200,7 +200,7 @@ public interface IService<T> {
     }
 
     default List<Map<String, Object>> listMaps() {
-        return this.listMaps((Wrapper)Wrappers.emptyWrapper());
+        return this.listMaps((Wrapper) Wrappers.emptyWrapper());
     }
 
     default List<Map<String, Object>> listMaps(IPage<? extends Map<String, Object>> page) {
@@ -220,7 +220,7 @@ public interface IService<T> {
     }
 
     default <V> List<V> listObjs(Wrapper<T> queryWrapper, Function<? super Object, V> mapper) {
-        return (List)this.getBaseMapper().selectObjs(queryWrapper).stream().filter(Objects::nonNull).map(mapper).collect(Collectors.toList());
+        return (List) this.getBaseMapper().selectObjs(queryWrapper).stream().filter(Objects::nonNull).map(mapper).collect(Collectors.toList());
     }
 
     default <E extends IPage<Map<String, Object>>> E pageMaps(E page, Wrapper<T> queryWrapper) {
@@ -263,7 +263,9 @@ public interface IService<T> {
         return ChainWrappers.lambdaUpdateChain(this.getBaseMapper());
     }
 
-    /** @deprecated */
+    /**
+     * @deprecated
+     */
     @Deprecated
     default boolean saveOrUpdate(T entity, Wrapper<T> updateWrapper) {
         return this.update(entity, updateWrapper) || this.saveOrUpdate(entity);

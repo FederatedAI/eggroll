@@ -8,27 +8,27 @@ public class Dict {
     public static final String SERDES_TYPE_CLOUD_EMPTY = "EMPTY";
 
 
-    public static final String KEY_SERVER_NODE_ID= "serverNodeId";
-    public static final String KEY_CLUSTER_ID= "clusterId";
-    public static final String KEY_UPDATE_TIME= "updateTime";
-    public static final String KEY_NODE_IP= "nodeIp";
-    public static final String KEY_NODE_PORT= "nodePort";
+    public static final String KEY_SERVER_NODE_ID = "serverNodeId";
+    public static final String KEY_CLUSTER_ID = "clusterId";
+    public static final String KEY_UPDATE_TIME = "updateTime";
+    public static final String KEY_NODE_IP = "nodeIp";
+    public static final String KEY_NODE_PORT = "nodePort";
     public static final String STATUS = "status";
     public static final String KEY_PROCESSOR_TYPE = "ProcessorType";
 
     // checkResourceEnough
     public static final String CHECK_RESOURCE_ENOUGH_CHECK_TYPE_NODE = "nodeCheck";
-    public static final String CHECK_RESOURCE_ENOUGH_CHECK_TYPE_CLUSTER  = "clusterCheck";
-    public static final String RESOURCE_TYPE_GPU  = "gpu";
-    public static final String RESOURCE_TYPE_CPU  = "cpu";
-    public static final String RESOURCE_TYPE_MEMORY  = "memory";
+    public static final String CHECK_RESOURCE_ENOUGH_CHECK_TYPE_CLUSTER = "clusterCheck";
+    public static final String RESOURCE_TYPE_GPU = "gpu";
+    public static final String RESOURCE_TYPE_CPU = "cpu";
+    public static final String RESOURCE_TYPE_MEMORY = "memory";
 
     public static final String SERVER_NODES = "SERVER_NODES";
     public static final String SESSION_IN_DB = "SESSION_IN_DB";
     public static final String PROCESSOR_IN_DB = "PROCESSOR_IN_DB";
-    public static final String OPEN_ASYN_POST_HANDLE = "OPEN_ASYN_POST_HANDLE" ;
+    public static final String OPEN_ASYN_POST_HANDLE = "OPEN_ASYN_POST_HANDLE";
     public static final String IS_BREAK = "IS_BREAK";
-    public static final String  SERVER_NODE_ID = "eggroll.resourcemanager.server.node.id";
+    public static final String SERVER_NODE_ID = "eggroll.resourcemanager.server.node.id";
     public static final String POSITIVE_INTEGER_PATTERN = "^[1-9]\\d*$";
     public static final String BOOLEAN_PATTERN = "^(true)|(false)$";
     public static String CONFKEY_CORE_GRPC_TRANSFER_SECURE_SERVER_ENABLED = "eggroll.core.grpc.transfer.secure.server.enabled";
@@ -139,8 +139,7 @@ public class Dict {
     // ClusterManagerConfKeys
     public static final String CONFKEY_CLUSTER_MANAGER_HOST = "eggroll.resourcemanager.clustermanager.host";
     public static final String CONFKEY_CLUSTER_MANAGER_PORT = "eggroll.resourcemanager.clustermanager.port";
-    public  static final String DEEPSPEED_SCRIPT_PATH="eggroll.container.deepspeed.script.path";
-
+    public static final String DEEPSPEED_SCRIPT_PATH = "eggroll.container.deepspeed.script.path";
 
 
     // SessionConfKeys
@@ -157,8 +156,7 @@ public class Dict {
     public static final String DS_DOWNLOAD = "DS-DOWNLOAD";
 
 
-    public static final  String SCHEDULE_KEY = "schedule_key";
-
+    public static final String SCHEDULE_KEY = "schedule_key";
 
 
 }

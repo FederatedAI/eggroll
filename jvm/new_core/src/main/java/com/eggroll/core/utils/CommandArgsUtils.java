@@ -4,7 +4,7 @@ import org.apache.commons.cli.*;
 
 public class CommandArgsUtils {
 
-    public static CommandLine parseArgs( String[] args) {
+    public static CommandLine parseArgs(String[] args) {
         HelpFormatter formatter = new HelpFormatter();
         Options options = new Options();
         Option config = Option.builder("c")
@@ -98,8 +98,8 @@ public class CommandArgsUtils {
             }
         } catch (ParseException e) {
 
-                e.printStackTrace();
-                formatter.printHelp("", options, true);
+            e.printStackTrace();
+            formatter.printHelp("", options, true);
         }
 
         return cmd;

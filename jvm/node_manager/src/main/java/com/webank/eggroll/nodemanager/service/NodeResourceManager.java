@@ -31,7 +31,7 @@ public class NodeResourceManager implements ApplicationStartedRunner {
 
     Logger logger = LoggerFactory.getLogger(NodeResourceManager.class);
 
-//    @Inject
+    //    @Inject
     private SysInfoLinux sysInfo;
 
     ClusterManagerClient client;
@@ -53,7 +53,7 @@ public class NodeResourceManager implements ApplicationStartedRunner {
         resourceMap.put(Dict.VCPU_CORE, cpuCore);
         resourceMap.put(Dict.PHYSICAL_MEMORY, physicalMemory);
         resourceMap.put(Dict.VGPU_CORE, gpuCore);
-        client = new ClusterManagerClient (new ErEndpoint(MetaInfo.CONFKEY_CLUSTER_MANAGER_HOST,MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT));
+        client = new ClusterManagerClient(new ErEndpoint(MetaInfo.CONFKEY_CLUSTER_MANAGER_HOST, MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT));
         physicalMemorySize = getPhysicalMemorySize();
         heartBeatThread = new HeartBeatThread();
         resourceCountThread = new ResourceCountThread();
@@ -163,12 +163,12 @@ public class NodeResourceManager implements ApplicationStartedRunner {
         return pids;
     }
 
-    public ErServerNode queryNodeResource(ErServerNode erServerNode){
+    public ErServerNode queryNodeResource(ErServerNode erServerNode) {
         ErServerNode newErServerNode = new ErServerNode();
         try {
             BeanUtils.copyProperties(newErServerNode, erServerNode);
-        }catch ( InvocationTargetException | IllegalAccessException e) {
-            logger.error("copyProperties error: {}",e.getMessage());
+        } catch (InvocationTargetException | IllegalAccessException e) {
+            logger.error("copyProperties error: {}", e.getMessage());
         }
         newErServerNode.setId(NodeManagerMeta.serverNodeId);
         Iterator<ResourceWrapper> iterator = resourceMap.values().iterator();
@@ -218,6 +218,7 @@ public class NodeResourceManager implements ApplicationStartedRunner {
 
     class HeartBeatThread extends Thread {
         Thread currentGrpcThread = null;
+
         public ErNodeHeartbeat generateNodeBeat(Long seq) {
             String nodeHost = MetaInfo.CONFKEY_NODE_MANAGER_HOST == null ? NetUtils.getLocalIp() : MetaInfo.CONFKEY_NODE_MANAGER_HOST;
             int nodePort = MetaInfo.CONFKEY_NODE_MANAGER_PORT;
@@ -236,7 +237,7 @@ public class NodeResourceManager implements ApplicationStartedRunner {
                 try {
                     seq += 1;
                     ErNodeHeartbeat erNodeHeartbeat = generateNodeBeat(seq);
-                    if(currentGrpcThread != null && currentGrpcThread.isAlive()) {
+                    if (currentGrpcThread != null && currentGrpcThread.isAlive()) {
                         currentGrpcThread.interrupt();
                     }
                     currentGrpcThread = new Thread(new Runnable() {
@@ -247,7 +248,7 @@ public class NodeResourceManager implements ApplicationStartedRunner {
 //                                    erNodeHeartbeat.getNode().getEndpoint().getPort(),
 //                                    erNodeHeartbeat.getNode().getId()
 //                            );
-                            ErNodeHeartbeat nodeHeartBeat = client.nodeHeartbeat(new Context(),erNodeHeartbeat);
+                            ErNodeHeartbeat nodeHeartBeat = client.nodeHeartbeat(new Context(), erNodeHeartbeat);
 //                            //logger.info("recive nodeHearBeat info from cluster-manager: nodeHost:{}, nodePort:{}, nodeId: {}",
 //                                    nodeHeartBeat.getNode().getEndpoint().getHost(),
 //                                    nodeHeartBeat.getNode().getEndpoint().getPort(),

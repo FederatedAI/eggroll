@@ -208,7 +208,7 @@ public class JsonUtil {
         ByteArrayOutputStream byteArrayOuttputStream = new ByteArrayOutputStream();
         try (ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOuttputStream)) {
             objectOutputStream.writeObject(object);
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
             return new byte[0];
         }

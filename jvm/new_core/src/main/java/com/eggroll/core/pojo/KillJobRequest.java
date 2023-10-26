@@ -6,7 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Data
-public class KillJobRequest implements RpcMessage{
+public class KillJobRequest implements RpcMessage {
 
     Logger log = LoggerFactory.getLogger(KillJobRequest.class);
     private String sessionId;

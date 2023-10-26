@@ -48,33 +48,33 @@ public class DefaultSessionManager implements SessionManager {
     @Inject
     ClusterResourceManager clusterResourceManager;
 
-    public  boolean blockSession(ErSessionMeta erSessionMeta) throws InterruptedException {
-        SessionLatchHolder  holder =  waitingMap.get(erSessionMeta.getId());
-        if(holder==null){
-            waitingMap.putIfAbsent(erSessionMeta.getId(),new SessionLatchHolder());
+    public boolean blockSession(ErSessionMeta erSessionMeta) throws InterruptedException {
+        SessionLatchHolder holder = waitingMap.get(erSessionMeta.getId());
+        if (holder == null) {
+            waitingMap.putIfAbsent(erSessionMeta.getId(), new SessionLatchHolder());
         }
-        holder =  waitingMap.get(erSessionMeta.getId());
+        holder = waitingMap.get(erSessionMeta.getId());
         CountDownLatch latch = new CountDownLatch(1);
         holder.countDownLatchs.add(latch);
-        logger.info("before block {}",erSessionMeta.getId());
+        logger.info("before block {}", erSessionMeta.getId());
         return latch.await(EGGROLL_SESSION_START_TIMEOUT_MS, TimeUnit.MILLISECONDS);
     }
 
-    public void wakeUpSession(String sessionId){
-        logger.info("wake up session {} block thread ",sessionId);
-        if(waitingMap.get(sessionId)!=null){
+    public void wakeUpSession(String sessionId) {
+        logger.info("wake up session {} block thread ", sessionId);
+        if (waitingMap.get(sessionId) != null) {
             waitingMap.get(sessionId).countDownLatchs.forEach(countDownLatch -> countDownLatch.countDown());
             waitingMap.remove(sessionId);
-        }else{
-            logger.warn("wake up session {} block thread not found ",sessionId);
+        } else {
+            logger.warn("wake up session {} block thread not found ", sessionId);
         }
     }
 
-    ConcurrentHashMap<String,SessionLatchHolder>  waitingMap = new ConcurrentHashMap<String,SessionLatchHolder>();
+    ConcurrentHashMap<String, SessionLatchHolder> waitingMap = new ConcurrentHashMap<String, SessionLatchHolder>();
 
-    class SessionLatchHolder{
-        long createTimestamp=System.currentTimeMillis();
-        List<CountDownLatch>  countDownLatchs= Lists.newArrayList();
+    class SessionLatchHolder {
+        long createTimestamp = System.currentTimeMillis();
+        List<CountDownLatch> countDownLatchs = Lists.newArrayList();
     }
 
     @Override
@@ -83,7 +83,7 @@ public class DefaultSessionManager implements SessionManager {
     }
 
     @Override
-    public  ErSessionMeta getOrCreateSession(Context context, ErSessionMeta sessionMeta) {
+    public ErSessionMeta getOrCreateSession(Context context, ErSessionMeta sessionMeta) {
         context.setSessionId(sessionMeta.getId());
         context.setOptions(sessionMeta.getOptions());
         return getOrCreateSessionWithoutResourceDispath(context, sessionMeta);
@@ -92,43 +92,43 @@ public class DefaultSessionManager implements SessionManager {
 
     private ErSessionMeta getOrCreateSessionWithoutResourceDispath(Context context, ErSessionMeta sessionMeta) {
 
-        ErSessionMeta  sessionInDb =  sessionService.getSession(sessionMeta.getId(),true,true,false);
-            if (sessionInDb != null) {
-                if (sessionInDb.getStatus().equals(SessionStatus.ACTIVE.name())) {
-                    return sessionInDb;
-                } else {
-                    return this.getSessionBusyWaiting(sessionMeta);
-                }
+        ErSessionMeta sessionInDb = sessionService.getSession(sessionMeta.getId(), true, true, false);
+        if (sessionInDb != null) {
+            if (sessionInDb.getStatus().equals(SessionStatus.ACTIVE.name())) {
+                return sessionInDb;
+            } else {
+                return this.getSessionBusyWaiting(sessionMeta);
             }
+        }
 
         ErSessionMeta newSession = sessionStateMachine.changeStatus(context, sessionMeta, null, SessionStatus.NEW.name());
-        logger.info("new session======={}",newSession);
+        logger.info("new session======={}", newSession);
         if (!SessionStatus.NEW.name().equals(newSession.getStatus())) {
             return newSession;
         }
-        boolean actived= false;
+        boolean actived = false;
         try {
-            actived =   this.blockSession(sessionMeta);
+            actived = this.blockSession(sessionMeta);
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        if(!actived){
-            ErSessionMeta erSessionMeta=  this.sessionMainService.getSessionMain(sessionMeta.getId());
-            if(!SessionStatus.ACTIVE.name().equals(erSessionMeta.getStatus())){
-                logger.error("unable to start all processors for session id {} total {} active {} ",erSessionMeta.getId(),
-                        erSessionMeta.getTotalProcCount(),erSessionMeta.getActiveProcCount());
-                killSession(context,sessionMeta);
+        if (!actived) {
+            ErSessionMeta erSessionMeta = this.sessionMainService.getSessionMain(sessionMeta.getId());
+            if (!SessionStatus.ACTIVE.name().equals(erSessionMeta.getStatus())) {
+                logger.error("unable to start all processors for session id {} total {} active {} ", erSessionMeta.getId(),
+                        erSessionMeta.getTotalProcCount(), erSessionMeta.getActiveProcCount());
+                killSession(context, sessionMeta);
                 StringBuilder builder = new StringBuilder();
                 builder.append("unable to start all processors for session id: . ")
                         .append(sessionMeta.getId())
-                        .append("total processors:").append(erSessionMeta.getTotalProcCount()) .append(" \n")
+                        .append("total processors:").append(erSessionMeta.getTotalProcCount()).append(" \n")
                         .append("started count:").append(erSessionMeta.getActiveProcCount());
                 throw new ErSessionException(builder.toString());
             }
         }
 
-        return  sessionService.getSession(sessionMeta.getId(),true,true,true);
+        return sessionService.getSession(sessionMeta.getId(), true, true, true);
 
 //        if (checkSessionRpcReady(newSession)) {
 //            return sessionStateMachine.changeStatus(context, newSession, SessionStatus.NEW.name(), SessionStatus.ACTIVE.name());
@@ -137,7 +137,6 @@ public class DefaultSessionManager implements SessionManager {
 //        }
 
     }
-
 
 
 //    private boolean checkSessionRpcReady(ErSessionMeta session) {
@@ -190,16 +189,15 @@ public class DefaultSessionManager implements SessionManager {
                 break;
             } else {
                 try {
-                    logger.info("waiting session {}",session.getId());
+                    logger.info("waiting session {}", session.getId());
                     Thread.sleep(300);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
             }
         }
-        if(cur!=null)
-        {
-            cur =  this.sessionMainService.getSession(session.getId(),true,true,false);
+        if (cur != null) {
+            cur = this.sessionMainService.getSession(session.getId(), true, true, false);
         }
         return cur;
     }
@@ -232,7 +230,7 @@ public class DefaultSessionManager implements SessionManager {
     public ErSessionMeta getSession(Context context, ErSessionMeta sessionMeta) {
 //        checkSessionRpcReady(sessionMeta);
         return this.getSessionBusyWaiting(sessionMeta);
-       // return sessionService.getSession(sessionMeta.getId(), true, true, false);
+        // return sessionService.getSession(sessionMeta.getId(), true, true, false);
     }
 
     @Override
@@ -272,8 +270,8 @@ public class DefaultSessionManager implements SessionManager {
             ErSessionMeta erSessionMeta = sessionMain.toErSessionMeta();
             try {
                 sessionStateMachine.changeStatus(context, erSessionMeta, null, SessionStatus.KILLED.name());
-            }catch (Exception e) {
-                logger.error("kill session failed , sessionId = {}",erSessionMeta);
+            } catch (Exception e) {
+                logger.error("kill session failed , sessionId = {}", erSessionMeta);
             }
         }
         return new ErSessionMeta();

@@ -13,8 +13,8 @@ import static com.eggroll.core.config.Dict.SCHEDULE_KEY;
 public class ScheduleJob implements Job {
     @Override
     public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
-        String scheduleKey = (String)jobExecutionContext.getJobDetail().getJobDataMap().get(SCHEDULE_KEY);
-        ScheduleInfo  scheduleInfo = Quartz.sheduleInfoMap.get(scheduleKey);
+        String scheduleKey = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(SCHEDULE_KEY);
+        ScheduleInfo scheduleInfo = Quartz.sheduleInfoMap.get(scheduleKey);
         Key key = scheduleInfo.getKey();
         Object instance = Bootstrap.injector.getInstance(key);
         try {

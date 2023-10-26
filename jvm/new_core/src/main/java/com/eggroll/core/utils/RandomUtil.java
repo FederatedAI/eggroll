@@ -36,8 +36,7 @@ public class RandomUtil {
     /**
      * 获取随机长度随机字符
      *
-     * @param length
-     *            base
+     * @param length base
      * @return
      */
     public static String getRandomString(int length, String base) { // length表示生成字符串的长度
@@ -87,10 +86,8 @@ public class RandomUtil {
     /**
      * 返回随机数组
      *
-     * @param start
-     *            开始值
-     * @param end
-     *            结束值
+     * @param start 开始值
+     * @param end   结束值
      * @return
      */
     public static int[] getRangRandom(int start, int end) {

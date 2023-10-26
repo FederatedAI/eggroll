@@ -6,7 +6,8 @@ public enum JobProcessorTypes {
     FlowJob("flowjob");
 
     private final String name;
-    JobProcessorTypes(String name){
+
+    JobProcessorTypes(String name) {
         this.name = name;
     }
 
