@@ -6,6 +6,8 @@ import com.webank.eggroll.webapp.global.ErrorCode;
 import com.webank.eggroll.webapp.interfaces.ApiMethod;
 import com.webank.eggroll.webapp.model.ResponseResult;
 import com.webank.eggroll.webapp.utils.JsonFormatUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -18,6 +20,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Singleton
 public class DispatcherServlet extends HttpServlet {
+
+    Logger logger = LoggerFactory.getLogger(DispatcherServlet.class);
+
     private ConcurrentHashMap<String, InvokeInfo> uriMap = new ConcurrentHashMap();
 
     @Override
@@ -32,11 +37,11 @@ public class DispatcherServlet extends HttpServlet {
         try {
 //            invokeInfo.getMethod().invoke(invokeInfo.getObject(),
 //            objectMapper.readValue(req.getInputStream(), invokeInfo.getParamClass()))
-            Object result = invokeInfo.getMethod().invoke(invokeInfo.getObject(),req);
+            Object result = invokeInfo.getMethod().invoke(invokeInfo.getObject(), req);
             if (result != null) {
                 if (result instanceof ResponseResult) {
                     response = (ResponseResult<Object>) result;
-                }else {
+                } else {
                     response = ResponseResult.success(result);
                 }
             } else {
