@@ -15,4 +15,7 @@ public class NodeDetailQO {
     private Integer nodeNum;
     private String sessionId;
 
+    private Integer pageNum = 1;
+    private Integer pageSize = 10;
+
 }

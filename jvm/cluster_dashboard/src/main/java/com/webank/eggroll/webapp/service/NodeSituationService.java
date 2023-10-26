@@ -7,21 +7,20 @@ import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.entity.NodeResource;
 import com.webank.eggroll.clustermanager.entity.ServerNode;
 import com.webank.eggroll.webapp.entity.NodeInfo;
-import com.webank.eggroll.webapp.global.ErrorCode;
-import com.webank.eggroll.webapp.model.ResponseResult;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class NodeSituationService {
+public class NodeSituationService{
+
 
     @Inject
     private ServerNodeService serverNodeService;
     @Inject
     private NodeResourceService nodeResourceService;
 
-
     public List<NodeInfo> getNodeDetails() {
+
 
         List<NodeInfo> nodeInfos = new ArrayList<>();
 
