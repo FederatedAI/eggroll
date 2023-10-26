@@ -14,10 +14,12 @@
 #  limitations under the License.
 # -*- coding: utf-8 -*-
 
+import os
 from setuptools import find_packages, setup
 
 
-packages = find_packages(".")
+packages = find_packages('..')
+filtered_packages = [pkg for pkg in packages if pkg.startswith("client")]
 package_data = {"": ["*"]}
 install_requires = [
     "click",
@@ -42,7 +44,7 @@ setup_kwargs = {
     "maintainer": None,
     "maintainer_email": None,
     "url": "https://fate.fedai.org/",
-    "packages": packages,
+    "packages": filtered_packages,
     "include_package_data": True,
     "package_data": package_data,
     "install_requires": install_requires,
@@ -50,5 +52,5 @@ setup_kwargs = {
     "python_requires": ">=3.8",
 }
 
-
+os.chdir('..')
 setup(**setup_kwargs)
