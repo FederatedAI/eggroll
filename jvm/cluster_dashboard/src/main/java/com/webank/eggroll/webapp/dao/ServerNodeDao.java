@@ -4,14 +4,17 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.github.pagehelper.PageHelper;
 import com.google.inject.Inject;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
-import com.webank.eggroll.clustermanager.entity.ProcessorResource;
 import com.webank.eggroll.clustermanager.entity.ServerNode;
 import com.webank.eggroll.webapp.queryobject.ServerNodeQO;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 public class ServerNodeDao {
+
+    Logger logger = LoggerFactory.getLogger(ServerNodeDao.class);
 
     @Inject
     ServerNodeService serverNodeService;
