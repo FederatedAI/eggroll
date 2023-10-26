@@ -7,12 +7,15 @@ import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.entity.NodeResource;
 import com.webank.eggroll.clustermanager.entity.ServerNode;
 import com.webank.eggroll.webapp.entity.NodeInfo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class NodeSituationService{
 
+    Logger logger = LoggerFactory.getLogger(NodeSituationService.class);
 
     @Inject
     private ServerNodeService serverNodeService;

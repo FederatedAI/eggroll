@@ -1,19 +1,22 @@
 package com.webank.eggroll.webapp.dao;
 
 
-import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.github.pagehelper.PageHelper;
 import com.google.inject.Inject;
 import com.webank.eggroll.clustermanager.dao.impl.SessionProcessorService;
-import com.webank.eggroll.clustermanager.entity.ServerNode;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import com.webank.eggroll.webapp.queryobject.SessionProcessorQO;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 public class SessionProcessorDao {
+
+    Logger logger = LoggerFactory.getLogger(SessionProcessorDao.class);
+
     @Inject
     SessionProcessorService sessionProcessorService;
 

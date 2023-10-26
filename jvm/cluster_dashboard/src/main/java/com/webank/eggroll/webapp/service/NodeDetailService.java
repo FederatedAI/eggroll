@@ -15,6 +15,8 @@ import com.webank.eggroll.webapp.entity.NodeInfo;
 import com.webank.eggroll.webapp.global.ErrorCode;
 import com.webank.eggroll.webapp.model.ResponseResult;
 import com.webank.eggroll.webapp.queryobject.NodeDetailQO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,6 +24,9 @@ import java.util.List;
 import java.util.Map;
 
 public class NodeDetailService {
+
+    Logger logger = LoggerFactory.getLogger(NodeDetailService.class);
+
 
     @Inject
     private ServerNodeService serverNodeService;
