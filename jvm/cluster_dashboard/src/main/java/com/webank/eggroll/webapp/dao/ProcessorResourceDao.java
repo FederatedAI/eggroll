@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.github.pagehelper.PageHelper;
 import com.google.inject.Inject;
 import com.webank.eggroll.clustermanager.dao.impl.ProcessorResourceService;
-import com.webank.eggroll.clustermanager.entity.NodeResource;
 import com.webank.eggroll.clustermanager.entity.ProcessorResource;
 import com.webank.eggroll.webapp.queryobject.ProcessorResourceQO;
 import org.apache.commons.lang3.StringUtils;
@@ -15,28 +14,18 @@ public class ProcessorResourceDao {
     @Inject
     ProcessorResourceService processorResourceService;
 
-    public List<ProcessorResource> queryData(ProcessorResourceQO processorResourceQO) {
+    public Object query(ProcessorResourceQO processorResourceQO) {
+
+
+
+
+        return processorResourceService.list();
+    }
+
+    public Object queryData(ProcessorResourceQO processorResourceQO) {
         PageHelper.startPage(processorResourceQO.getPageNum(), processorResourceQO.getPageSize());
 
         QueryWrapper<ProcessorResource> queryWrapper = new QueryWrapper<>();
-
-//        if (StringUtils.isNotBlank(processorResourceQO.getProcessorId())
-//                || StringUtils.isNotBlank(processorResourceQO.getSessionId())
-//                || StringUtils.isNotBlank(processorResourceQO.getServerNodeId())
-//                || StringUtils.isNotBlank(processorResourceQO.getStatus())
-//                || StringUtils.isNotBlank(processorResourceQO.getResourceType())) {
-//            queryWrapper.and(wrapper ->
-//                    wrapper.like(StringUtils.isNotBlank(processorResourceQO.getProcessorId()), "processor_id", processorResourceQO.getProcessorId())
-//                            .or()
-//                            .like(StringUtils.isNotBlank(processorResourceQO.getServerNodeId()), "server_node_id", processorResourceQO.getServerNodeId())
-//                            .or()
-//                            .like(StringUtils.isNotBlank(processorResourceQO.getStatus()), "status", processorResourceQO.getStatus())
-//                            .or()
-//                            .like(StringUtils.isNotBlank(processorResourceQO.getResourceType()), "resource_type", processorResourceQO.getResourceType())
-//                            .or()
-//                            .like(StringUtils.isNotBlank(processorResourceQO.getSessionId()), "session_id", processorResourceQO.getSessionId())
-//            );
-//        }
         // 保存非空检查结果到变量中
         boolean hasProcessorId = StringUtils.isNotBlank(processorResourceQO.getProcessorId());
         boolean hasSessionId = StringUtils.isNotBlank(processorResourceQO.getSessionId());
@@ -54,8 +43,6 @@ public class ProcessorResourceDao {
                 if (hasSessionId) wrapper.or().like("session_id", processorResourceQO.getSessionId());
             });
         }
-
-
         return this.processorResourceService.list(queryWrapper);
     }
 }

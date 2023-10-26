@@ -1,6 +1,7 @@
 package com.webank.eggroll.webapp.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.github.pagehelper.PageHelper;
 import com.google.inject.Inject;
 import com.webank.eggroll.clustermanager.dao.impl.NodeResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
@@ -11,6 +12,9 @@ import com.webank.eggroll.clustermanager.entity.ServerNode;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import com.webank.eggroll.webapp.entity.NodeDetail;
 import com.webank.eggroll.webapp.entity.NodeInfo;
+import com.webank.eggroll.webapp.global.ErrorCode;
+import com.webank.eggroll.webapp.model.ResponseResult;
+import com.webank.eggroll.webapp.queryobject.NodeDetailQO;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,6 +35,18 @@ public class NodeDetailService {
     @Inject
     private SessionProcessorService sessionProcessorService;
 
+    public Object queryNodeDetail(NodeDetailQO nodeDetailQO) {
+        Integer nodeNum = nodeDetailQO.getNodeNum();
+        String sessionId = nodeDetailQO.getSessionId();
+        PageHelper.startPage(nodeDetailQO.getPageNum(), nodeDetailQO.getPageSize());
+        boolean isSessionId = (sessionId != null && !sessionId.isEmpty());
+        if (nodeNum > 0) {// 获取单个机器详情
+            return getNodeDetails(nodeNum);
+        } else if (isSessionId) { // 获取session下的机器详情
+            return getNodeDetails(sessionId);
+        }
+        return new ResponseResult(ErrorCode.PARAM_ERROR);
+    }
 
     public Map<String, NodeDetail> getNodeDetails(int nodeNum) {
         //根据节点id获取节点详情 nodeNum为节点id

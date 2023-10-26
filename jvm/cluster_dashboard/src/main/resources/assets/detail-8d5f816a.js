@@ -1,1 +1,0 @@
-import{_ as s,o as t,c as o,e}from"./index-b74be412.js";const c={},n={class:"detail"},_=e("h4",null,"info",-1),a=e("div",{class:"info"}," detail ",-1),i=[_,a];function d(r,l){return t(),o("div",n,i)}const h=s(c,[["render",d]]);export{h as default};
