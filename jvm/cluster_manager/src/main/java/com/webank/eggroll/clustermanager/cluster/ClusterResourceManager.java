@@ -359,18 +359,15 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
 //                            }
 //                    ).orElse(null);
                 Map<String, Long> requestResourceMap = new HashMap<>();
-
-                ErProcessor erProcessor = processors.stream().reduce((x, y) -> {
-                            x.getResources().addAll(y.getResources());
-                            return x;
-                        }
-                ).orElse(null);
-
-                if (erProcessor != null && erProcessor.getResources() != null) {
-                    Map<String, List<ErResource>> collect = erProcessor.getResources().stream().collect(Collectors.groupingBy(ErResource::getResourceType));
-                    collect.forEach((k, erResourceList) -> {
+                List<ErResource> erResourceList = new ArrayList<>();
+                for (ErProcessor processor : processors) {
+                    erResourceList.addAll(processor.getResources());
+                }
+                if (erResourceList.size()>0) {
+                    Map<String, List<ErResource>> collect = erResourceList.stream().collect(Collectors.groupingBy(ErResource::getResourceType));
+                    collect.forEach((k, resources) -> {
                         long sum = 0;
-                        for (ErResource resource : erResourceList) {
+                        for (ErResource resource : resources) {
                             sum += resource.getAllocated();
                         }
                         requestResourceMap.put(k, sum);
@@ -489,6 +486,8 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
 
                         nextGpuIndex = getNextGpuIndex(gpuResourcesInNode.getTotal(), extentionCache);
                         extentionCache.add(String.valueOf(nextGpuIndex));
+                        gpuResourcesInNode.setExtention(String.join(",",extentionCache));
+                        gpuResourcesInNode.setExtentionCache(extentionCache);
                         ErResource newChangedResource = new ErResource();
                         BeanUtils.copyProperties(newChangedResource, changedResource);
                         newChangedResource.setExtention(String.valueOf(nextGpuIndex));
@@ -497,7 +496,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                 }
                 newResources.add(changedResource);
             }
-            nodeResourceTupes = new ArrayList<>(nodeResourceTupes.subList(1, nodeResourceTupes.size()));
+//            nodeResourceTupes = new ArrayList<>(nodeResourceTupes.subList(1, nodeResourceTupes.size()));
             final String host = node.getEndpoint().getHost();
             int globalRank = index;
             int localRank = nodeToProcessors.getOrDefault(node, new ArrayList<>()).size();
