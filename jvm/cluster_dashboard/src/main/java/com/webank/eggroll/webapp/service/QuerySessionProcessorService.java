@@ -8,10 +8,14 @@ import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import com.webank.eggroll.webapp.global.ErrorCode;
 import com.webank.eggroll.webapp.model.ResponseResult;
 import com.webank.eggroll.webapp.queryobject.SessionProcessorQO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 public class QuerySessionProcessorService {
+
+    Logger logger = LoggerFactory.getLogger(QuerySessionProcessorService.class);
 
     @Inject
     private SessionProcessorService sessionProcessorService;
@@ -25,7 +29,7 @@ public class QuerySessionProcessorService {
         if (serverNodeId > 0 && (sessionId != null && !sessionId.isEmpty())) {
             List<SessionProcessor> resources = getSessionProcessors(serverNodeId, sessionId, pageNum, pageSize);
             return resources;
-        }else {
+        } else {
             return new ResponseResult(ErrorCode.PARAM_ERROR);
         }
     }

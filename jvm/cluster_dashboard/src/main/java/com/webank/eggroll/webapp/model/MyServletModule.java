@@ -16,29 +16,19 @@ public class MyServletModule extends ServletModule {
         super.configureServlets();
         this.install(new ClusterModule());
         // 绑定其他依赖类
-        bind(ServerNodeController.class).in(Singleton.class);
-        bind(NodeResourceController.class).in(Singleton.class);
-        bind(SessionMainController.class).in(Singleton.class);
-        bind(SessionProcessorController.class).in(Singleton.class);
         bind(LoginController.class).in(Singleton.class);
-
-        // 集群接口的绑定
         bind(DispatcherServlet.class).in(Singleton.class);
         bind(EggrollServiceProvider.class).in(Singleton.class);
 
         // bind(ZookeeperQueryResource.class).in(Singleton.class);
-        // 绑定ZookeeperQueryService,并从配置文件读取zk服务器地址，创建连接实例
+        // 绑定ZookeeperQueryService,并从配置文件读取zk服务器地址，创建连接实例（获取zk服务器信息接口）
         String url =  ZooKeeperRegistration.generateZkUrl(host,port);
         //bind(ZookeeperQueryService.class).toInstance(new ZookeeperQueryService(url)); //"localhost:2181"
 
-        //配置url
-        serve("/eggroll/servernode").with(ServerNodeController.class);
-        serve("/eggroll/noderesource").with(NodeResourceController.class);
-        serve("/eggroll/sessionmain").with(SessionMainController.class);
-        serve("/eggroll/sessionprocessor").with(SessionProcessorController.class);
+        //配置url映射
         //serve("/eggroll/zookeeper-query").with(ZookeeperQueryResource.class);
+        //登录接口后期单独修改，目前没有登陆需求
         serve("/eggroll/login").with(LoginController.class);
-
         serve("/api/*").with(DispatcherServlet.class);
 
 

@@ -10,15 +10,15 @@ import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import com.webank.eggroll.webapp.global.ErrorCode;
 import com.webank.eggroll.webapp.model.ResponseResult;
 import com.webank.eggroll.webapp.queryobject.NodeDetailQO;
-import com.webank.eggroll.webapp.utils.RequestUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class PrenodeSessionInfoService {
 
-//    @Inject
-//    private ServerNodeService serverNodeService;
+    Logger logger = LoggerFactory.getLogger(PrenodeSessionInfoService.class);
 
     @Inject
     private SessionProcessorService sessionProcessorService;

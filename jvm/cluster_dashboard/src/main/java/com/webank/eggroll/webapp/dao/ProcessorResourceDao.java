@@ -7,16 +7,17 @@ import com.webank.eggroll.clustermanager.dao.impl.ProcessorResourceService;
 import com.webank.eggroll.clustermanager.entity.ProcessorResource;
 import com.webank.eggroll.webapp.queryobject.ProcessorResourceQO;
 import org.apache.commons.lang3.StringUtils;
-
-import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ProcessorResourceDao {
+
+    Logger logger = LoggerFactory.getLogger(ProcessorResourceDao.class);
+
     @Inject
     ProcessorResourceService processorResourceService;
 
     public Object query(ProcessorResourceQO processorResourceQO) {
-
-
 
 
         return processorResourceService.list();

@@ -11,6 +11,8 @@ public class Dict {
     public static final String KEY_SERVER_NODE_ID= "serverNodeId";
     public static final String KEY_CLUSTER_ID= "clusterId";
     public static final String KEY_UPDATE_TIME= "updateTime";
+    public static final String KEY_NODE_IP= "nodeIp";
+    public static final String KEY_NODE_PORT= "nodePort";
     public static final String STATUS = "status";
     public static final String KEY_PROCESSOR_TYPE = "ProcessorType";
 
