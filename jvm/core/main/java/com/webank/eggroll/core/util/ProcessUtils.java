@@ -3,8 +3,21 @@ package com.webank.eggroll.core.util;
 import com.sun.jna.Platform;
 
 import java.io.*;
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 
 public class ProcessUtils {
+
+
+    public  static int getCurrentPid(){
+            RuntimeMXBean runtime = ManagementFactory.getRuntimeMXBean();
+            String name = runtime.getName(); // format: "pid@hostname"
+            try {
+                return Integer.parseInt(name.substring(0, name.indexOf('@')));
+            } catch (Exception e) {
+                return -1;
+            }
+    }
 
 
     public  static Process createProcess(String  command) throws IOException {

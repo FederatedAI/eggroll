@@ -25,11 +25,11 @@ object NodeManagerMeta  {
   var status=INIT
   var serverNodeId = -1:Long;
   var clusterId = -1:Long;
-   def refreshServerNodeMetaIntoFile(): Unit = {
-
+  var ip:String =StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST, NetUtils.getLocalHost ) ;
+  var port:Integer =  StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT).toInt
+  def refreshServerNodeMetaIntoFile(): Unit = {
      var filePath =  CoreConfKeys.EGGROLL_DATA_DIR.get()+ StringConstants.SLASH+"NodeManagerMeta";
      var  gson= new Gson()
-
       FileSystemUtils.fileWriter(filePath, gson.toJson(NodeManagerMeta))
   }
   def loadNodeManagerMetaFromFile():Unit = {
@@ -38,14 +38,22 @@ object NodeManagerMeta  {
       var gson = new Gson()
       var content = FileSystemUtils.fileReader(filePath)
       var  contentMap = gson.fromJson(content,classOf[NodeManagerMeta]);
-      NodeManagerMeta.serverNodeId = contentMap.serverNodeId
-      NodeManagerMeta.clusterId = contentMap.clusterId
+
+      if(NodeManagerMeta.ip.equals(contentMap.ip)&&NodeManagerMeta.port==contentMap.port){
+        NodeManagerMeta.serverNodeId = contentMap.serverNodeId
+        NodeManagerMeta.clusterId = contentMap.clusterId
+      }else{
+        System.err.println("load meta file , found invalid content : "+content)
+      }
     }
   }
 }
 case  class  NodeManagerMeta(status :String,
- serverNodeId : Long,
- clusterId : Long)
+                             serverNodeId : Long,
+                             clusterId : Long,
+                              ip: String,
+                             port:Integer
+                            )
 
 trait NodeManager {
   def startContainers(sessionMeta: ErSessionMeta): ErSessionMeta
@@ -319,8 +327,9 @@ object  NodeResourceManager extends  Logging {
                 NodeManagerMeta.serverNodeId = nodeHeartBeat.node.id
                 NodeManagerMeta.clusterId = nodeHeartBeat.node.clusterId
                 logInfo(s"get node id ${NodeManagerMeta.serverNodeId} from cluster-manager ")
-                NodeManagerMeta.refreshServerNodeMetaIntoFile()
                 NodeManagerMeta.status = HEALTHY
+                NodeManagerMeta.refreshServerNodeMetaIntoFile()
+
               }
             logInfo(s"get node id ${NodeManagerMeta.serverNodeId} from cluster-manager ")
           }
