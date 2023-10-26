@@ -31,7 +31,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Singleton
-public class Tasks implements Provider<Configuration>, ConfigurationSettingListener{
+public class Tasks implements Provider<Configuration>, ConfigurationSettingListener {
 
     Logger log = LoggerFactory.getLogger(Tasks.class);
 
@@ -135,7 +135,7 @@ public class Tasks implements Provider<Configuration>, ConfigurationSettingListe
     @Schedule(cron = "0/10 * * * * ?")
     public void checkRedidualProcessor() {
         try {
-            log.info("check redidual processor, size {}",ClusterManagerService.residualHeartbeatMap.size());
+            log.info("check redidual processor, size {}", ClusterManagerService.residualHeartbeatMap.size());
             Context context = new Context();
             ClusterManagerService.residualHeartbeatMap.forEach((k, v) -> {
                 try {
@@ -217,7 +217,7 @@ public class Tasks implements Provider<Configuration>, ConfigurationSettingListe
         }
     }
 
-//    @Schedule(cron = "0 0 0 0 1 ?")
+    //    @Schedule(cron = "0 0 0 0 1 ?")
     public void lockClean() {
         log.info("lock clean thread , prepare to run");
         long now = System.currentTimeMillis();

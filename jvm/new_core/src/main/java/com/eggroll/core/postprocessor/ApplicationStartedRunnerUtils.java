@@ -21,7 +21,7 @@ public class ApplicationStartedRunnerUtils {
         Set<Class<? extends ApplicationStartedRunner>> subClasses = new HashSet<>();
         // add core
         String corePackage = "com.eggroll.core";
-        if(!packages.contains(corePackage)){
+        if (!packages.contains(corePackage)) {
             packages.add(corePackage);
         }
         for (String scanPackage : packages) {

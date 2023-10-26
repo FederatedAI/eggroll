@@ -9,12 +9,11 @@ public class IndexContentTemp {
     private ContainerContent containerContent;
 
 
-    public IndexContentTemp(int index,ContainerContent containerContent) {
+    public IndexContentTemp(int index, ContainerContent containerContent) {
         this.index = index;
         this.containerContent = containerContent;
 
     }
-
 
 
 }

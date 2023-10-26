@@ -363,7 +363,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                 for (ErProcessor processor : processors) {
                     erResourceList.addAll(processor.getResources());
                 }
-                if (erResourceList.size()>0) {
+                if (erResourceList.size() > 0) {
                     Map<String, List<ErResource>> collect = erResourceList.stream().collect(Collectors.groupingBy(ErResource::getResourceType));
                     collect.forEach((k, resources) -> {
                         long sum = 0;
@@ -486,7 +486,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
 
                         nextGpuIndex = getNextGpuIndex(gpuResourcesInNode.getTotal(), extentionCache);
                         extentionCache.add(String.valueOf(nextGpuIndex));
-                        gpuResourcesInNode.setExtention(String.join(",",extentionCache));
+                        gpuResourcesInNode.setExtention(String.join(",", extentionCache));
                         gpuResourcesInNode.setExtentionCache(extentionCache);
                         ErResource newChangedResource = new ErResource();
                         BeanUtils.copyProperties(newChangedResource, changedResource);

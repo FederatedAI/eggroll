@@ -15,7 +15,7 @@ public class NodeExtendTransferServiceTest {
     public void test1() throws InterruptedException {
 
         ErEndpoint erEndpoint = new ErEndpoint("127.0.0.1", 4671);
-        ManagedChannel managedChannel = GrpcConnectionFactory.createManagedChannel(erEndpoint,true);
+        ManagedChannel managedChannel = GrpcConnectionFactory.createManagedChannel(erEndpoint, true);
 
         ExtendTransferServerGrpc.ExtendTransferServerStub stub = ExtendTransferServerGrpc.newStub(managedChannel);
 
@@ -26,12 +26,14 @@ public class NodeExtendTransferServiceTest {
                 System.err.println("receive log " + getLogResponse);
                 System.out.println("here-----11-");
             }
+
             @Override
             public void onError(Throwable throwable) {
                 System.err.println("receive log onError ");
                 System.out.println("here------22");
                 throwable.printStackTrace();
             }
+
             @Override
             public void onCompleted() {
                 System.out.println("here------33");
@@ -49,7 +51,7 @@ public class NodeExtendTransferServiceTest {
         requestSb.onNext(request);
         try {
             Thread.sleep(5000);
-        }catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
 

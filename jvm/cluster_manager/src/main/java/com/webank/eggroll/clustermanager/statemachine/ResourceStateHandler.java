@@ -39,12 +39,12 @@ public class ResourceStateHandler implements StateHandler<ErProcessor> {
 
     @Override
     public ErProcessor handle(Context context, ErProcessor data, String preStateParam, String desStateParam) {
-        if(data.getResources()==null || data.getResources().size() ==0){
-            List<ErResource> resourcesList= new ArrayList<>();
+        if (data.getResources() == null || data.getResources().size() == 0) {
+            List<ErResource> resourcesList = new ArrayList<>();
             ProcessorResource processorResource = new ProcessorResource();
             processorResource.setProcessorId(data.getId());
             List<ProcessorResource> list = processorResourceService.list(processorResource);
-            list.forEach((v)->resourcesList.add(v.toErResource()));
+            list.forEach((v) -> resourcesList.add(v.toErResource()));
             data.setResources(resourcesList);
         }
         String stateLine = preStateParam + "_" + desStateParam;
@@ -77,42 +77,42 @@ public class ResourceStateHandler implements StateHandler<ErProcessor> {
 
     public void preAllocateResource(ErProcessor erProcessor) {
         try {
-            LockUtils.lock(nodeResourceLockMap,erProcessor.getServerNodeId());
+            LockUtils.lock(nodeResourceLockMap, erProcessor.getServerNodeId());
             nodeResourceService.preAllocateResource(erProcessor);
             processorResourceService.preAllocateResource(erProcessor);
-        }finally {
-            LockUtils.unLock(nodeResourceLockMap,erProcessor.getServerNodeId());
+        } finally {
+            LockUtils.unLock(nodeResourceLockMap, erProcessor.getServerNodeId());
         }
     }
 
     public void preAllocateFailedResource(ErProcessor erProcessor) {
         try {
-            LockUtils.lock(nodeResourceLockMap,erProcessor.getServerNodeId());
+            LockUtils.lock(nodeResourceLockMap, erProcessor.getServerNodeId());
             nodeResourceService.preAllocateFailed(erProcessor);
             processorResourceService.preAllocateFailed(erProcessor);
-        }finally {
-            LockUtils.unLock(nodeResourceLockMap,erProcessor.getServerNodeId());
+        } finally {
+            LockUtils.unLock(nodeResourceLockMap, erProcessor.getServerNodeId());
         }
     }
 
 
     public void allocatedResource(ErProcessor erProcessor) {
         try {
-            LockUtils.lock(nodeResourceLockMap,erProcessor.getServerNodeId());
+            LockUtils.lock(nodeResourceLockMap, erProcessor.getServerNodeId());
             nodeResourceService.allocatedResource(erProcessor);
             processorResourceService.allocatedResource(erProcessor);
-        }finally {
-            LockUtils.unLock(nodeResourceLockMap,erProcessor.getServerNodeId());
+        } finally {
+            LockUtils.unLock(nodeResourceLockMap, erProcessor.getServerNodeId());
         }
     }
 
     public void returnResource(ErProcessor erProcessor) {
         try {
-            LockUtils.lock(nodeResourceLockMap,erProcessor.getServerNodeId());
+            LockUtils.lock(nodeResourceLockMap, erProcessor.getServerNodeId());
             nodeResourceService.returnResource(erProcessor);
             processorResourceService.returnResource(erProcessor);
-        }finally {
-            LockUtils.unLock(nodeResourceLockMap,erProcessor.getServerNodeId());
+        } finally {
+            LockUtils.unLock(nodeResourceLockMap, erProcessor.getServerNodeId());
         }
     }
 

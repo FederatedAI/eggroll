@@ -51,7 +51,9 @@ public class ServiceImpl<M extends BaseMapper<T>, T> implements IService<T> {
         return this.entityClass;
     }
 
-    /** @deprecated */
+    /**
+     * @deprecated
+     */
     @Deprecated
     protected boolean retBool(Integer result) {
         return SqlHelper.retBool(result);
@@ -66,8 +68,9 @@ public class ServiceImpl<M extends BaseMapper<T>, T> implements IService<T> {
     }
 
 
-
-    /** @deprecated */
+    /**
+     * @deprecated
+     */
     @Deprecated
 //    protected void closeSqlSession(SqlSession sqlSession) {
 //        SqlSessionUtils.closeSqlSession(sqlSession, GlobalConfigUtils.currentSessionFactory(this.entityClass));
@@ -93,7 +96,7 @@ public class ServiceImpl<M extends BaseMapper<T>, T> implements IService<T> {
         return SqlHelper.getSqlStatement(this.mapperClass, sqlMethod);
     }
 
-//    @Transactional(
+    //    @Transactional(
 //        rollbackFor = {Exception.class}
 //    )
     public boolean saveOrUpdate(T entity) {
@@ -105,7 +108,7 @@ public class ServiceImpl<M extends BaseMapper<T>, T> implements IService<T> {
             String keyProperty = tableInfo.getKeyProperty();
             Assert.notEmpty(keyProperty, "error: can not execute. because can not find column for id from entity!", new Object[0]);
             Object idVal = tableInfo.getPropertyValue(entity, tableInfo.getKeyProperty());
-            return !StringUtils.checkValNull(idVal) && !Objects.isNull(this.getById((Serializable)idVal)) ? this.updateById(entity) : this.save(entity);
+            return !StringUtils.checkValNull(idVal) && !Objects.isNull(this.getById((Serializable) idVal)) ? this.updateById(entity) : this.save(entity);
         }
     }
 
@@ -149,7 +152,7 @@ public class ServiceImpl<M extends BaseMapper<T>, T> implements IService<T> {
     }
 
     public Map<String, Object> getMap(Wrapper<T> queryWrapper) {
-        return (Map)SqlHelper.getObject(this.log, this.baseMapper.selectMaps(queryWrapper));
+        return (Map) SqlHelper.getObject(this.log, this.baseMapper.selectMaps(queryWrapper));
     }
 
     public <V> V getObj(Wrapper<T> queryWrapper, Function<? super Object, V> mapper) {
@@ -185,7 +188,7 @@ public class ServiceImpl<M extends BaseMapper<T>, T> implements IService<T> {
         return tableInfo.isWithLogicDelete() && tableInfo.isWithUpdateFill() ? this.removeById(id, true) : SqlHelper.retBool(this.getBaseMapper().deleteById(id));
     }
 
-//    @Transactional(
+    //    @Transactional(
 //        rollbackFor = {Exception.class}
 //    )
     public boolean removeByIds(Collection<?> list) {
@@ -208,7 +211,7 @@ public class ServiceImpl<M extends BaseMapper<T>, T> implements IService<T> {
         }
     }
 
-//    @Transactional(
+    //    @Transactional(
 //        rollbackFor = {Exception.class}
 //    )
     public boolean removeBatchByIds(Collection<?> list, int batchSize) {

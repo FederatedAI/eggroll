@@ -52,18 +52,18 @@ public class SessionMain {
         super();
     }
 
-    public ErSessionMeta  toErSessionMeta(){
-        ErSessionMeta  result = new ErSessionMeta();
+    public ErSessionMeta toErSessionMeta() {
+        ErSessionMeta result = new ErSessionMeta();
         result.setId(this.sessionId);
         result.setName(this.name);
         result.setTag(this.tag);
         result.setCreateTime(createdAt);
         result.setUpdateTime(updatedAt);
-        if(StringUtils.isNotEmpty(status))
+        if (StringUtils.isNotEmpty(status))
             result.setStatus(status);
         result.setTotalProcCount(totalProcCount);
         result.setActiveProcCount(activeProcCount);
-        return  result;
+        return result;
 
     }
 }

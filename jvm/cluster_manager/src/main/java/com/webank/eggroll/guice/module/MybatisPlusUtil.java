@@ -16,9 +16,9 @@ import java.lang.reflect.WildcardType;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MybatisPlusUtil  implements IGenericTypeResolver {
+public class MybatisPlusUtil implements IGenericTypeResolver {
 
-    static   Class<?>[] extractModelClass(Class<?> mapperClass) {
+    static Class<?>[] extractModelClass(Class<?> mapperClass) {
 
         List<Class<?>> result = new ArrayList<Class<?>>();
         Type[] types = mapperClass.getGenericInterfaces();
@@ -54,16 +54,16 @@ public class MybatisPlusUtil  implements IGenericTypeResolver {
 
         }
 
-        Class<?>[]  finalResult = new Class<?>[result.size()];
-        return  result.toArray(finalResult);
+        Class<?>[] finalResult = new Class<?>[result.size()];
+        return result.toArray(finalResult);
     }
 
     @Override
     public Class<?>[] resolveTypeArguments(Class<?> clazz, Class<?> genericIfc) {
-        return Generics.find(clazz,genericIfc);
+        return Generics.find(clazz, genericIfc);
     }
 
-    public  static void main(String[] args) {
+    public static void main(String[] args) {
 
         Class<?>[] xxs = SpringReflectionHelper.resolveTypeArguments(NodeResourceService.class, ServiceImpl.class);
         for (int i = 0; i < xxs.length; i++) {
@@ -84,4 +84,4 @@ public class MybatisPlusUtil  implements IGenericTypeResolver {
         }
     }
 
-    }
+}

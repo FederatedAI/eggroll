@@ -3,9 +3,10 @@ package com.eggroll.core.exceptions;
 import lombok.Data;
 
 @Data
-public class EggRollBaseException extends RuntimeException{
-    private  String code;
-    public EggRollBaseException(String message){
+public class EggRollBaseException extends RuntimeException {
+    private String code;
+
+    public EggRollBaseException(String message) {
         super(message);
 
     }

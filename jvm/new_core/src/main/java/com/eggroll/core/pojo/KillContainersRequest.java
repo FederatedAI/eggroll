@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 
 @Data
-public class KillContainersRequest  implements RpcMessage{
+public class KillContainersRequest implements RpcMessage {
 
     Logger log = LoggerFactory.getLogger(KillContainersRequest.class);
 
@@ -18,7 +18,7 @@ public class KillContainersRequest  implements RpcMessage{
 
     @Override
     public byte[] serialize() {
-                return Containers.KillContainersResponse.newBuilder()
+        return Containers.KillContainersResponse.newBuilder()
                 .setSessionId(this.getSessionId()).build().toByteArray();
     }
 
@@ -29,8 +29,8 @@ public class KillContainersRequest  implements RpcMessage{
             Containers.KillContainersRequest proto = Containers.KillContainersRequest.parseFrom(data);
             this.setSessionId(proto.getSessionId());
             this.setContainers(proto.getContainerIdsList());
-        }catch (Exception e){
-            log.error("KillContainersRequest.deserialize() error :" ,e);
+        } catch (Exception e) {
+            log.error("KillContainersRequest.deserialize() error :", e);
         }
 
     }

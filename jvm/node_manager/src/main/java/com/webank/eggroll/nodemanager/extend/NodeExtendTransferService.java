@@ -38,7 +38,7 @@ public class NodeExtendTransferService extends ExtendTransferServerGrpc.ExtendTr
             @Override
             public void onNext(Extend.GetLogRequest request) {
                 synchronized (this) {
-                    log.info("instance {} receive get log request for {}",request.getSessionId(),request.getLogType());
+                    log.info("instance {} receive get log request for {}", request.getSessionId(), request.getLogType());
                     if (status.equals(INIT_STATUS)) {
                         status = PREPARE_STATUS;
                         Thread thread = new Thread(new Runnable() {
@@ -48,7 +48,7 @@ public class NodeExtendTransferService extends ExtendTransferServerGrpc.ExtendTr
                                 while (tryCount < 20 && status.equals(PREPARE_STATUS)) {
                                     tryCount++;
                                     try {
-                                        log.info("try to create log stream holder {}, try count {}",request.getSessionId(),tryCount);
+                                        log.info("try to create log stream holder {}, try count {}", request.getSessionId(), tryCount);
                                         logStreamHolder = containersServiceHandler.createLogStream(request, responseObserver);
                                         if (status.equals(PREPARE_STATUS)) {
                                             logStreamHolder.run();
@@ -60,7 +60,7 @@ public class NodeExtendTransferService extends ExtendTransferServerGrpc.ExtendTr
                                     } catch (PathNotExistException e) {
                                         try {
                                             Thread.sleep(5000);
-                                            log.error("path not found for {}",e.getMessage());
+                                            log.error("path not found for {}", e.getMessage());
                                         } catch (InterruptedException ex) {
                                             ex.printStackTrace();
                                         }
@@ -84,7 +84,7 @@ public class NodeExtendTransferService extends ExtendTransferServerGrpc.ExtendTr
             @Override
             public void onError(Throwable throwable) {
                 status = ERROR_STATUS;
-                log.info("instance {} receive onError",instanceId);
+                log.info("instance {} receive onError", instanceId);
                 if (logStreamHolder != null) {
                     logStreamHolder.stop();
                 }
@@ -92,7 +92,7 @@ public class NodeExtendTransferService extends ExtendTransferServerGrpc.ExtendTr
 
             @Override
             public void onCompleted() {
-                log.info("instance {} receive onCompleted",instanceId);
+                log.info("instance {} receive onCompleted", instanceId);
                 status = STOP_STATUS;
                 if (logStreamHolder != null) {
                     logStreamHolder.stop();

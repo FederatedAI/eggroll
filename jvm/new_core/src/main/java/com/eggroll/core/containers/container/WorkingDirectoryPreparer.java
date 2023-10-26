@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-public class WorkingDirectoryPreparer{
+public class WorkingDirectoryPreparer {
     private Map<String, byte[]> files = new HashMap<>();
     private Map<String, byte[]> zippedFiles = new HashMap<>();
     ;
@@ -27,7 +27,6 @@ public class WorkingDirectoryPreparer{
             throw new Exception("workingDir is not set");
         }
     }
-
 
 
     private Path getModelsDir() throws Exception {
@@ -96,7 +95,7 @@ public class WorkingDirectoryPreparer{
 
                 zipInputStream.close();
             }
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -105,7 +104,7 @@ public class WorkingDirectoryPreparer{
     }
 
 
-    public void cleanup() throws Exception{
+    public void cleanup() throws Exception {
         if (need_cleanup && workingDir != null) {
             File workingDirFile = workingDir.toFile();
             workingDirFile.delete();

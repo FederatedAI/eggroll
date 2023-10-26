@@ -51,21 +51,21 @@ public class ProcessContainer implements ContainerTrait {
         Boolean output = null;
         try {
             workingDirectoryPreparer.prepare();
-            logger.info("ProcessContainer start command : {}",command);
+            logger.info("ProcessContainer start command : {}", command);
             ProcessBuilder processBuilder = new ProcessBuilder(command);
             processBuilder.directory(cwd.toFile());
-            if (stdOutFile!=null){
+            if (stdOutFile != null) {
                 File logFile = cwd.resolve(stdOutFile).toFile();
                 logFile.getParentFile().mkdirs();
-                if(!logFile.exists()){
+                if (!logFile.exists()) {
                     logFile.createNewFile();
                 }
                 processBuilder.redirectOutput(logFile);
             }
-            if (stdOutFile!=null){
+            if (stdOutFile != null) {
                 File logFile = cwd.resolve(stdOutFile).toFile();
                 logFile.getParentFile().mkdirs();
-                if(!logFile.exists()){
+                if (!logFile.exists()) {
                     logFile.createNewFile();
                 }
                 processBuilder.redirectError(logFile);
@@ -75,8 +75,8 @@ public class ProcessContainer implements ContainerTrait {
             extraEnv.forEach(environment::put);
             process = processBuilder.start();
             output = process.isAlive();
-        }catch (Exception e){
-            logger.error("start processContainer error : ",e);
+        } catch (Exception e) {
+            logger.error("start processContainer error : ", e);
         } finally {
             try {
                 workingDirectoryPreparer.cleanup();

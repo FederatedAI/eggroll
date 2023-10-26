@@ -15,7 +15,7 @@ public class SessionRanksTemp {
 
     private Integer index;
 
-    public SessionRanksTemp(Long serverNodeId, Long containerId,Integer globalRank,Integer localRank,Integer index) {
+    public SessionRanksTemp(Long serverNodeId, Long containerId, Integer globalRank, Integer localRank, Integer index) {
         this.serverNodeId = serverNodeId;
         this.containerId = containerId;
         this.globalRank = globalRank;

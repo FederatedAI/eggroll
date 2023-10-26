@@ -29,17 +29,18 @@ import static com.eggroll.core.grpc.CommandUri.*;
 
 
 public class NodeManagerClient {
-  Logger logger = LoggerFactory.getLogger(NodeManagerClient.class);
+    Logger logger = LoggerFactory.getLogger(NodeManagerClient.class);
 
-  CommandClient  commandClient;
-  ErEndpoint nodeManagerEndpoint;
-  public  NodeManagerClient(ErEndpoint nodeManagerEndpoint){
+    CommandClient commandClient;
+    ErEndpoint nodeManagerEndpoint;
+
+    public NodeManagerClient(ErEndpoint nodeManagerEndpoint) {
 //    logger.info("create new  nodemanager client {}",nodeManagerEndpoint);
-    if (nodeManagerEndpoint == null )
-      throw new IllegalArgumentException("failed to create NodeManagerClient for endpoint: " + nodeManagerEndpoint);
-    this.nodeManagerEndpoint = nodeManagerEndpoint;
-    commandClient= new CommandClient();
-  }
+        if (nodeManagerEndpoint == null)
+            throw new IllegalArgumentException("failed to create NodeManagerClient for endpoint: " + nodeManagerEndpoint);
+        this.nodeManagerEndpoint = nodeManagerEndpoint;
+        commandClient = new CommandClient();
+    }
 
 
 //  public static final String startContainers = "v1/node_manager/processor/startContainers";
@@ -54,69 +55,69 @@ public class NodeManagerClient {
 //    return response;
 //  }
 
-  public ErSessionMeta  startContainers(Context context, ErSessionMeta sessionMeta) {
-    byte[] responseData = commandClient.call(context,nodeManagerEndpoint, startContainers,sessionMeta.serialize());
-    ErSessionMeta response = new ErSessionMeta();
-    response.deserialize(responseData);
-    return response;
-  }
+    public ErSessionMeta startContainers(Context context, ErSessionMeta sessionMeta) {
+        byte[] responseData = commandClient.call(context, nodeManagerEndpoint, startContainers, sessionMeta.serialize());
+        ErSessionMeta response = new ErSessionMeta();
+        response.deserialize(responseData);
+        return response;
+    }
 
-  public ErSessionMeta  stopContainers(Context context,ErSessionMeta sessionMeta) {
-    byte[] responseData = commandClient.call(context,nodeManagerEndpoint, stopContainers,sessionMeta.serialize());
-    ErSessionMeta response = new ErSessionMeta();
-    response.deserialize(responseData);
-    return response;
-  }
-
-
-  public StartContainersResponse startFlowJobContainers(Context context,StartFlowContainersRequest startFlowContainersRequest) {
-    byte[] responseData = commandClient.call(context,nodeManagerEndpoint, startFlowJobContainers,startFlowContainersRequest.serialize());
-    StartContainersResponse response = new StartContainersResponse();
-    response.deserialize(responseData);
-    return response;
-  }
-
-  public StartContainersResponse startJobContainers(Context context,StartContainersRequest startContainersRequest) {
-    byte[] responseData = commandClient.call(context,nodeManagerEndpoint, startJobContainers,startContainersRequest.serialize());
-    StartContainersResponse response = new StartContainersResponse();
-    response.deserialize(responseData);
-    return response;
-  }
+    public ErSessionMeta stopContainers(Context context, ErSessionMeta sessionMeta) {
+        byte[] responseData = commandClient.call(context, nodeManagerEndpoint, stopContainers, sessionMeta.serialize());
+        ErSessionMeta response = new ErSessionMeta();
+        response.deserialize(responseData);
+        return response;
+    }
 
 
-  public ErSessionMeta  killContainers(Context context,ErSessionMeta sessionMeta) {
-    byte[] responseData = commandClient.call(context,nodeManagerEndpoint, killContainers,sessionMeta.serialize());
-    ErSessionMeta response = new ErSessionMeta();
-    response.deserialize(responseData);
-    return response;
-  }
+    public StartContainersResponse startFlowJobContainers(Context context, StartFlowContainersRequest startFlowContainersRequest) {
+        byte[] responseData = commandClient.call(context, nodeManagerEndpoint, startFlowJobContainers, startFlowContainersRequest.serialize());
+        StartContainersResponse response = new StartContainersResponse();
+        response.deserialize(responseData);
+        return response;
+    }
 
-  public KillContainersResponse killJobContainers(Context context,KillContainersRequest killContainersRequest){
-    byte[] responseData = commandClient.call(context,nodeManagerEndpoint, killJobContainers, killContainersRequest.serialize());
-    KillContainersResponse response = new KillContainersResponse();
-    response.deserialize(responseData);
-    return response;
-  }
-
-  public ErProcessor checkNodeProcess( Context context,ErProcessor processor){
-    byte[] responseData = commandClient.call(context,nodeManagerEndpoint, checkNodeProcess,processor.serialize());
-    ErProcessor response = new ErProcessor();
-    response.deserialize(responseData);
-    return response;
-  }
-
-  public DownloadContainersResponse downloadContainers(Context context,DownloadContainersRequest downloadContainersRequest) {
-    byte[] responseData = commandClient.call(context, nodeManagerEndpoint, downloadContainers, downloadContainersRequest.serialize());
-    DownloadContainersResponse response = new DownloadContainersResponse();
-    response.deserialize(responseData);
-    return response;
-  }
+    public StartContainersResponse startJobContainers(Context context, StartContainersRequest startContainersRequest) {
+        byte[] responseData = commandClient.call(context, nodeManagerEndpoint, startJobContainers, startContainersRequest.serialize());
+        StartContainersResponse response = new StartContainersResponse();
+        response.deserialize(responseData);
+        return response;
+    }
 
 
-  //  def downloadContainers(downloadContainersRequest: DownloadContainersRequest): DownloadContainersResponse =
+    public ErSessionMeta killContainers(Context context, ErSessionMeta sessionMeta) {
+        byte[] responseData = commandClient.call(context, nodeManagerEndpoint, killContainers, sessionMeta.serialize());
+        ErSessionMeta response = new ErSessionMeta();
+        response.deserialize(responseData);
+        return response;
+    }
+
+    public KillContainersResponse killJobContainers(Context context, KillContainersRequest killContainersRequest) {
+        byte[] responseData = commandClient.call(context, nodeManagerEndpoint, killJobContainers, killContainersRequest.serialize());
+        KillContainersResponse response = new KillContainersResponse();
+        response.deserialize(responseData);
+        return response;
+    }
+
+    public ErProcessor checkNodeProcess(Context context, ErProcessor processor) {
+        byte[] responseData = commandClient.call(context, nodeManagerEndpoint, checkNodeProcess, processor.serialize());
+        ErProcessor response = new ErProcessor();
+        response.deserialize(responseData);
+        return response;
+    }
+
+    public DownloadContainersResponse downloadContainers(Context context, DownloadContainersRequest downloadContainersRequest) {
+        byte[] responseData = commandClient.call(context, nodeManagerEndpoint, downloadContainers, downloadContainersRequest.serialize());
+        DownloadContainersResponse response = new DownloadContainersResponse();
+        response.deserialize(responseData);
+        return response;
+    }
+
+
+    //  def downloadContainers(downloadContainersRequest: DownloadContainersRequest): DownloadContainersResponse =
 //          commandClient.call(ContainerCommands.downloadContainers, downloadContainersRequest)
 
-  //  def checkNodeProcess(processor: ErProcessor): ErProcessor =
+    //  def checkNodeProcess(processor: ErProcessor): ErProcessor =
 //  commandClient.call[ErProcessor](ResouceCommands.checkNodeProcess, processor)
 
 
@@ -143,13 +144,6 @@ public class NodeManagerClient {
 //
 //  def checkNodeProcess(processor: ErProcessor): ErProcessor =
 //  commandClient.call[ErProcessor](ResouceCommands.checkNodeProcess, processor)
-
-
-
-
-
-
-
 
 
 }

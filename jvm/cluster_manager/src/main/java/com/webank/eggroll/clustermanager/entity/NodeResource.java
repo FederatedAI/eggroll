@@ -7,6 +7,7 @@ import com.eggroll.core.pojo.ErResource;
 import lombok.Data;
 
 import java.util.Date;
+
 @Data
 @TableName(value = "node_resource", autoResultMap = true)
 public class NodeResource {
@@ -33,7 +34,7 @@ public class NodeResource {
 
     private Date updatedAt;
 
-    public ErResource toErResource(){
+    public ErResource toErResource() {
         ErResource erResource = new ErResource();
         erResource.setResourceId(this.resourceId);
         erResource.setResourceType(this.resourceType);

@@ -44,7 +44,7 @@ public class ZooKeeperRegistration {
     public synchronized void register() {
         try {
             if (ENABLED) {
-                String url = generateZkUrl(MetaInfo.ZOOKEEPER_HOST,MetaInfo.ZOOKEEPER_PORT);
+                String url = generateZkUrl(MetaInfo.ZOOKEEPER_HOST, MetaInfo.ZOOKEEPER_PORT);
 
                 //String urls = MetaInfo.ZOOKEEPER_HOST+":"+2181;
                 String localIp = NetUtils.getLocalIp();
@@ -98,7 +98,6 @@ public class ZooKeeperRegistration {
         sb.append(":" + port);
         return sb.toString();
     }
-
 
 
 }

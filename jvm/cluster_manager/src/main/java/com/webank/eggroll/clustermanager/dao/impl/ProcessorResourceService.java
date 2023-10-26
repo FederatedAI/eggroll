@@ -21,8 +21,8 @@ public class ProcessorResourceService extends EggRollBaseServiceImpl<ProcessorRe
 
     @Override
     public void preAllocateResource(ErProcessor erProcessor) {
-        for(ErResource erResource: erProcessor.getResources()){
-            ProcessorResource  processorResource = new  ProcessorResource();
+        for (ErResource erResource : erProcessor.getResources()) {
+            ProcessorResource processorResource = new ProcessorResource();
             processorResource.setProcessorId(erProcessor.getId());
             processorResource.setResourceType(erResource.getResourceType());
             processorResource.setAllocated(erResource.getAllocated());
@@ -36,29 +36,29 @@ public class ProcessorResourceService extends EggRollBaseServiceImpl<ProcessorRe
 
     @Override
     public void preAllocateFailed(ErProcessor erProcessor) {
-        updateResource(erProcessor,"return");
+        updateResource(erProcessor, "return");
     }
 
     @Override
     public void allocatedResource(ErProcessor erProcessor) {
-        updateResource(erProcessor,"allocated");
+        updateResource(erProcessor, "allocated");
     }
 
     @Override
     public void returnResource(ErProcessor erProcessor) {
-        updateResource(erProcessor,"return");
+        updateResource(erProcessor, "return");
     }
 
-    public void updateResource(ErProcessor erProcessor , String desState){
-        for(ErResource erResource: erProcessor.getResources()){
-            ProcessorResource  processorResource = new  ProcessorResource();
+    public void updateResource(ErProcessor erProcessor, String desState) {
+        for (ErResource erResource : erProcessor.getResources()) {
+            ProcessorResource processorResource = new ProcessorResource();
             processorResource.setStatus(desState);
             LambdaQueryWrapper<ProcessorResource> updateWrapper = new LambdaQueryWrapper<>();
-            updateWrapper.eq(ProcessorResource::getProcessorId,erResource.getProcessorId())
-                    .eq(ProcessorResource::getSessionId,erResource.getSessionId())
-                    .eq(ProcessorResource::getServerNodeId,erResource.getServerNodeId())
-                    .eq(ProcessorResource::getResourceType,erResource.getResourceType());
-            this.update(processorResource,updateWrapper);
+            updateWrapper.eq(ProcessorResource::getProcessorId, erResource.getProcessorId())
+                    .eq(ProcessorResource::getSessionId, erResource.getSessionId())
+                    .eq(ProcessorResource::getServerNodeId, erResource.getServerNodeId())
+                    .eq(ProcessorResource::getResourceType, erResource.getResourceType());
+            this.update(processorResource, updateWrapper);
         }
     }
 }

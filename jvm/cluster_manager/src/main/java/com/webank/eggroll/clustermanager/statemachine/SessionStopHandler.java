@@ -17,36 +17,38 @@ import java.util.List;
 
 
 @Singleton
-public class SessionStopHandler extends AbstractSessionStateHandler{
+public class SessionStopHandler extends AbstractSessionStateHandler {
     @Inject
     SessionMainService sessionMainService;
 
     @Override
-    public  void asynPostHandle(Context context, ErSessionMeta data , String preStateParam, String desStateParam){
-        ErServerNode  erServerNodeExample =new  ErServerNode();
+    public void asynPostHandle(Context context, ErSessionMeta data, String preStateParam, String desStateParam) {
+        ErServerNode erServerNodeExample = new ErServerNode();
         erServerNodeExample.setNodeType(ServerNodeTypes.NODE_MANAGER.name());
         erServerNodeExample.setStatus(ServerNodeStatus.HEALTHY.name());
         List<ErServerNode> serverNodes = serverNodeService.getListByErServerNode(erServerNodeExample);
         serverNodes.parallelStream().forEach(serverNode -> {
-            try{
+            try {
                 NodeManagerClient nodeManagerClient = new NodeManagerClient(serverNode.getEndpoint());
-                nodeManagerClient.stopContainers(context,data);
-            }catch (Exception e){
-                logger.error("send stop command error",e);
+                nodeManagerClient.stopContainers(context, data);
+            } catch (Exception e) {
+                logger.error("send stop command error", e);
             }
         });
-    };
+    }
+
+    ;
 
     @Override
-    public ErSessionMeta prepare(Context context, ErSessionMeta data , String preStateParam, String desStateParam) {
-        ErSessionMeta  erSessionMeta =sessionMainService.getSession(data.getId(),true,false,false);
-        if(erSessionMeta==null){
+    public ErSessionMeta prepare(Context context, ErSessionMeta data, String preStateParam, String desStateParam) {
+        ErSessionMeta erSessionMeta = sessionMainService.getSession(data.getId(), true, false, false);
+        if (erSessionMeta == null) {
             throw new RuntimeException("");
         }
-        if(StringUtils.isNotEmpty(preStateParam)&&preStateParam.equals(erSessionMeta.getStatus())){
+        if (StringUtils.isNotEmpty(preStateParam) && preStateParam.equals(erSessionMeta.getStatus())) {
             throw new RuntimeException("");
         }
-        if(data.getActiveProcCount()!=null)
+        if (data.getActiveProcCount() != null)
             erSessionMeta.setActiveProcCount(data.getActiveProcCount());
 
         this.openAsynPostHandle(context);
@@ -55,10 +57,10 @@ public class SessionStopHandler extends AbstractSessionStateHandler{
 
     @Override
     public ErSessionMeta handle(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam) {
-        updateStatus(context,erSessionMeta,preStateParam,desStateParam);
-        erSessionMeta.getProcessors().forEach(processor ->{
-            processorStateMachine.changeStatus(context,processor,null, ProcessorStatus.STOPPED.name());
+        updateStatus(context, erSessionMeta, preStateParam, desStateParam);
+        erSessionMeta.getProcessors().forEach(processor -> {
+            processorStateMachine.changeStatus(context, processor, null, ProcessorStatus.STOPPED.name());
         });
-        return sessionMainService.getSession(erSessionMeta.getId(),true,false,false);
+        return sessionMainService.getSession(erSessionMeta.getId(), true, false, false);
     }
 }

@@ -24,7 +24,7 @@ public class MybatisPlusSqlSessionProvider implements Provider<SqlSessionFactory
 
     @Inject
     public void createNewSqlSessionFactory(Configuration configuration) {
-        this.sqlSessionFactory =  new MybatisSqlSessionFactoryBuilder().build(configuration);
+        this.sqlSessionFactory = new MybatisSqlSessionFactoryBuilder().build(configuration);
     }
 
     public SqlSessionFactory get() {

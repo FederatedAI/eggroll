@@ -2,13 +2,13 @@ package com.eggroll.core.invoke;
 
 import java.lang.reflect.Method;
 
-public class  InvokeInfo{
-        public InvokeInfo(String uri,Object object, Method method,Class paramClass){
-            this.uri = uri;
-            this.object = object;
-            this.method = method;
-            this.paramClass = paramClass;
-        }
+public class InvokeInfo {
+    public InvokeInfo(String uri, Object object, Method method, Class paramClass) {
+        this.uri = uri;
+        this.object = object;
+        this.method = method;
+        this.paramClass = paramClass;
+    }
 
     public String getUri() {
         return uri;
@@ -42,11 +42,12 @@ public class  InvokeInfo{
         this.paramClass = paramClass;
     }
 
-    String   uri;
-        Object   object;
-        Method method;
-        Class    paramClass;
-        public  String toString(){
-            return  uri;
-        }
+    String uri;
+    Object object;
+    Method method;
+    Class paramClass;
+
+    public String toString() {
+        return uri;
     }
+}

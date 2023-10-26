@@ -91,7 +91,7 @@ public class ErServerNode implements RpcMessage {
             builder.setStatus(this.status);
         if (this.endpoint != null)
             builder.setEndpoint(endpoint.toProto());
-        if(this.resources != null){
+        if (this.resources != null) {
             builder.addAllResources(this.resources.stream().map(ErResource::toProto).collect(Collectors.toList()));
         }
         return builder.build();

@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 @Data
-public class StartFlowContainersRequest implements RpcMessage{
+public class StartFlowContainersRequest implements RpcMessage {
     public String sessionId;
     public String name;
     public List<String> commandArguments;

@@ -35,25 +35,24 @@ import java.util.concurrent.TimeUnit;
 public class GrpcServer implements ApplicationStartedRunner {
 
 
-
     Logger logger = LoggerFactory.getLogger(GrpcServer.class);
 
     @Inject
-    public GrpcServer(){
+    public GrpcServer() {
     }
 
     @Inject
-    CommandServiceProvider  commandServiceProvider;
+    CommandServiceProvider commandServiceProvider;
 
 
     @Inject
     ClusterExtendTransferService clusterExtendTransferService;
 
     public Server createServer(String host,
-                        int port,
-                        List<BindableService> grpcServices,
-                        List<ServerServiceDefinition> bindServices,
-                        Map<String, String> options) throws SSLException {
+                               int port,
+                               List<BindableService> grpcServices,
+                               List<ServerServiceDefinition> bindServices,
+                               Map<String, String> options) throws SSLException {
 
 
         if (port < 0) throw new IllegalArgumentException("${modulePrefix} cannot listen to port <= 0");
@@ -87,7 +86,7 @@ public class GrpcServer implements ApplicationStartedRunner {
         Integer maxConnectionIdle = MetaInfo.CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONNECTION_IDLE_SEC;
         Integer maxConnectionAge = MetaInfo.CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONNECTION_AGE_SEC;
         Integer maxConnectionAgeGrace = MetaInfo.CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONNECTION_AGE_GRACE_SEC;
-        ThreadFactory   threadFactory = new ThreadFactoryBuilder().setDaemon(false).setNameFormat("GRPC-SERVER" + "-%d").build();
+        ThreadFactory threadFactory = new ThreadFactoryBuilder().setDaemon(false).setNameFormat("GRPC-SERVER" + "-%d").build();
         final NettyServerBuilder nettyServerBuilder1 = nettyServerBuilder
                 .executor(Executors.newCachedThreadPool(threadFactory))
                 .maxConcurrentCallsPerConnection(maxConcurrentCallPerConnection)
@@ -133,9 +132,9 @@ public class GrpcServer implements ApplicationStartedRunner {
 //                    s"key crt path: ${keyCrt.getAbsoluteFile}, " +
 //                    s"ca crt path: ${caCrt.getAbsolutePath}")
         } else {
-            logger.info("gRPC server at {} starting in insecure mode" ,port);
+            logger.info("gRPC server at {} starting in insecure mode", port);
         }
-       return nettyServerBuilder.build();
+        return nettyServerBuilder.build();
     }
 
 
@@ -145,9 +144,9 @@ public class GrpcServer implements ApplicationStartedRunner {
     }
 
     @Override
-    public void run(String[] args) throws Exception{
+    public void run(String[] args) throws Exception {
 
-        Server  server =  createServer("0.0.0.0",MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT, Lists.newArrayList(commandServiceProvider,clusterExtendTransferService),Lists.newArrayList(), Maps.newHashMap());
+        Server server = createServer("0.0.0.0", MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT, Lists.newArrayList(commandServiceProvider, clusterExtendTransferService), Lists.newArrayList(), Maps.newHashMap());
         server.start();
     }
 }

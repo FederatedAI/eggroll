@@ -6,7 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Data
-public class QueryJobStatusRequest implements RpcMessage{
+public class QueryJobStatusRequest implements RpcMessage {
     Logger log = LoggerFactory.getLogger(QueryJobStatusRequest.class);
     private String sessionId;
 

@@ -1,6 +1,6 @@
 package com.eggroll.core.exceptions;
 
-public class ConfigErrorException extends EggRollBaseException{
+public class ConfigErrorException extends EggRollBaseException {
 
     public ConfigErrorException(String message) {
         super(message);

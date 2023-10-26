@@ -8,10 +8,10 @@ import java.util.concurrent.TimeUnit;
 
 public class CacheUtil {
 
-    public static Cache<String, ErProcessor> buildErProcessorCache(int  maxsize, int expireTime, TimeUnit timeUnit){
+    public static Cache<String, ErProcessor> buildErProcessorCache(int maxsize, int expireTime, TimeUnit timeUnit) {
         return CacheBuilder.newBuilder()
                 .maximumSize(maxsize)
-                .expireAfterWrite(expireTime,timeUnit)
+                .expireAfterWrite(expireTime, timeUnit)
                 .build();
 
     }

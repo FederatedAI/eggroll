@@ -30,8 +30,7 @@ public class FlowTaskContainerBuildConfig {
                                         List<String> commandArguments,
                                         Map<String, String> environmentVariables,
                                         Map<String, String> options,
-                                        String scriptPath) throws Exception
-    {
+                                        String scriptPath) throws Exception {
 
         this.sessionId = sessionId;
         this.processorId = processorId;

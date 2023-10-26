@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
 import java.util.Date;
+
 @TableName(value = "session_option", autoResultMap = true)
 public class SessionOption {
     @TableId(type = IdType.AUTO)

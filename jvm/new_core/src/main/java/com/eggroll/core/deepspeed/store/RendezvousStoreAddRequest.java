@@ -23,7 +23,7 @@ public class RendezvousStoreAddRequest implements RpcMessage {
     }
 
     @Override
-    public void deserialize(byte[] data){
+    public void deserialize(byte[] data) {
         try {
             Deepspeed.StoreAddRequest proto = Deepspeed.StoreAddRequest.parseFrom(data);
             this.prefix = proto.getPrefix();

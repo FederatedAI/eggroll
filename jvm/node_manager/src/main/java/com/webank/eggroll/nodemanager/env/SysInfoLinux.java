@@ -205,8 +205,6 @@ public class SysInfoLinux extends SysInfo {
     }
 
 
-
-
     /**
      * Get current time.
      *

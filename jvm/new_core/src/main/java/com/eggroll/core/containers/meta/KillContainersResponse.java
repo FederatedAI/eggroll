@@ -8,14 +8,14 @@ import org.slf4j.LoggerFactory;
 
 @Data
 
-public class KillContainersResponse    implements RpcMessage {
+public class KillContainersResponse implements RpcMessage {
 
 
     private String sessionId;
 
     @Override
     public byte[] serialize() {
-               return Containers.KillContainersResponse.newBuilder()
+        return Containers.KillContainersResponse.newBuilder()
                 .setSessionId(this.sessionId).build().toByteArray();
     }
 
@@ -26,7 +26,7 @@ public class KillContainersResponse    implements RpcMessage {
             Containers.KillContainersResponse proto = Containers.KillContainersResponse.parseFrom(data);
             this.setSessionId(proto.getSessionId());
 
-        }catch (Exception e){
+        } catch (Exception e) {
 
         }
 

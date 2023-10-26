@@ -15,7 +15,7 @@ public class CustomizedJobRequest {
     Logger log = LoggerFactory.getLogger(CustomizedJobRequest.class);
 
     // 定制类型: repeat(每个节点重复完成指定进程), noRepeat（所有节点共同完成指定进程）
-    private String customType =  StringConstants.EMPTY;
+    private String customType = StringConstants.EMPTY;
 
     private int processorSize;
 

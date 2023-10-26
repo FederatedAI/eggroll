@@ -40,17 +40,16 @@ public class TestDeepspeedDownload {
 //                                         contentType: ContentType.ContentType)
 
 
-
     @Test
     public void testDownload() {
         //new ErSessionMeta(id = "testing_reg"+System.currentTimeMillis()+"_"+scala.util.Random.nextInt(100).toString, options = Map(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE -> "2"))
         ClusterManagerClient clusterManagerClient = new ClusterManagerClient(endpoint);
         PrepareJobDownloadRequest prepareJobDownloadRequest = new PrepareJobDownloadRequest();
         prepareJobDownloadRequest.setSessionId("deepspeed_session_20230705-175508-766715");
-        PrepareJobDownloadResponse prepareJobDownloadResponse = clusterManagerClient.prepareJobDownload(new Context(),prepareJobDownloadRequest);
-        String  content = prepareJobDownloadResponse.getContent();
+        PrepareJobDownloadResponse prepareJobDownloadResponse = clusterManagerClient.prepareJobDownload(new Context(), prepareJobDownloadRequest);
+        String content = prepareJobDownloadResponse.getContent();
 
-        System.err.println("content ========="+content);
+        System.err.println("content =========" + content);
 //        message DsDownloadRequest {
 //            string session_id = 1;
 //            repeated int32 ranks = 2;
@@ -60,14 +59,14 @@ public class TestDeepspeedDownload {
 //        }
 
 
-
-
-        Map  contentMap = JsonUtil.json2Object(content,Map.class);
-        contentMap.forEach((k,v)->{
-            ManagedChannel managedChannel = GrpcConnectionFactory.createManagedChannel(new ErEndpoint(k.toString()),true);
+        Map contentMap = JsonUtil.json2Object(content, Map.class);
+        contentMap.forEach((k, v) -> {
+            ManagedChannel managedChannel = GrpcConnectionFactory.createManagedChannel(new ErEndpoint(k.toString()), true);
             DsDownloadServiceGrpc.DsDownloadServiceStub stub = DsDownloadServiceGrpc.newStub(managedChannel);
-            List  ranks =(List)((List)v).stream().map((n)->{ return ((List)n).get(2);}).collect(Collectors.toList());
-            System.err.println("xxxxxxxxxxxx"+ranks);
+            List ranks = (List) ((List) v).stream().map((n) -> {
+                return ((List) n).get(2);
+            }).collect(Collectors.toList());
+            System.err.println("xxxxxxxxxxxx" + ranks);
             DeepspeedDownload.DsDownloadRequest dsDownloadRequest = DeepspeedDownload.DsDownloadRequest.newBuilder().
                     setSessionId("deepspeed_session_20230705-175508-766715")
                     .addAllRanks(ranks).setCompressLevel(1).setCompressMethod("zip")
@@ -75,7 +74,7 @@ public class TestDeepspeedDownload {
             stub.downloadBySplit(dsDownloadRequest, new StreamObserver<DeepspeedDownload.DsDownloadSplitResponse>() {
                 @Override
                 public void onNext(DeepspeedDownload.DsDownloadSplitResponse dsDownloadSplitResponse) {
-                    System.err.println("onNext:"+dsDownloadSplitResponse);
+                    System.err.println("onNext:" + dsDownloadSplitResponse);
                 }
 
                 @Override
@@ -90,8 +89,6 @@ public class TestDeepspeedDownload {
                 }
             });
         });
-
-
 
 
         //  TransferServiceGrpc.TransferServiceStub.newStub()
@@ -111,58 +108,57 @@ public class TestDeepspeedDownload {
 //        clusterManagerClient.getOrCreateSession(getOrCreateSessionMeta);
 //        getOrCreateSessionMeta.setId("testx_"+System.currentTimeMillis());
 //        clusterManagerClient.getOrCreateSession(getOrCreateSessionMeta);
-   //     logger.info("====================>result.id = {} , result.status = {}" ,result.getId(),result.getStatus());
+        //     logger.info("====================>result.id = {} , result.status = {}" ,result.getId(),result.getStatus());
     }
 
     @Test
     public void testGetSession() {
         ErSessionMeta getOrCreateSessionMeta = new ErSessionMeta();
         getOrCreateSessionMeta.setId("testx_1692327334950");
-        Map<String,String> options = new HashMap<>();
-        options.put(Dict.CONFKEY_SESSION_PROCESSORS_PER_NODE ,"2");
+        Map<String, String> options = new HashMap<>();
+        options.put(Dict.CONFKEY_SESSION_PROCESSORS_PER_NODE, "2");
         getOrCreateSessionMeta.setOptions(options);
         getOrCreateSessionMeta.setActiveProcCount(1);
         getOrCreateSessionMeta.setTotalProcCount(4);
         ClusterManagerClient clusterManagerClient = new ClusterManagerClient(endpoint);
-        ErSessionMeta result = clusterManagerClient.getSession(new Context(),getOrCreateSessionMeta);
-        logger.info("====================>result.id = {} , result.status = {}" ,result.getId(),result.getStatus());
+        ErSessionMeta result = clusterManagerClient.getSession(new Context(), getOrCreateSessionMeta);
+        logger.info("====================>result.id = {} , result.status = {}", result.getId(), result.getStatus());
     }
 
     @Test
     public void testKillSession() {
         ErSessionMeta getOrCreateSessionMeta = new ErSessionMeta();
         getOrCreateSessionMeta.setId("testx_1692342357633");
-        Map<String,String> options = new HashMap<>();
-        options.put(Dict.CONFKEY_SESSION_PROCESSORS_PER_NODE ,"2");
+        Map<String, String> options = new HashMap<>();
+        options.put(Dict.CONFKEY_SESSION_PROCESSORS_PER_NODE, "2");
         getOrCreateSessionMeta.setOptions(options);
         getOrCreateSessionMeta.setActiveProcCount(1);
         getOrCreateSessionMeta.setTotalProcCount(4);
         ClusterManagerClient clusterManagerClient = new ClusterManagerClient(endpoint);
-        ErSessionMeta result = clusterManagerClient.killSession(new Context(),getOrCreateSessionMeta);
-        logger.info("====================>result.id = {} , result.status = {}" ,result.getId(),result.getStatus());
+        ErSessionMeta result = clusterManagerClient.killSession(new Context(), getOrCreateSessionMeta);
+        logger.info("====================>result.id = {} , result.status = {}", result.getId(), result.getStatus());
     }
 
     @Test
     public void testKillAllSession() {
         ErSessionMeta getOrCreateSessionMeta = new ErSessionMeta();
         getOrCreateSessionMeta.setId("testx_1692263572251");
-        Map<String,String> options = new HashMap<>();
-        options.put(Dict.CONFKEY_SESSION_PROCESSORS_PER_NODE ,"2");
+        Map<String, String> options = new HashMap<>();
+        options.put(Dict.CONFKEY_SESSION_PROCESSORS_PER_NODE, "2");
         getOrCreateSessionMeta.setOptions(options);
         getOrCreateSessionMeta.setActiveProcCount(1);
         getOrCreateSessionMeta.setTotalProcCount(4);
         ClusterManagerClient clusterManagerClient = new ClusterManagerClient(endpoint);
-        ErSessionMeta result = clusterManagerClient.killAllSession(new Context(),getOrCreateSessionMeta);
-        logger.info("====================>result.id = {} , result.status = {}" ,result.getId(),result.getStatus());
+        ErSessionMeta result = clusterManagerClient.killAllSession(new Context(), getOrCreateSessionMeta);
+        logger.info("====================>result.id = {} , result.status = {}", result.getId(), result.getStatus());
     }
 
 
-
-    public  static  void  main(String[] args){
+    public static void main(String[] args) {
 
         System.err.println("===============");
 
-        TestDeepspeedDownload  testDeepspeedDownload = new  TestDeepspeedDownload();
+        TestDeepspeedDownload testDeepspeedDownload = new TestDeepspeedDownload();
         testDeepspeedDownload.testDownload();
         //testUnaryCall();
         CountDownLatch countDownLatch = new CountDownLatch(1);

@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.util.Date;
+
 @TableName(value = "store_locator", autoResultMap = true)
 @Data
 public class StoreLocator {

@@ -9,39 +9,39 @@ import org.apache.commons.lang3.StringUtils;
 import java.util.List;
 
 @Data
-public class PrepareJobDownloadRequest  implements RpcMessage {
+public class PrepareJobDownloadRequest implements RpcMessage {
 
-    String  sessionId;
+    String sessionId;
     List<Integer> ranks;
     String compressMethod;
-    Integer compressLevel=1;
-    String  contentType;
+    Integer compressLevel = 1;
+    String contentType;
 
     @Override
     public byte[] serialize() {
-        DeepspeedDownload.PrepareDownloadRequest.Builder  builder = DeepspeedDownload.PrepareDownloadRequest.newBuilder();
+        DeepspeedDownload.PrepareDownloadRequest.Builder builder = DeepspeedDownload.PrepareDownloadRequest.newBuilder();
         builder.setSessionId(sessionId);
-        if(ranks!=null)
+        if (ranks != null)
             builder.addAllRanks(ranks);
-        if(StringUtils.isNotEmpty(compressMethod))
-            builder .setCompressMethod(compressMethod);
+        if (StringUtils.isNotEmpty(compressMethod))
+            builder.setCompressMethod(compressMethod);
 
-        builder .setCompressLevel(compressLevel);
-               // .setContentType(Containers.ContentType.valueOf(contentType))
-        return   builder.build().toByteArray();
+        builder.setCompressLevel(compressLevel);
+        // .setContentType(Containers.ContentType.valueOf(contentType))
+        return builder.build().toByteArray();
     }
 
     @Override
     public void deserialize(byte[] data) {
         try {
-            DeepspeedDownload.PrepareDownloadRequest request =   DeepspeedDownload.PrepareDownloadRequest.parseFrom(data);
+            DeepspeedDownload.PrepareDownloadRequest request = DeepspeedDownload.PrepareDownloadRequest.parseFrom(data);
             this.sessionId = request.getSessionId();
             this.ranks = request.getRanksList();
             this.compressMethod = request.getCompressMethod();
-            if(request.getCompressLevel()>0){
-                compressLevel= request.getCompressLevel();
+            if (request.getCompressLevel() > 0) {
+                compressLevel = request.getCompressLevel();
             }
-           // this.contentType = request.getContentType();
+            // this.contentType = request.getContentType();
         } catch (InvalidProtocolBufferException e) {
             e.printStackTrace();
         }

@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
 import java.util.Date;
+
 @TableName(value = "store_option", autoResultMap = true)
 public class StoreOption {
     @TableId(type = IdType.AUTO)

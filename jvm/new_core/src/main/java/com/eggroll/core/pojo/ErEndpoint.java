@@ -44,7 +44,7 @@ public class ErEndpoint implements RpcMessage {
         return builder.build();
     }
 
-    public static ErEndpoint fromProto(Meta.Endpoint endpoint){
+    public static ErEndpoint fromProto(Meta.Endpoint endpoint) {
         ErEndpoint erEndpoint = new ErEndpoint();
         erEndpoint.deserialize(endpoint.toByteArray());
         return erEndpoint;

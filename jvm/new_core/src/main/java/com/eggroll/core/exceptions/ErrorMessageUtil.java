@@ -75,8 +75,8 @@ public class ErrorMessageUtil {
         } else {
             result = Status.INTERNAL
                     .withCause(throwable)
-                   // .withDescription(throwable.getMessage())
-                    .withDescription(throwable.getMessage()+ ": " + ExceptionUtils.getStackTrace(throwable))
+                    // .withDescription(throwable.getMessage())
+                    .withDescription(throwable.getMessage() + ": " + ExceptionUtils.getStackTrace(throwable))
                     .asRuntimeException();
         }
 
@@ -93,7 +93,7 @@ public class ErrorMessageUtil {
             EggRollBaseException baseException = (EggRollBaseException) e;
             exceptionInfo.setCode(baseException.getCode());
         } else {
-            logger.error("SYSTEM_ERROR ==> " ,e);
+            logger.error("SYSTEM_ERROR ==> ", e);
             exceptionInfo.setCode(StatusCode.SYSTEM_ERROR);
         }
         exceptionInfo.setMessage(message);
@@ -101,7 +101,6 @@ public class ErrorMessageUtil {
 
         return exceptionInfo;
     }
-
 
 
     public static Map handleException(Map result, Throwable e) {

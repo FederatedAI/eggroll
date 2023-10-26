@@ -16,49 +16,48 @@ import org.slf4j.LoggerFactory;
 import java.util.Date;
 import java.util.Map;
 
-public abstract class AbstractSessionStateHandler implements   StateHandler<ErSessionMeta>{
+public abstract class AbstractSessionStateHandler implements StateHandler<ErSessionMeta> {
 
     Logger logger = LoggerFactory.getLogger(AbstractSessionStateHandler.class);
 
     @Inject
-    SessionMainService  sessionMainService;
+    SessionMainService sessionMainService;
     @Inject
     ProcessorStateMachine processorStateMachine;
     @Inject
-    ServerNodeService   serverNodeService;
+    ServerNodeService serverNodeService;
     @Inject
-    SessionOptionService  sessionOptionService;
+    SessionOptionService sessionOptionService;
 
-    void  updateStatus(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam){
-        SessionMain sessionMain =  new SessionMain();
+    void updateStatus(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam) {
+        SessionMain sessionMain = new SessionMain();
         sessionMain.setSessionId(erSessionMeta.getId());
         sessionMain.setStatus(desStateParam);
         sessionMain.setActiveProcCount(erSessionMeta.getActiveProcCount());
         sessionMainService.updateById(sessionMain);
     }
 
-    void  doInserSession(Context context ,ErSessionMeta erSessionMeta){
+    void doInserSession(Context context, ErSessionMeta erSessionMeta) {
         int activeProcCount = 0;
-        SessionMain  sessionMain = new  SessionMain(erSessionMeta.getId(),erSessionMeta.getName(), SessionStatus.NEW.name(),
-                erSessionMeta.getTag(),erSessionMeta.getProcessors().size(),activeProcCount,new Date(),new Date());
+        SessionMain sessionMain = new SessionMain(erSessionMeta.getId(), erSessionMeta.getName(), SessionStatus.NEW.name(),
+                erSessionMeta.getTag(), erSessionMeta.getProcessors().size(), activeProcCount, new Date(), new Date());
         sessionMainService.save(sessionMain);
-        Map<String,String> options  = erSessionMeta.getOptions();
+        Map<String, String> options = erSessionMeta.getOptions();
 
-        options.forEach((k,v)->{
-            SessionOption sessionOption = new  SessionOption();
+        options.forEach((k, v) -> {
+            SessionOption sessionOption = new SessionOption();
             sessionOption.setSessionId(erSessionMeta.getId());
             sessionOption.setName(k);
             sessionOption.setData(v);
             sessionOptionService.save(sessionOption);
         });
 
-        erSessionMeta.getProcessors().forEach(p->{
+        erSessionMeta.getProcessors().forEach(p -> {
 //            logger.info("prepare to handle processor {}",p);
-            processorStateMachine.changeStatus(context,p,null, SessionStatus.NEW.name());
+            processorStateMachine.changeStatus(context, p, null, SessionStatus.NEW.name());
         });
 
     }
-
 
 
 }

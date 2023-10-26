@@ -1,6 +1,6 @@
 package com.eggroll.core.exceptions;
 
-public class ErSessionException extends EggRollBaseException{
+public class ErSessionException extends EggRollBaseException {
 
     public ErSessionException(String message) {
         super(message);

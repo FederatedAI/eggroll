@@ -94,7 +94,7 @@ public class NodeResourceService extends EggRollBaseServiceImpl<NodeResourceMapp
             if (StringUtils.isBlank(nodeResource.getExtention())) {
                 nodeResource.setExtention(resource.getExtention());
             } else {
-                List<String> extensionList = new ArrayList<>(Arrays.asList(nodeResource.getExtention().split(","))) ;
+                List<String> extensionList = new ArrayList<>(Arrays.asList(nodeResource.getExtention().split(",")));
                 boolean exists = extensionList.stream().anyMatch((extension) -> extension.equals(resource.getExtention()));
                 if (!exists) {
                     extensionList.add(resource.getExtention());
@@ -127,7 +127,7 @@ public class NodeResourceService extends EggRollBaseServiceImpl<NodeResourceMapp
             nodeResource.setPreAllocated(nodeResource.getPreAllocated() - resource.getAllocated());
             if (StringUtils.isNotBlank(nodeResource.getExtention())) {
                 List<String> extensionList = new ArrayList<>(Arrays.asList(nodeResource.getExtention().split(",")));
-                extensionList.removeIf((extension)->extension.equals(resource.getExtention()));
+                extensionList.removeIf((extension) -> extension.equals(resource.getExtention()));
                 nodeResource.setExtention(String.join(",", extensionList));
             }
             resourceMap.forEach((k, v) -> this.updateById(v));
@@ -154,7 +154,7 @@ public class NodeResourceService extends EggRollBaseServiceImpl<NodeResourceMapp
                 resourceMap.put(resource.getResourceType(), nodeResource);
             }
             nodeResource.setPreAllocated(nodeResource.getPreAllocated() - resource.getAllocated());
-            nodeResource.setAllocated(nodeResource.getAllocated()  + resource.getAllocated());
+            nodeResource.setAllocated(nodeResource.getAllocated() + resource.getAllocated());
             nodeResource.setUsed(nodeResource.getUsed() + resource.getAllocated());
             resourceMap.forEach((k, v) -> this.updateById(v));
         }
@@ -181,10 +181,10 @@ public class NodeResourceService extends EggRollBaseServiceImpl<NodeResourceMapp
             }
             if (StringUtils.isNotBlank(nodeResource.getExtention())) {
                 List<String> extensionList = new ArrayList<>(Arrays.asList(nodeResource.getExtention().split(",")));
-                extensionList.removeIf((extension)->extension.equals(resource.getExtention()));
+                extensionList.removeIf((extension) -> extension.equals(resource.getExtention()));
                 nodeResource.setExtention(String.join(",", extensionList));
             }
-            nodeResource.setAllocated(nodeResource.getAllocated()  - resource.getAllocated());
+            nodeResource.setAllocated(nodeResource.getAllocated() - resource.getAllocated());
             nodeResource.setUsed(nodeResource.getUsed() - resource.getAllocated());
             resourceMap.forEach((k, v) -> this.updateById(v));
         }

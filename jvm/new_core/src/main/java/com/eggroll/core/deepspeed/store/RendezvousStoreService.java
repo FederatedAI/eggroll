@@ -29,7 +29,7 @@ public class RendezvousStoreService {
         }
     }
 
-    public RendezvousStoreDestroyResponse destroy(Context context , RendezvousStoreDestroyRequest rendezvousStoreDestroyRequest) {
+    public RendezvousStoreDestroyResponse destroy(Context context, RendezvousStoreDestroyRequest rendezvousStoreDestroyRequest) {
 //        System.out.println("destroy: " + rendezvousStoreDestroyRequest);
         boolean success = destroyStore(rendezvousStoreDestroyRequest.getPrefix());
         RendezvousStoreDestroyResponse result = new RendezvousStoreDestroyResponse();
@@ -38,7 +38,7 @@ public class RendezvousStoreService {
         return result;
     }
 
-    public RendezvousStoreSetResponse set(Context context ,RendezvousStoreSetRequest request) {
+    public RendezvousStoreSetResponse set(Context context, RendezvousStoreSetRequest request) {
         WaitableMapStore store = getStore(request.getPrefix());
 //        System.out.println("set: " + request + " to store " + store);
         store.set(new String(request.getKey()), request.getValue());
@@ -46,7 +46,7 @@ public class RendezvousStoreService {
         return new RendezvousStoreSetResponse();
     }
 
-    public RendezvousStoreGetResponse get(Context context ,RendezvousStoreGetRequest request) throws InterruptedException {
+    public RendezvousStoreGetResponse get(Context context, RendezvousStoreGetRequest request) throws InterruptedException {
 //        System.out.println("get: " + request + " to store " + stores);
         WaitableMapStore store = getStore(request.getPrefix());
         byte[] value = store.get(new String(request.getKey()), request.getTimeout());
@@ -59,7 +59,7 @@ public class RendezvousStoreService {
         }
     }
 
-    public RendezvousStoreAddResponse add(Context context ,RendezvousStoreAddRequest request) {
+    public RendezvousStoreAddResponse add(Context context, RendezvousStoreAddRequest request) {
 //        System.out.println("add: " + request + " to store " + stores);
         WaitableMapStore store = getStore(request.getPrefix());
         final long amount = store.add(new String(request.getKey()), request.getAmount());

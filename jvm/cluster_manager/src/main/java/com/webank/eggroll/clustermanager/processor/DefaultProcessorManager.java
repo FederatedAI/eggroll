@@ -22,25 +22,26 @@ public class DefaultProcessorManager {
     Logger logger = LoggerFactory.getLogger(DefaultProcessorManager.class);
     @Inject
     ProcessorStateMachine processorStateMachine;
-   // ConcurrentHashMap<Long,ErProcessor>  residualHeartbeatMap = new ConcurrentHashMap<Long,ErProcessor>();
-    Cache<String,ErProcessor>  processorHeartBeat= CacheUtil.buildErProcessorCache(1000,1,TimeUnit.MINUTES);
+    // ConcurrentHashMap<Long,ErProcessor>  residualHeartbeatMap = new ConcurrentHashMap<Long,ErProcessor>();
+    Cache<String, ErProcessor> processorHeartBeat = CacheUtil.buildErProcessorCache(1000, 1, TimeUnit.MINUTES);
 
 
-
-    public  ErProcessor heartbeat(Context context, ErProcessor proc){
+    public ErProcessor heartbeat(Context context, ErProcessor proc) {
 //        logger.info("heart beat proc {}",proc);
         ErProcessor previousHeartbeat = processorHeartBeat.asMap().get(proc.getId().toString());
-        if(previousHeartbeat==null){
-            processorHeartBeat.asMap().put(proc.getId().toString(),proc);
-            processorStateMachine.changeStatus(context ,proc,null,proc.getStatus());
-        }else{
-            if(!previousHeartbeat.getStatus().equals(proc.getStatus())) {
-                processorHeartBeat.asMap().put(proc.getId().toString(),proc);
-                processorStateMachine.changeStatus(context,proc,null,proc.getStatus());
+        if (previousHeartbeat == null) {
+            processorHeartBeat.asMap().put(proc.getId().toString(), proc);
+            processorStateMachine.changeStatus(context, proc, null, proc.getStatus());
+        } else {
+            if (!previousHeartbeat.getStatus().equals(proc.getStatus())) {
+                processorHeartBeat.asMap().put(proc.getId().toString(), proc);
+                processorStateMachine.changeStatus(context, proc, null, proc.getStatus());
             }
         }
-        return   proc;
-    };
+        return proc;
+    }
+
+    ;
 
 
 }

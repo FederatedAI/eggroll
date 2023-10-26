@@ -3,7 +3,7 @@ package com.eggroll.core.postprocessor;
 
 public interface ApplicationStartedRunner {
 
-    default int getRunnerSequenceId(){
+    default int getRunnerSequenceId() {
         return 0;
     }
 

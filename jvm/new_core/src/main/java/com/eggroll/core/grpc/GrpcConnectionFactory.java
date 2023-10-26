@@ -45,27 +45,27 @@ public class GrpcConnectionFactory {
 
     public static synchronized ManagedChannel createManagedChannel(ErEndpoint endpoint, boolean usePooled) {
 
-        if(usePooled) {
+        if (usePooled) {
             if (managedChannelPool.get(endpoint.toString()) != null) {
                 ManagedChannel targetChannel = managedChannelPool.get(endpoint.toString());
-               // logger.info("channel  is shutdown : {} isTerminated {}",targetChannel.isShutdown() ,targetChannel.isTerminated() ,targetChannel.getState(true));
+                // logger.info("channel  is shutdown : {} isTerminated {}",targetChannel.isShutdown() ,targetChannel.isTerminated() ,targetChannel.getState(true));
                 return managedChannelPool.get(endpoint.toString());
             } else {
                 ManagedChannel managedChannel = createManagedChannel(endpoint, buildDefaultGrpcChannelInfo());
-                if(managedChannel!=null) {
+                if (managedChannel != null) {
                     managedChannelPool.put(endpoint.toString(), managedChannel);
                 }
                 return managedChannel;
             }
-        }else{
+        } else {
             ManagedChannel managedChannel = createManagedChannel(endpoint, buildDefaultGrpcChannelInfo());
-            return  managedChannel;
+            return managedChannel;
         }
     }
 
 
-    private static  GrpcChannelInfo  buildDefaultGrpcChannelInfo(){
-        GrpcChannelInfo  grpcChannelInfo = new  GrpcChannelInfo();
+    private static GrpcChannelInfo buildDefaultGrpcChannelInfo() {
+        GrpcChannelInfo grpcChannelInfo = new GrpcChannelInfo();
         grpcChannelInfo.setKeepAliveTime(MetaInfo.PROPERTY_GRPC_CLIENT_KEEPALIVE_TIME_SEC);
         grpcChannelInfo.setKeepAliveTimeout(MetaInfo.PROPERTY_GRPC_CLIENT_KEEPALIVE_TIMEOUT_SEC);
         grpcChannelInfo.setKeepAliveWithoutCalls(MetaInfo.PROPERTY_GRPC_CLIENT_KEEPALIVE_WITHOUT_CALLS_ENABLED);
@@ -81,7 +81,7 @@ public class GrpcConnectionFactory {
 
     public static synchronized ManagedChannel createManagedChannel(ErEndpoint endpoint, GrpcChannelInfo channelInfo) {
         try {
-            logger.info("===========create channel {}",endpoint);
+            logger.info("===========create channel {}", endpoint);
             NettyChannelBuilder channelBuilder = NettyChannelBuilder
                     .forAddress(endpoint.getHost(), endpoint.getPort())
                     .keepAliveTime(channelInfo.getKeepAliveTime(), TimeUnit.MINUTES)
@@ -103,8 +103,8 @@ public class GrpcConnectionFactory {
 //
 //                channelBuilder.sslContext(sslContextBuilder.build()).useTransportSecurity().overrideAuthority(routerInfo.getHost());
 //            } else {
-                channelBuilder.usePlaintext();
-           // }
+            channelBuilder.usePlaintext();
+            // }
             return channelBuilder.build();
         } catch (Exception e) {
 

@@ -15,7 +15,7 @@ public class Bootstrap {
     static Logger logger = LoggerFactory.getLogger(Bootstrap.class);
 
     public static void main(String[] args) throws Exception {
-        CommonBoostrap.init(args,"node-manager");
+        CommonBoostrap.init(args, "node-manager");
         Injector injector = Guice.createInjector(new NodeModule());
         List<String> packages = Lists.newArrayList();
         packages.add(Bootstrap.class.getPackage().getName());

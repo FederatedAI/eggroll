@@ -38,13 +38,13 @@ public class ErNodeHeartbeat implements RpcMessage {
         builder.setId(this.id)
                 .addAllGpuProcessors(gpuProcessors)
                 .setNode(this.node.toProto());
-        if(cpuProcessors!=null){
+        if (cpuProcessors != null) {
             builder.addAllCpuProcessors(cpuProcessors);
         }
         return builder.build();
     }
 
-    public static ErNodeHeartbeat fromProto( Meta.NodeHeartbeat nodeHeartbeat){
+    public static ErNodeHeartbeat fromProto(Meta.NodeHeartbeat nodeHeartbeat) {
         ErNodeHeartbeat erNodeHeartbeat = new ErNodeHeartbeat();
         erNodeHeartbeat.deserialize(nodeHeartbeat.toByteArray());
         return erNodeHeartbeat;

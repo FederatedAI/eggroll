@@ -15,13 +15,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Data
-public class ErStore implements RpcMessage , Cloneable {
+public class ErStore implements RpcMessage, Cloneable {
     Logger log = LoggerFactory.getLogger(ErStore.class);
     private ErStoreLocator storeLocator;
     private List<ErPartition> partitions;
     private Map<String, String> options;
 
-    public ErStore(){
+    public ErStore() {
         this.storeLocator = null;
         this.partitions = new ArrayList<>();
         this.options = new HashMap<>();
@@ -65,7 +65,7 @@ public class ErStore implements RpcMessage , Cloneable {
         return builder.build();
     }
 
-    public static ErStore fromProto(Meta.Store store){
+    public static ErStore fromProto(Meta.Store store) {
         ErStore erStore = new ErStore();
         erStore.deserialize(store.toByteArray());
         return erStore;
@@ -92,20 +92,20 @@ public class ErStore implements RpcMessage , Cloneable {
 
     @Override
     public Object clone() throws CloneNotSupportedException {
-        ErStore erStore = (ErStore)super.clone();
-        if(this.storeLocator != null){
+        ErStore erStore = (ErStore) super.clone();
+        if (this.storeLocator != null) {
             erStore.setStoreLocator(ObjectUtils.clone(this.storeLocator));
         }
-        if(this.partitions !=null){
-            List<ErPartition> cloneErPartitions =  new ArrayList<>();
+        if (this.partitions != null) {
+            List<ErPartition> cloneErPartitions = new ArrayList<>();
             for (ErPartition partition : this.partitions) {
-                if(partition!=null){
+                if (partition != null) {
                     cloneErPartitions.add(ObjectUtils.clone(partition));
                 }
             }
             erStore.setPartitions(cloneErPartitions);
         }
-        if(this.options != null){
+        if (this.options != null) {
             Map<String, String> cloneOptions = new HashMap<>(this.options);
             erStore.setOptions(cloneOptions);
         }

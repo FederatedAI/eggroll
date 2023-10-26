@@ -10,13 +10,13 @@ import java.util.concurrent.locks.ReentrantLock;
 @Data
 public class FifoBroker<E> implements Iterator<E> {
     private Integer maxSize = 100;
-    private Integer writers =1 ;
+    private Integer writers = 1;
     private String name = "";
     private ArrayBlockingQueue<E> broker;
     private CountDownLatch remainingWriters;
     private ReentrantLock lock;
 
-    public FifoBroker(){
+    public FifoBroker() {
         this.broker = new ArrayBlockingQueue<>(maxSize);
         this.remainingWriters = new CountDownLatch(writers);
         this.lock = new ReentrantLock();

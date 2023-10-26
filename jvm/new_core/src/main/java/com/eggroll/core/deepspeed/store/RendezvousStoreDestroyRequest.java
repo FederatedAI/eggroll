@@ -17,7 +17,7 @@ public class RendezvousStoreDestroyRequest implements RpcMessage {
     }
 
     @Override
-    public void deserialize(byte[] data){
+    public void deserialize(byte[] data) {
         try {
             Deepspeed.StoreDestroyRequest src = Deepspeed.StoreDestroyRequest.parseFrom(data);
             this.prefix = src.getPrefix();

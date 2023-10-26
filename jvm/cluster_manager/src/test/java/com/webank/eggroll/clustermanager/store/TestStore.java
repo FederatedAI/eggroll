@@ -12,7 +12,7 @@ public class TestStore {
     ErEndpoint endpoint = new ErEndpoint("localhost:4670");
 
     @Test
-    public void testGetOrCreateStore(){
+    public void testGetOrCreateStore() {
         ErStore erStore = new ErStore();
         ErStoreLocator erStoreLocator = new ErStoreLocator();
         erStoreLocator.setStoreType("ROLLPAIR_CACHE");

@@ -38,9 +38,9 @@ public class Dispatcher {
     private ConcurrentHashMap<String, InvokeInfo> uriMap = new ConcurrentHashMap();
 
     public byte[] dispatch(String uri, byte[] data) {
-        Context context  =new Context();
-        Object  sourceIp = ContextPrepareInterceptor.sourceIp.get();
-        if(sourceIp!=null){
+        Context context = new Context();
+        Object sourceIp = ContextPrepareInterceptor.sourceIp.get();
+        if (sourceIp != null) {
             context.setSourceIp(sourceIp.toString());
         }
         context.setActionType(ActionType.SERVER.name());
@@ -61,7 +61,7 @@ public class Dispatcher {
                 context.setRequest(rpcMessage);
                 RpcMessage response = (RpcMessage) invokeInfo.getMethod().invoke(invokeInfo.getObject(), context, rpcMessage);
                 printGrpcTraceLog(traceId, "response", response);
-                if(response !=null){
+                if (response != null) {
                     return response.serialize();
                 }
                 return new byte[0];
@@ -71,13 +71,13 @@ public class Dispatcher {
                 ExceptionInfo exceptionInfo = ErrorMessageUtil.handleExceptionExceptionInfo(context, e);
                 context.setReturnCode(exceptionInfo.getCode());
                 context.setReturnMsg(exceptionInfo.getMessage());
-                if(e.getCause() instanceof EggRollBaseException){
-                    throw (EggRollBaseException)e.getCause();
-                }else{
+                if (e.getCause() instanceof EggRollBaseException) {
+                    throw (EggRollBaseException) e.getCause();
+                } else {
                     throw new RuntimeException(e.getCause());
                 }
             }
-        }finally {
+        } finally {
             FlowLogUtil.printFlowLog(context);
         }
     }
@@ -89,7 +89,7 @@ public class Dispatcher {
         this.uriMap.put(uri, invokeInfo);
     }
 
-    public  void register(Object service) {
+    public void register(Object service) {
         Method[] methods;
 
         if (service instanceof Class) {

@@ -10,7 +10,6 @@ public class CheckResourceEnoughRequest implements RpcMessage {
 
     /**
      * cpu/gpu/memory
-     *
      */
     private String resourceType = Dict.RESOURCE_TYPE_GPU;
 
@@ -38,7 +37,7 @@ public class CheckResourceEnoughRequest implements RpcMessage {
             this.resourceType = request.getResourceType();
             this.requiredResourceCount = request.getRequiredResourceCount();
             this.checkType = request.getCheckType();
-        }catch (InvalidProtocolBufferException e) {
+        } catch (InvalidProtocolBufferException e) {
             e.printStackTrace();
         }
     }

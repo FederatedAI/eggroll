@@ -22,54 +22,52 @@ import static com.eggroll.core.config.Dict.SCHEDULE_KEY;
 @Slf4j
 public class Quartz implements ApplicationStartedRunner {
 
-	Logger logger = LoggerFactory.getLogger(Quartz.class);
-	private  Scheduler scheduler;
+    Logger logger = LoggerFactory.getLogger(Quartz.class);
+    private Scheduler scheduler;
 
-	static public   ConcurrentHashMap<String ,ScheduleInfo>  sheduleInfoMap = new ConcurrentHashMap<>();
+    static public ConcurrentHashMap<String, ScheduleInfo> sheduleInfoMap = new ConcurrentHashMap<>();
 
-//	new StdSchedulerFactory(getProperties("quartz.properties"))
-	SchedulerFactory schedulerFactory = new StdSchedulerFactory();
-
-
-
-	public  void  start(){
-		try {
-			scheduler = schedulerFactory.getScheduler();
-		} catch (SchedulerException e) {
-			e.printStackTrace();
-		}
-		log.info("prepare init schedule {}",sheduleInfoMap);
-		sheduleInfoMap.forEach((key, scheduleInfo) -> {
-			try {
-				ScheduleJob scheduleJob = new ScheduleJob();
-				JobDetail jobDetail = JobBuilder.newJob(ScheduleJob.class).usingJobData(SCHEDULE_KEY, key).build();
-				CronTriggerImpl cronTrigger = new CronTriggerImpl(scheduleInfo.getMethod().getName(), "t_tgroup1");
-				try {
-					cronTrigger.setCronExpression(scheduleInfo.cron);
-				} catch (ParseException e) {
-					e.printStackTrace();
-				}
-				logger.info("register cron schedule {}",scheduleInfo);
-				scheduler.scheduleJob(jobDetail,cronTrigger );
-			}catch (Exception e){
-				e.printStackTrace();
-			}
-		});
-		try {
-			scheduler.start();
-		} catch (SchedulerException e) {
-			e.printStackTrace();
-		}
-	}
-
-	public final Scheduler getScheduler() {
-		return this.scheduler;
-	}
+    //	new StdSchedulerFactory(getProperties("quartz.properties"))
+    SchedulerFactory schedulerFactory = new StdSchedulerFactory();
 
 
+    public void start() {
+        try {
+            scheduler = schedulerFactory.getScheduler();
+        } catch (SchedulerException e) {
+            e.printStackTrace();
+        }
+        log.info("prepare init schedule {}", sheduleInfoMap);
+        sheduleInfoMap.forEach((key, scheduleInfo) -> {
+            try {
+                ScheduleJob scheduleJob = new ScheduleJob();
+                JobDetail jobDetail = JobBuilder.newJob(ScheduleJob.class).usingJobData(SCHEDULE_KEY, key).build();
+                CronTriggerImpl cronTrigger = new CronTriggerImpl(scheduleInfo.getMethod().getName(), "t_tgroup1");
+                try {
+                    cronTrigger.setCronExpression(scheduleInfo.cron);
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
+                logger.info("register cron schedule {}", scheduleInfo);
+                scheduler.scheduleJob(jobDetail, cronTrigger);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+        try {
+            scheduler.start();
+        } catch (SchedulerException e) {
+            e.printStackTrace();
+        }
+    }
 
-	public static void main(String[] args) throws Exception {
-		//第一步：创建一个JobDetail实例
+    public final Scheduler getScheduler() {
+        return this.scheduler;
+    }
+
+
+    public static void main(String[] args) throws Exception {
+        //第一步：创建一个JobDetail实例
 //		JobDetail  jobDetail = JobBuilder.newJob(ScheduleJob.class).build();
 //		JobDetail  jobDetail2 = JobBuilder.newJob(ScheduleJob2.class).build();
 //		//第二步：创建CronTrigger，指定组及名称,并设置Cron表达式
@@ -89,12 +87,11 @@ public class Quartz implements ApplicationStartedRunner {
 //		scheduler.scheduleJob(jobDetail2,cronTrigger2);
 //		//第五步：调度启动
 //		scheduler.start();
-	}
+    }
 
 
-
-	@Override
-	public void run(String[] args) throws Exception {
-		start();
-	}
+    @Override
+    public void run(String[] args) throws Exception {
+        start();
+    }
 }

@@ -40,7 +40,7 @@ public class DeepspeedContainerBuildConfig {
                                          Map<String, String> environmentVariables,
                                          Map<String, byte[]> files,
                                          Map<String, byte[]> zippedFiles,
-                                         Map<String, String> options) throws Exception{
+                                         Map<String, String> options) throws Exception {
         this.sessionId = sessionId;
         this.processorId = processorId;
         this.containerWorkspace = containerWorkspace;
@@ -76,7 +76,7 @@ public class DeepspeedContainerBuildConfig {
                 "    traceback.print_exc(file=sys.stdout)\n" +
                 "    raise e\n" +
                 "runpy.run_path(\"%s\", run_name='__main__')\n" +
-                "\n",this.options.get(Dict.DEEPSPEED_SCRIPT_PATH)).getBytes();
+                "\n", this.options.get(Dict.DEEPSPEED_SCRIPT_PATH)).getBytes();
 
 
         this.scriptPath = "_boost.py";

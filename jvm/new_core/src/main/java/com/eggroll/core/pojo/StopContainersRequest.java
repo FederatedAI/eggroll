@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 
 @Data
-public class StopContainersRequest implements RpcMessage{
+public class StopContainersRequest implements RpcMessage {
 
     Logger log = LoggerFactory.getLogger(StopContainersRequest.class);
 
@@ -37,7 +37,7 @@ public class StopContainersRequest implements RpcMessage{
             this.sessionId = proto.getSessionId();
             this.containers = proto.getContainerIdsList();
         } catch (InvalidProtocolBufferException e) {
-            log.error("StopContainersRequest.deserialize() error :" ,e);
+            log.error("StopContainersRequest.deserialize() error :", e);
         }
     }
 }

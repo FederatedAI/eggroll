@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Data
 public class WaitableMapStore {
     Logger log = LoggerFactory.getLogger(WaitableMapStore.class);
-    
+
     private ConcurrentHashMap<String, byte[]> store = new ConcurrentHashMap<>();
 
     public void set(String key, byte[] value) {
@@ -57,8 +57,8 @@ public class WaitableMapStore {
             }
         });
         long result = vToLong(compute);
-        log.info("add key: " + key + ", amount: " + amount + ",return "+result+" store count: " + store.size());
-        return  result;
+        log.info("add key: " + key + ", amount: " + amount + ",return " + result + " store count: " + store.size());
+        return result;
     }
 
     public void destroy() {
