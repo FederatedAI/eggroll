@@ -3,6 +3,8 @@ package com.eggroll.core.grpc;
 
 import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.eggroll.core.grpc.CommandUri.*;
 
@@ -10,7 +12,7 @@ public class ClusterManagerClient {
 
     CommandClient cc;
     ErEndpoint endpoint;
-
+    Logger logger = LoggerFactory.getLogger(ClusterManagerClient.class);
     public ClusterManagerClient(ErEndpoint endpoint) {
         if (endpoint == null)
             throw new IllegalArgumentException("failed to create NodeManagerClient for endpoint: " + endpoint);
@@ -41,6 +43,7 @@ public class ClusterManagerClient {
     }
 
     public ErSessionMeta killSession(Context context, ErSessionMeta erSessionMeta) {
+        logger.info("============> send killSession command to nodeManager  sessionId = {}",erSessionMeta.getId());
         byte[] responseData = cc.call(context, endpoint, killSession, erSessionMeta.serialize());
         ErSessionMeta response = new ErSessionMeta();
         response.deserialize(responseData);
