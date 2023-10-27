@@ -1,6 +1,9 @@
 package com.eggroll.core.containers.container;
 
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -15,6 +18,8 @@ import java.util.Map;
 import java.util.concurrent.*;
 
 public class ContainersManager {
+
+    Logger log = LoggerFactory.getLogger(ContainersManager.class);
 
     private Map<Long, ContainerLifecycleHandler> handlers;
     private ExecutorService executor;
@@ -67,6 +72,10 @@ public class ContainersManager {
     }
 
     public void killContainer(Long containerId) {
+        log.info("killlog1 containerId:{},handlers.size: {}",containerId,handlers.size());
+        handlers.entrySet().forEach(entry -> {
+            log.info("killlog2 key: {}",entry.getKey());
+        });
         ContainerLifecycleHandler handler = handlers.get(containerId);
         if (handler != null) {
             executor.execute(handler::killContainer);
