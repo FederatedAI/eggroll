@@ -1,8 +1,8 @@
 package com.eggroll.core.pojo;
 
-import com.google.protobuf.ByteString;
 import com.webank.eggroll.core.meta.Containers;
 import lombok.Data;
+import org.apache.commons.collections.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,10 +16,20 @@ public class KillContainersRequest implements RpcMessage {
     private String sessionId;
     private List<Long> containers;
 
+    public Containers.KillContainersRequest toProto() {
+        Containers.KillContainersRequest.Builder builder = Containers.KillContainersRequest.newBuilder();
+        if (this.sessionId != null) {
+            builder.setSessionId(sessionId);
+        }
+        if (CollectionUtils.isNotEmpty(this.containers)) {
+            builder.addAllContainerIds(this.containers);
+        }
+        return builder.build();
+    }
+
     @Override
     public byte[] serialize() {
-        return Containers.KillContainersResponse.newBuilder()
-                .setSessionId(this.getSessionId()).build().toByteArray();
+        return toProto().toByteArray();
     }
 
     @Override
@@ -35,20 +45,4 @@ public class KillContainersRequest implements RpcMessage {
 
     }
 
-//    public KillContainersRequest deserialize(byte[] bytes){
-//        KillContainersRequest killContainersRequest = new KillContainersRequest();
-//        try {
-//            Containers.KillContainersRequest proto = Containers.KillContainersRequest.parseFrom(bytes);
-//            killContainersRequest.setSessionId(proto.getSessionId());
-//            killContainersRequest.setContainers(proto.getContainerIdsList());
-//        }catch (Exception e){
-//            log.error("KillContainersRequest.deserialize() error :" ,e);
-//        }
-//        return killContainersRequest;
-//    }
-//
-//    public byte[] serialize(){
-//        return Containers.KillContainersResponse.newBuilder()
-//                .setSessionId(this.getSessionId()).build().toByteArray();
-//    }
 }
