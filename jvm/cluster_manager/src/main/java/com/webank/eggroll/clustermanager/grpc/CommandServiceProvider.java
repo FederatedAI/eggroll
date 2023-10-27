@@ -37,7 +37,7 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     @Inject
     StoreCrudOperator storeCrudOperator;
     @Inject
-    ClusterManagerService clusterManagerService;
+    ClusterManagerService  clusterManagerService;
     @Inject
     JobServiceHandler jobServiceHandler;
     @Inject
@@ -52,150 +52,151 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
         this.dispatcher.register(this);
     }
 
-    @URI(value = nodeHeartbeat)
-    public ErNodeHeartbeat nodeHeartbeat(Context context, ErNodeHeartbeat erNodeHeartbeat) {
+    @URI(value= nodeHeartbeat)
+    public  ErNodeHeartbeat nodeHeartbeat(Context context ,ErNodeHeartbeat  erNodeHeartbeat){
         context.setNodeId(erNodeHeartbeat.getNode().getId().toString());
-        context.putLogData(Dict.STATUS, erNodeHeartbeat.getNode().getStatus());
-        return clusterManagerService.nodeHeartbeat(context, erNodeHeartbeat);
+        context.putLogData(Dict.STATUS,erNodeHeartbeat.getNode().getStatus());
+       return  clusterManagerService.nodeHeartbeat(context,erNodeHeartbeat);
     }
 
     @URI(value = getServerNode)
-    public ErServerNode getServerNodeServiceName(Context context, ErServerNode erServerNode) {
+    public ErServerNode getServerNodeServiceName(Context context ,ErServerNode erServerNode) {
         List<ErServerNode> nodeList = serverNodeService.getListByErServerNode(erServerNode);
         return nodeList.size() > 0 ? nodeList.get(0) : null;
     }
 
     @URI(value = getServerNodes)
-    public ErServerCluster getServerNodesServiceName(Context context, ErServerNode erServerNode) {
+    public ErServerCluster getServerNodesServiceName(Context context ,ErServerNode erServerNode) {
         return null;
     }
 
     @URI(value = getOrCreateServerNode)
-    public ErServerNode getOrCreateServerNode(Context context, ErServerNode erServerNode) {
+    public ErServerNode getOrCreateServerNode(Context context ,ErServerNode erServerNode) {
         return null;
     }
 
     @URI(value = createOrUpdateServerNode)
-    public ErServerNode createOrUpdateServerNode(Context context, ErServerNode erServerNode) {
+    public ErServerNode createOrUpdateServerNode(Context context ,ErServerNode erServerNode) {
         return null;
     }
 
     @URI(value = getStore)
-    public ErStore getStore(Context context, ErStore erStore) {
+    public ErStore getStore(Context context ,ErStore erStore) {
         return storeCrudOperator.doGetStore(erStore);
     }
 
     @URI(value = getOrCreateStore)
-    public ErStore getOrCreateStore(Context context, ErStore erStore) {
-        return storeCrudOperator.doGetOrCreateStore(context, erStore);
+    public ErStore getOrCreateStore(Context context ,ErStore erStore) {
+        return storeCrudOperator.doGetOrCreateStore(context,erStore);
     }
 
     @URI(value = deleteStore)
-    public ErStore deleteStore(Context context, ErStore erStore) {
+    public ErStore deleteStore(Context context ,ErStore erStore) {
         return storeCrudOperator.doDeleteStore(erStore);
     }
 
     @URI(value = getStoreFromNamespace)
-    public ErStoreList getStoreFromNamespace(Context context, ErStore erStore) {
+    public ErStoreList getStoreFromNamespace(Context context ,ErStore erStore) {
         return storeCrudOperator.getStoreFromNamespace(erStore);
     }
 
     @URI(value = getOrCreateSession)
-    public ErSessionMeta getOrCreateSession(Context context, ErSessionMeta sessionMeta) {
+    public ErSessionMeta getOrCreateSession(Context context ,ErSessionMeta sessionMeta) {
         return defaultSessionManager.getOrCreateSession(context, sessionMeta);
     }
 
     @URI(value = getSession)
-    public ErSessionMeta getSession(Context context, ErSessionMeta sessionMeta) {
+    public ErSessionMeta getSession(Context context ,ErSessionMeta sessionMeta) {
         return defaultSessionManager.getSession(context, sessionMeta);
     }
 
     @URI(value = heartbeat)
-    public ErProcessor heartbeat(Context context, ErProcessor erProcessor) {
+    public ErProcessor heartbeat(Context context ,ErProcessor erProcessor) {
         context.setSessionId(erProcessor.getSessionId());
         context.setProcessorId(erProcessor.getId().toString());
-        context.putLogData(Dict.STATUS, erProcessor.getStatus());
-        logger.info("=========== {}", erProcessor);
+        context.putLogData(Dict.STATUS,erProcessor.getStatus());
+        logger.info("=========== {}",erProcessor);
         return defaultProcessorManager.heartbeat(context, erProcessor);
     }
 
     @URI(value = stopSession)
-    public ErSessionMeta stopSession(Context context, ErSessionMeta erSessionMeta) {
+    public ErSessionMeta stopSession(Context context ,ErSessionMeta erSessionMeta) {
         context.setSessionId(erSessionMeta.getId());
         return defaultSessionManager.stopSession(context, erSessionMeta);
     }
 
     @URI(value = killSession)
-    public ErSessionMeta killSession(Context context, ErSessionMeta erSessionMeta) {
+    public ErSessionMeta killSession(Context context ,ErSessionMeta erSessionMeta) {
         context.setSessionId(erSessionMeta.getId());
+        logger.info("====================> will kill sessionId  = {}",erSessionMeta.getId());
         return defaultSessionManager.killSession(context, erSessionMeta);
     }
 
     @URI(value = killAllSessions)
-    public ErSessionMeta killAllSession(Context context, ErSessionMeta erSessionMeta) {
+    public ErSessionMeta killAllSession(Context context ,ErSessionMeta erSessionMeta) {
         context.setSessionId(erSessionMeta.getId());
         return defaultSessionManager.killAllSessions(context, erSessionMeta);
     }
 
 
     @URI(value = submitJob)
-    public SubmitJobResponse submitJob(Context context, SubmitJobRequest request) throws InterruptedException {
+    public SubmitJobResponse submitJob(Context context ,SubmitJobRequest request) throws InterruptedException {
         return jobServiceHandler.handleSubmit(request);
     }
 
     @URI(value = queryJobStatus)
-    public QueryJobStatusResponse queryJobStatus(Context context, QueryJobStatusRequest request) {
+    public QueryJobStatusResponse queryJobStatus(Context context ,QueryJobStatusRequest request){
         return jobServiceHandler.handleJobStatusQuery(request);
     }
 
     @URI(value = queryJob)
-    public QueryJobResponse queryJob(Context context, QueryJobRequest request) {
+    public QueryJobResponse queryJob(Context context ,QueryJobRequest request){
         return jobServiceHandler.handleJobQuery(request);
     }
 
     @URI(value = killJob)
-    public KillJobResponse killJob(Context context, KillJobRequest request) {
-        return jobServiceHandler.handleJobKill(context, request);
+    public KillJobResponse killJob(Context context ,KillJobRequest request){
+        return jobServiceHandler.handleJobKill(context,request);
     }
 
     @URI(value = stopJob)
-    public StopJobResponse stopJob(Context context, StopJobRequest request) {
-        return jobServiceHandler.handleJobStop(context, request);
+    public StopJobResponse stopJob(Context context ,StopJobRequest request){
+        return jobServiceHandler.handleJobStop(context,request);
     }
 
 
     @URI(value = downloadJob)
-    public DownloadJobResponse downloadJob(Context context, DownloadJobRequest request) {
-        return jobServiceHandler.handleJobDownload(context, request);
+    public DownloadJobResponse downloadJob(Context context ,DownloadJobRequest request){
+        return jobServiceHandler.handleJobDownload(context,request);
     }
 
     @URI(value = prepareJobDownload)
-    public PrepareJobDownloadResponse prepareJobDownload(Context context, PrepareJobDownloadRequest request) {
-        return jobServiceHandler.prepareJobDownload(context, request);
+    public PrepareJobDownloadResponse prepareJobDownload(Context context ,PrepareJobDownloadRequest request) {
+        return jobServiceHandler.prepareJobDownload(context,request);
     }
 
     @URI(value = rendezvousAdd)
-    public RendezvousStoreAddResponse rendezvousAdd(Context context, RendezvousStoreAddRequest request) {
-        return rendezvousStoreService.add(context, request);
+    public RendezvousStoreAddResponse rendezvousAdd(Context context , RendezvousStoreAddRequest request){
+        return rendezvousStoreService.add(context,request);
     }
 
     @URI(value = rendezvousDestroy)
-    public RendezvousStoreDestroyResponse rendezvousDestroy(Context context, RendezvousStoreDestroyRequest request) {
-        return rendezvousStoreService.destroy(context, request);
+    public RendezvousStoreDestroyResponse rendezvousDestroy(Context context , RendezvousStoreDestroyRequest request) {
+        return rendezvousStoreService.destroy(context,request);
     }
 
     @URI(value = rendezvousSet)
-    public RendezvousStoreSetResponse rendezvousSet(Context context, RendezvousStoreSetRequest request) {
-        return rendezvousStoreService.set(context, request);
+    public RendezvousStoreSetResponse rendezvousSet(Context context ,RendezvousStoreSetRequest request){
+        return rendezvousStoreService.set(context,request);
     }
 
     @URI(value = rendezvousGet)
-    public RendezvousStoreGetResponse rendezvousGet(Context context, RendezvousStoreGetRequest request) throws InterruptedException {
-        return rendezvousStoreService.get(context, request);
+    public RendezvousStoreGetResponse rendezvousGet(Context context ,RendezvousStoreGetRequest request) throws InterruptedException {
+        return rendezvousStoreService.get(context,request);
     }
 
     @URI(value = checkResourceEnough)
-    public CheckResourceEnoughResponse checkResourceEnough(Context context, CheckResourceEnoughRequest request) throws InterruptedException {
+    public CheckResourceEnoughResponse checkResourceEnough(Context context ,CheckResourceEnoughRequest request) throws InterruptedException {
         return clusterResourceManager.checkResourceEnoughForFlow(context, request);
     }
 
