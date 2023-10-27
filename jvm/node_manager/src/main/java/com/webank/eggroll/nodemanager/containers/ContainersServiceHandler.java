@@ -12,6 +12,9 @@ import com.eggroll.core.context.Context;
 import com.eggroll.core.exceptions.PathNotExistException;
 import com.eggroll.core.grpc.ClusterManagerClient;
 import com.eggroll.core.pojo.*;
+import com.eggroll.core.utils.JsonUtil;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.core.meta.Containers;
 import com.webank.eggroll.core.transfer.Extend;
@@ -141,7 +144,10 @@ public class ContainersServiceHandler {
     public KillContainersResponse killJobContainers(KillContainersRequest killContainersRequest) {
         String sessionId = killContainersRequest.getSessionId();
         logger.info("(sessionId=" + sessionId + ") killing containers");
+
+
         for (Long containerId : killContainersRequest.getContainers()) {
+            logger.info("to kill container {}",containerId);
             containersManager.killContainer(containerId);
         }
         KillContainersResponse killContainersResponse = new KillContainersResponse();
