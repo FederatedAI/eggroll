@@ -55,6 +55,7 @@ public class JobServiceHandler {
         log.info("killing job {}", sessionId);
         try {
             clusterResourceManager.lockSession(sessionId);
+            log.info("start kill job {}", sessionId);
             clusterResourceManager.getKillJobMap().put(sessionId, System.currentTimeMillis());
             if (sessionMainService.getById(sessionId) == null) {
                 log.error("can not found session {} ", sessionId);
@@ -80,6 +81,7 @@ public class JobServiceHandler {
                 }
                 try {
                     killContainersRequest.setContainers(processorIdList);
+                    log.info("send kill job command {}", sessionId);
                     new NodeManagerClient(erServerNode.getEndpoint()).killJobContainers(context, killContainersRequest);
                     final UpdateWrapper<SessionMain> updateWrapper = new UpdateWrapper<>();
                     updateWrapper.lambda().eq(SessionMain::getSessionId, sessionId).set(SessionMain::getStatus, SessionStatus.CLOSED.name());
