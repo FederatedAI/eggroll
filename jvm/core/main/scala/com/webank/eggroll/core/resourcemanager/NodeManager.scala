@@ -5,6 +5,7 @@ import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, N
 import com.webank.eggroll.core.meta.{ErEndpoint, ErNodeHeartbeat, ErProcessor, ErResource, ErResourceAllocation, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.session.RuntimeErConf
 import com.webank.eggroll.core.client.ClusterManagerClient
+import com.webank.eggroll.core.constant.NodeManagerConfKeys.CONFKEY_NODE_MANAGER_NET_DEVICE
 import com.webank.eggroll.core.constant.ServerNodeStatus.{HEALTHY, INIT}
 import com.webank.eggroll.core.session.{RuntimeErConf, StaticErConf}
 import com.webank.eggroll.core.env.{Shell, SysInfoLinux}
@@ -25,7 +26,8 @@ object NodeManagerMeta  {
   var status=INIT
   var serverNodeId = -1:Long;
   var clusterId = -1:Long;
-  var ip:String =StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST, NetUtils.getLocalHost ) ;
+  var ip:String =StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST,
+    NetUtils.getLocalHost( StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_NET_DEVICE, "") )) ;
   var port:Integer =  StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT).toInt
   def refreshServerNodeMetaIntoFile(): Unit = {
      var filePath =  CoreConfKeys.EGGROLL_DATA_DIR.get()+ StringConstants.SLASH+"NodeManagerMeta";
@@ -315,7 +317,7 @@ object  NodeResourceManager extends  Logging {
           seq +=1
           var nodeHeartBeat = client.nodeHeartbeat(ErNodeHeartbeat (id= seq ,node =queryNodeResource(ErServerNode(id = NodeManagerMeta.serverNodeId,
             nodeType = ServerNodeTypes.NODE_MANAGER,
-            endpoint = ErEndpoint(host = StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST, NetUtils.getLocalHost),
+            endpoint = ErEndpoint(host = StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST, NetUtils.getLocalHost(StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_NET_DEVICE, ""))),
               port = StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT).toInt),
             status = NodeManagerMeta.status)
           ))

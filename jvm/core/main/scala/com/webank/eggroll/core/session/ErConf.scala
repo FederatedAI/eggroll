@@ -164,6 +164,13 @@ case class RuntimeErConf(prop: Properties = new Properties()) extends ErConf {
   override protected def getConf(): Properties = conf
 }
 
+object ExtendEnvConf extends  ErConf{
+  override def getPort(): Int = ???
+
+  override def getModuleName(): String = ???
+}
+
+
 object StaticErConf extends ErConf {
   var port: Int = -1
   var moduleName: String = _

@@ -22,6 +22,7 @@ object Util {
   def main(args: Array[String]) {
     println(hashMD5("abcdefg"))
     println(hashMD5("abcde"))
+
   }
 
 }
