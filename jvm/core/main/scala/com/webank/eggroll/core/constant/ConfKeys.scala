@@ -141,10 +141,11 @@ object NodeManagerConfKeys {
   val CONFKEY_NODE_MANAGER_HOST = "eggroll.resourcemanager.nodemanager.host"
   val CONFKEY_NODE_MANAGER_PORT = "eggroll.resourcemanager.nodemanager.port"
   var CONFKEY_NODE_MANAGER_ID = "eggroll.resourcemanager.nodemanager.id"
+  var CONFKEY_NODE_MANAGER_GPU_NUM_SHELL= ErConfKey("eggroll.resourcemanager.nodemanager.gpu.num.shell","nvidia.sh")
   var CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL = ErConfKey("eggroll.resourcemanager.nodemanager.heartbeat.interval",10000)
   val CONFKEY_NODE_MANAGER_CPU_VCORES =  ErConfKey(  "eggroll.resourcemanager.nodemanager.cpu.vcores",16)
   val CONFKEY_NODE_MANAGER_GPU_VCORES =  ErConfKey(  "eggroll.resourcemanager.nodemanager.gpu.vcores",16)
-
+  var CONFKEY_NODE_MANAGER_NET_DEVICE =    "eggroll.resourcemanager.nodemanager.net.device"
   val CONFKEY_NODE_MANAGER_CONTAINERS_DATA_DIR = "eggroll.resourcemanager.nodemanager.containers.data.dir"
 
 

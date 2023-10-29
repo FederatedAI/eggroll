@@ -19,6 +19,8 @@ import java.util.regex.Pattern;
 import com.google.common.annotations.VisibleForTesting;
 
 
+import com.webank.eggroll.core.constant.ErConfKey;
+import com.webank.eggroll.core.constant.NodeManagerConfKeys;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -156,7 +158,14 @@ public class SysInfoLinux extends SysInfo {
     int result = 0;
     try{
 
-      String[] cmd = new String[] { "/bin/sh", "-c", "nvidia-smi --query-gpu=name --format=csv, noheader" };
+      ErConfKey shellConfig = NodeManagerConfKeys.CONFKEY_NODE_MANAGER_GPU_NUM_SHELL();
+      String shell = shellConfig.get();
+      if(StringUtils.isEmpty(shell)){
+        return  result;
+      }
+      String eggrollHome = System.getenv("EGGROLL_HOME");
+      String path =   eggrollHome+"/bin/gpu/"+shell;
+      String[] cmd = new String[] { "/bin/sh", "-c", path };
       ShellCommandExecutor shellExecutorClk = new ShellCommandExecutor(cmd);
 //    name
 //    NVIDIA Tesla V100-SXM2-32GB
@@ -165,22 +174,16 @@ public class SysInfoLinux extends SysInfo {
 //    NVIDIA Tesla V100-SXM2-32GB
     shellExecutorClk.execute();
     String cmdReturnString = shellExecutorClk.getOutput();
-    if (StringUtils.isNotEmpty(cmdReturnString))
-    {
-      String[] elems = cmdReturnString.split("\n");
-      for(String  elem:elems){
-        if(elem.contains("NVIDIA")){
-          result=result+1;
-        }
-      }
+    try {
+      result = Integer.getInteger(cmdReturnString);
+    }catch (Throwable e){
+
     }
     if(result==0){
-      System.err.println("nvidia-smi cmd return "+cmdReturnString);
+      System.err.println("get gpu num exec "+path +" return "+cmdReturnString);
     }
 
-  }catch(Exception ignore){
-    }
-    System.err.println("nvidia-smi gpu return "+result);
+  }catch(Exception ignore){}
     return result;
   }
 
