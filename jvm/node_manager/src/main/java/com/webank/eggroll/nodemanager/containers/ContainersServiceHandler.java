@@ -143,9 +143,10 @@ public class ContainersServiceHandler {
 
     public KillContainersResponse killJobContainers(KillContainersRequest killContainersRequest) {
         String sessionId = killContainersRequest.getSessionId();
+        Gson gson = new Gson();
+        String killContainersRequestStr = gson.toJson(killContainersRequest);
+        logger.info("====================killJobContainers==============reqParam: {}",killContainersRequestStr);
         logger.info("(sessionId=" + sessionId + ") killing containers");
-
-
         for (Long containerId : killContainersRequest.getContainers()) {
             logger.info("to kill container {}",containerId);
             containersManager.killContainer(containerId);

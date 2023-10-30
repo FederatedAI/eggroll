@@ -7,6 +7,7 @@ import com.eggroll.core.grpc.AbstractCommandServiceProvider;
 import com.eggroll.core.grpc.Dispatcher;
 import com.eggroll.core.grpc.URI;
 import com.eggroll.core.pojo.*;
+import com.google.gson.Gson;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.cluster.ClusterManagerService;
@@ -156,6 +157,10 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
 
     @URI(value = killJob)
     public KillJobResponse killJob(Context context ,KillJobRequest request){
+
+        Gson gson = new Gson();
+        String reqStr = gson.toJson(request);
+        logger.info("=============killJob==========reqStr: {}",request);
         return jobServiceHandler.handleJobKill(context,request);
     }
 
