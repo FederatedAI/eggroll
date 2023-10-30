@@ -298,7 +298,7 @@ public class MetaInfo {
     @Config(confKey = "eggroll.session.stop.timeout.ms", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static Integer EGGROLL_SESSION_STOP_TIMEOUT_MS = 20000;
     @Config(confKey = "eggroll.session.max.live.ms", pattern = Dict.POSITIVE_INTEGER_PATTERN)
-    public static Long EGGROLL_SESSION_MAX_LIVE_MS = 48 * 3600 * 1000L;
+    public static Long EGGROLL_SESSION_MAX_LIVE_MS = 72 * 3600 * 1000L;
     @Config(confKey = "eggroll.session.status.check.interval.ms", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static Integer EGGROLL_SESSION_STATUS_CHECK_INTERVAL_MS = 5000;
 
