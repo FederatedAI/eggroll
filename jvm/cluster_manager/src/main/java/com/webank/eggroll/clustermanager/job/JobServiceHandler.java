@@ -269,7 +269,7 @@ public class JobServiceHandler {
         }
 
         ResourceApplication resourceApplication = new ResourceApplication();
-        resourceApplication.setSortByResourceType(Dict.VCPU_CORE);
+        resourceApplication.setSortByResourceType(Dict.VGPU_CORE);
         resourceApplication.setProcessors(prepareProcessors);
         resourceApplication.setResourceExhaustedStrategy(Dict.WAITING);
         resourceApplication.setTimeout(submitJobRequest.getResourceOptions().getTimeoutSeconds() * 1000);
