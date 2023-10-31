@@ -11,7 +11,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Singleton
 public class NodeResourceDao {
@@ -42,4 +44,46 @@ public class NodeResourceDao {
 
         return this.nodeResourceService.list(queryWrapper);
     }
+
+    // 查询cpu剩余资源数据
+    public Map<String,Long> queryCpuResources() {
+        QueryWrapper<NodeResource> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("resource_type", "VCPU_CORE");
+//        queryWrapper.eq("status", "available");
+        List<NodeResource> nodeResourceList = this.nodeResourceService.list(queryWrapper);
+        if (nodeResourceList == null || nodeResourceList.size() == 0) {
+            return null;
+        }
+        Long cpuResource = 0L;
+        Map<String,Long> resourcesMap  = new HashMap<>();
+        for (NodeResource nodeResource : nodeResourceList) {
+            String key = String.valueOf(nodeResource.getServerNodeId());
+            if (!resourcesMap.containsKey(key)) {
+                cpuResource = nodeResource.getTotal() - nodeResource.getUsed();
+                resourcesMap.put(key,cpuResource);
+            }
+        }
+        return resourcesMap;
+    }
+
+    // 查询GPU剩余资源数据
+    public Map<String,Long> queryGpuResources() {
+        QueryWrapper<NodeResource> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("resource_type", "VGPU_CORE");
+        List<NodeResource> nodeResourceList = this.nodeResourceService.list(queryWrapper);
+        if (nodeResourceList == null || nodeResourceList.size() == 0) {
+            return null;
+        }
+        Long gpuResource = 0L;
+        Map<String, Long> resourcesMap = new HashMap<>();
+        for (NodeResource nodeResource : nodeResourceList) {
+            String key = String.valueOf(nodeResource.getServerNodeId());
+            if (!resourcesMap.containsKey(key)) {
+                gpuResource = nodeResource.getTotal() - nodeResource.getUsed();
+                resourcesMap.put(key, gpuResource);
+            }
+        }
+        return resourcesMap;
+    }
+
 }

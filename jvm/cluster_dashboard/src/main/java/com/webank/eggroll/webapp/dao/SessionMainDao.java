@@ -61,4 +61,15 @@ public class SessionMainDao {
         return this.sessionMainService.list(queryWrapper);
     }
 
+    public Long queryActiveSession(){
+        QueryWrapper<SessionMain> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("status", "ACTIVATED" );
+        return this.sessionMainService.count(queryWrapper);
+    }
+
+    public Long queryNewSession(){
+        QueryWrapper<SessionMain> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("status", "NEW" );
+        return this.sessionMainService.count(queryWrapper);
+    }
 }
