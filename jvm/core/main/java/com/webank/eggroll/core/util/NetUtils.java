@@ -285,7 +285,7 @@ public class NetUtils {
             localAddress = InetAddress.getLocalHost();
             Optional<InetAddress> addressOp = toValidAddress(localAddress);
             if (addressOp.isPresent()) {
-                return addressOp.get();
+//                return addressOp.get();
             } else {
                 localAddress = null;
             }
@@ -326,7 +326,7 @@ public class NetUtils {
             } catch (Throwable e) {
                 logger.warn(e.getMessage());
             }
-            if(localAddress.getHostAddress().equals(LOCALHOST_VALUE)&&other!=null){
+            if(localAddress==null||localAddress.getHostAddress().equals(LOCALHOST_VALUE)&&other!=null){
                 localAddress=other;
             }
 
