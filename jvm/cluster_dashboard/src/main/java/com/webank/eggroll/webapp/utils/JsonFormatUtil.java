@@ -24,7 +24,7 @@ public class JsonFormatUtil {
             resultMap.put("total", ((List) data).size());
         }else {
             resultMap.put("data", data);
-            resultMap.put("total", 1);
+            resultMap.put("total", 0);
         }
         Gson gson = new Gson();
         return gson.toJson(resultMap);

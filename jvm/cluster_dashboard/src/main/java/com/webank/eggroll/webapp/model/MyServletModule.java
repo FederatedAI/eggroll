@@ -29,7 +29,7 @@ public class MyServletModule extends ServletModule {
         //serve("/eggroll/zookeeper-query").with(ZookeeperQueryResource.class);
         //登录接口后期单独修改，目前没有登陆需求
         serve("/eggroll/login").with(LoginController.class);
-        serve("/api/*").with(DispatcherServlet.class);
+        serve("/eggroll/*").with(DispatcherServlet.class);
 
 
     }
