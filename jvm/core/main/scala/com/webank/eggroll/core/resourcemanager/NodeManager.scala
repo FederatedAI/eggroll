@@ -173,7 +173,7 @@ class NodeManagerService extends NodeManager with Logging {
 
 object  NodeResourceManager extends  Logging {
 
-  private  var sysInfo= if(Shell.LINUX)new  SysInfoLinux else null
+  private  var sysInfo= new  SysInfoLinux
   private  var client = new  ClusterManagerClient
   private  var resourceEventQueue=  new ArrayBlockingQueue[ResourceEvent](100);
 
@@ -233,11 +233,11 @@ object  NodeResourceManager extends  Logging {
   }
 
   def getGpuSize():Long = {
-    if(Shell.LINUX){
+//    if(Shell.LINUX){
       sysInfo.getGpuNumber
-    }else{
-      0
-    }
+//    }else{
+//      0
+//    }
   }
 
 
