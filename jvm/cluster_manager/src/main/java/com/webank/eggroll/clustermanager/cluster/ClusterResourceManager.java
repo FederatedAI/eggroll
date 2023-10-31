@@ -517,7 +517,8 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
         nodeResourceTupes.sort(Comparator.comparingLong(pair -> -1 * getFirstUnAllocatedResource(pair.getLeft(), resourceApplication)));
         List<ErServerNode> sortNodeList = new ArrayList<>();
         for (MutablePair<ErServerNode, Long> nodeResourceTupe : nodeResourceTupes) {
-            for (int i = 0; i < nodeResourceTupe.getRight(); i++) {
+            final Long remainResource = getFirstUnAllocatedResource(nodeResourceTupe.getLeft(), resourceApplication);
+            for (int i = 0; i < remainResource; i++) {
                 sortNodeList.add(nodeResourceTupe.getLeft());
             }
         }
