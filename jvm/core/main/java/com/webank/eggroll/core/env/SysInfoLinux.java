@@ -2,11 +2,7 @@
 
 package com.webank.eggroll.core.env;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.InputStreamReader;
-import java.io.IOException;
+import java.io.*;
 import java.math.BigInteger;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -153,22 +149,36 @@ public class SysInfoLinux extends SysInfo {
   }
 
 
+  public int getGpuNumberV2() throws IOException {
+    String gpus = null;
+    int result = 0;
+    try {
+      String[] cmd = new String[]{"/bin/sh", "-c", "nvidia-smi --query-gpu=name --format=csv, noheader"};
+      ShellCommandExecutor shellExecutorClk = new ShellCommandExecutor(cmd);
+      shellExecutorClk.execute();
+      String cmdReturnString = shellExecutorClk.getOutput();
+      if (StringUtils.isNotEmpty(cmdReturnString)) {
+        String[] elems = cmdReturnString.split("\n");
+        for(String e:elems){
+          if(e.contains("NVIDIA"))
+            result=result+1;
+        }
+      }
+    } catch (Exception ignore) {
+    }
+    return result;
+  }
+
   public int  getGpuNumber() throws IOException {
-
-
     String gpus = null;
     int result = 0;
     try{
-
       ErConfKey shellConfig = NodeManagerConfKeys.CONFKEY_NODE_MANAGER_GPU_NUM_SHELL();
-
       String shell = shellConfig.get();
-
       String eggrollHome = System.getenv("EGGROLL_HOME");
-
       String path =   eggrollHome+"/bin/gpu/"+shell;
-
-      if(StringUtils.isNotEmpty(path)) {
+      File file =  new File(path);
+      if(StringUtils.isNotEmpty(path)&&file.exists()) {
         String[] cmd = new String[]{"/bin/sh", "-c", path};
         ShellCommandExecutor shellExecutorClk = new ShellCommandExecutor(cmd);
         shellExecutorClk.execute();
@@ -180,15 +190,15 @@ public class SysInfoLinux extends SysInfo {
         } catch (Throwable e) {
           e.printStackTrace();
         }
-
-
-
         System.err.println("get gpu num exec "+path +" return "+cmdReturnString +" result :"+result) ;
       }else{
         System.err.println("get gpu shell is not set");
       }
   }catch(Exception ignore){
       ignore.printStackTrace();
+    }
+    if(result==0){
+        result = getGpuNumberV2();
     }
     return result;
   }
@@ -747,11 +757,6 @@ public class SysInfoLinux extends SysInfo {
     return numDisksBytesWritten;
   }
 
-  /**
-   * Test the {@link SysInfoLinux}.
-   *
-   * @param args - arguments to this calculator test
-   */
 
 
   @VisibleForTesting
