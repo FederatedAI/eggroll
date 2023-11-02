@@ -359,35 +359,40 @@ class ClusterManagerService extends ClusterManager with Logging {
   override def nodeHeartbeat(nodeHeartbeat: ErNodeHeartbeat): ErNodeHeartbeat = synchronized {
     //logInfo(s" nodeHeartbeat ${nodeHeartbeat}")
     var serverNode = nodeHeartbeat.node
-    if (serverNode.id == -1) {
-      var existNode = queryNodeByEndPoint(serverNode)
-      if (existNode == null) {
-        logInfo(s"create new node ${serverNode}")
-        createNewNode(serverNode)
-      } else {
-        logInfo(s"node already exist ${existNode}")
-        serverNode = serverNode.copy(id = existNode.id)
-        updateNode(serverNode, true, true)
-      }
-
-    } else {
-      if (nodeHeartbeatMap.contains(serverNode.id) && (nodeHeartbeatMap(serverNode.id).id < nodeHeartbeat.id)) {
-        //正常心跳
-        updateNode(serverNode, false, true)
-      } else {
-        //nodemanger重启过
-        var existNode = queryNodeById(serverNode)
+    if(!serverNode.status.equals(ServerNodeStatus.LOSS)) {
+      if (serverNode.id == -1) {
+        var existNode = queryNodeByEndPoint(serverNode)
         if (existNode == null) {
-          serverNode = createNewNode(serverNode)
+          logInfo(s"create new node ${serverNode}")
+          createNewNode(serverNode)
         } else {
+          logInfo(s"node already exist ${existNode}")
+          serverNode = serverNode.copy(id = existNode.id)
           updateNode(serverNode, true, true)
         }
+      } else {
+        if (nodeHeartbeatMap.contains(serverNode.id) && (nodeHeartbeatMap(serverNode.id).id < nodeHeartbeat.id)) {
+          //正常心跳
+          updateNode(serverNode, false, true)
+        } else {
+          //nodemanger重启过
+          var existNode = queryNodeById(serverNode)
+          if (existNode == null) {
+            serverNode = createNewNode(serverNode)
+          } else {
+            updateNode(serverNode, true, true)
+          }
+        }
       }
+      nodeHeartbeatMap.put(serverNode.id, nodeHeartbeat);
+      nodeHeartbeat.copy(node = serverNode)
+    }else{
+      logInfo(s"receive node ${serverNode.id} quit heart beat")
+      if (serverNode.id != -1) {
+        updateNode(serverNode, false, true)
+      }
+      nodeHeartbeat
     }
-    nodeHeartbeatMap.put(serverNode.id, nodeHeartbeat);
-    nodeHeartbeat.copy(node = serverNode)
   }
-
-
 }
 
