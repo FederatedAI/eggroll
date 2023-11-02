@@ -146,7 +146,7 @@ object ClusterManagerService extends Logging {
     var interval = current - session.createTime.getTime
     logDebug(s"watch deepspeed new session: ${session.id} ${interval}  ${maxInterval}")
     if (interval > maxInterval) {
-      JobServiceHandler.killJob(session.id, isTimeout = true)
+      JobServiceHandler.killJob(session.id, isTimeout = true,SessionStatus.ERROR)
     }
   }
 
@@ -195,7 +195,7 @@ object ClusterManagerService extends Logging {
     if (sessionProcessors.exists(_.status == ProcessorStatus.ERROR)) {
       logInfo(s"session watcher kill session ${session}")
       try {
-        killJob(session.id, isTimeout = false)
+        killJob(session.id, isTimeout = false,SessionStatus.ERROR)
       } catch {
         case e: ErSessionException =>
           logError(s"failed to kill session ${session.id}", e)
