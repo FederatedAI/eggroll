@@ -120,7 +120,8 @@ class Task(BaseEggrollAPI):
         response = self._get_client().do_sync_request(
             kill_job_request, output_type=deepspeed_pb2.KillJobResponse, command_uri=JobCommands.KILL_JOB
         )
-        response = {"session_id":response.session_id}
+        status = self.query_status(session_id=session_id)
+        response = {"session_id":response.session_id, "status": status.get("status")}
         return response
 
     def stop_job(self, session_id):
@@ -131,7 +132,8 @@ class Task(BaseEggrollAPI):
         response = self._get_client().do_sync_request(
             stop_job_request, output_type=deepspeed_pb2.StopJobResponse, command_uri=JobCommands.STOP_JOB
         )
-        response = {"session_id": response.session_id}
+        status = self.query_status(session_id=session_id)
+        response = {"session_id": response.session_id, "status": status.get("status")}
         return response
 
     def await_finished(self, session_id, timeout: int = 0, poll_interval: int = 1):
