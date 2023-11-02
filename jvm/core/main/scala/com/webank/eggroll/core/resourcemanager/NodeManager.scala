@@ -27,7 +27,7 @@ object NodeManagerMeta  {
   var serverNodeId = -1:Long;
   var clusterId = -1:Long;
   var ip:String =StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST,
-    NetUtils.getLocalHost( StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_NET_DEVICE, "") )) ;
+    NetUtils.getLocalHost( StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_NET_DEVICE, "eth0") )) ;
   var port:Integer =  StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT).toInt
   def refreshServerNodeMetaIntoFile(): Unit = {
      var filePath =  CoreConfKeys.EGGROLL_DATA_DIR.get()+ StringConstants.SLASH+"NodeManagerMeta";
@@ -240,6 +240,16 @@ object  NodeResourceManager extends  Logging {
 //    }
   }
 
+  def tryNodeHeartbeat():ErNodeHeartbeat ={
+    client.nodeHeartbeat(ErNodeHeartbeat (id= seq ,node =queryNodeResource(ErServerNode(id = NodeManagerMeta.serverNodeId,
+      nodeType = ServerNodeTypes.NODE_MANAGER,
+      endpoint = ErEndpoint(host = NodeManagerMeta.ip,
+        port = NodeManagerMeta.port),
+      status = NodeManagerMeta.status))))
+
+  }
+
+
 
   def getAvailablePhysicalMemorySize():Long ={
     if(Shell.LINUX){
@@ -307,22 +317,15 @@ object  NodeResourceManager extends  Logging {
                       used=r.used.get(),
                       allocated = r.allocated.get())}))
   }
-
+  var  seq :Long = 0
   class HeartBeatThread extends Thread{
     override def run(){
       var  notOver : Boolean = true
-      var  seq :Long = 0
+
       while(notOver){
         try {
           seq +=1
-          var nodeHeartBeat = client.nodeHeartbeat(ErNodeHeartbeat (id= seq ,node =queryNodeResource(ErServerNode(id = NodeManagerMeta.serverNodeId,
-            nodeType = ServerNodeTypes.NODE_MANAGER,
-            endpoint = ErEndpoint(host = StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST, NetUtils.getLocalHost(StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_NET_DEVICE, ""))),
-              port = StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT).toInt),
-            status = NodeManagerMeta.status)
-          ))
-
-          )
+          var nodeHeartBeat = tryNodeHeartbeat()
           if (nodeHeartBeat != null&&nodeHeartBeat.node!=null) {
           if (NodeManagerMeta.status.equals(INIT)) {
               if(nodeHeartBeat.node.id != -1) {
@@ -338,7 +341,6 @@ object  NodeResourceManager extends  Logging {
         }
         }catch {
           case t: Throwable =>
-//            t.printStackTrace()
             logError("node heart beat error "+t.getMessage)
         }
         Thread.sleep(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt)
