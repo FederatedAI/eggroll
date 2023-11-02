@@ -162,3 +162,11 @@ message NodeHeartbeat{
   repeated int32 gpuProcessors=5;
   repeated int32 cpuProcessors=6;
 }
+
+message MetaInfoResponse{
+	map<string, string> metaMap = 1;
+}
+
+message MetaInfoRequest{
+	string key = 1;
+}
