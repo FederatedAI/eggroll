@@ -1,5 +1,6 @@
 package com.webank.eggroll.webapp.controller;
 
+import com.eggroll.core.context.Context;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.pagehelper.PageHelper;
 import com.google.inject.Inject;
@@ -94,6 +95,13 @@ public class EggrollServiceProvider {
         String processorId = sessionProcessorQO.getProcessorId();
         containerStatusService.killProcessor(Long.valueOf(processorId));
         return new ResponseResult();
+    }
+
+    @ApiMethod("/eggroll/queryNodeMetaInfo")
+    public Object queryNodeMetaInfo(String serverNodeId) {
+        logger.info("queryNodeMetaInfo serverNodeId: {}",serverNodeId);
+        Map<String, String> result = containerStatusService.queryNodeMetaInfo(new Context(), Long.valueOf(serverNodeId));
+        return new ResponseResult<>(result);
     }
 
 

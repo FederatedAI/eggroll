@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Singleton
@@ -40,6 +41,7 @@ public class ContainerStatusService {
 
     @Inject
     ServerNodeService serverNodeService;
+
 
     public void killSession(SessionProcessorQO req) {
         logger.info("kill session req: {}",new Gson().toJson(req));
@@ -126,7 +128,14 @@ public class ContainerStatusService {
         killContainersRequest.setContainers(processorIdList);
         NodeManagerClient nodeManagerClient = new NodeManagerClient(erServerNode.getEndpoint());
         nodeManagerClient.killJobContainers(context, killContainersRequest);
-
     }
 
+    public Map<String,String> queryNodeMetaInfo(Context context, Long serverNodeId) {
+        ErServerNode erServerNode = serverNodeService.getById(serverNodeId).toErServerNode();
+        NodeManagerClient nodeManagerClient = new NodeManagerClient(erServerNode.getEndpoint());
+        MetaInfoRequest request = new MetaInfoRequest();
+        MetaInfoResponse metaInfoResponse = nodeManagerClient.queryNodeMetaInfo(context, request);
+        Map<String, String> metaMap = metaInfoResponse.getMetaMap();
+        return metaMap;
+    }
 }
