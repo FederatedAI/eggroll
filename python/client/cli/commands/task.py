@@ -71,6 +71,8 @@ def submit(ctx, **kwargs):
             break
     log_type = kwargs.get("log_type") if not kwargs.get("log_type") else "stdout"
     response = client.task.get_log(sessionId=session_id, logType=log_type)
+    if response["status"]:
+        response = client.task.query_status(session_id=session_id)
     prettify(response)
 
 
