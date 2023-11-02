@@ -82,4 +82,12 @@ public class ClusterManagerClient {
         return response;
     }
 
+    public KillJobResponse killJob(Context context ,KillJobRequest request){
+        byte[] responseData = cc.call(context, endpoint, killJob, request.serialize());
+        KillJobResponse response = new KillJobResponse();
+        response.deserialize(responseData);
+        return response;
+    }
+
+
 }
