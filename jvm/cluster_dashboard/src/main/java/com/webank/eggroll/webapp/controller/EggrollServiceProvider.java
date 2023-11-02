@@ -11,10 +11,7 @@ import com.webank.eggroll.webapp.global.ErrorCode;
 import com.webank.eggroll.webapp.interfaces.ApiMethod;
 import com.webank.eggroll.webapp.model.ResponseResult;
 import com.webank.eggroll.webapp.queryobject.*;
-import com.webank.eggroll.webapp.service.NodeDetailService;
-import com.webank.eggroll.webapp.service.NodeSituationService;
-import com.webank.eggroll.webapp.service.PrenodeSessionInfoService;
-import com.webank.eggroll.webapp.service.QuerySessionProcessorService;
+import com.webank.eggroll.webapp.service.*;
 import com.webank.eggroll.webapp.utils.JsonFormatUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,6 +56,9 @@ public class EggrollServiceProvider {
     @Inject
     private SessionMainDao sessionMainDao;
 
+    @Inject
+    private ContainerStatusService containerStatusService;
+
 
     @ApiMethod("/eggroll/nodeSituation")
     public Object getNodeSituation(HttpServletRequest req) {
@@ -78,6 +78,25 @@ public class EggrollServiceProvider {
         SessionProcessorQO sessionProcessorQO = objectMapper.readValue(req.getInputStream(), SessionProcessorQO.class);
         return querySessionService.query(sessionProcessorQO);
     }
+
+    @ApiMethod("/eggroll/killSession")
+    public Object killSession(HttpServletRequest req) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        SessionProcessorQO sessionProcessorQO = objectMapper.readValue(req.getInputStream(), SessionProcessorQO.class);
+        containerStatusService.killSession(sessionProcessorQO);
+        return new ResponseResult();
+    }
+
+    @ApiMethod("/eggroll/killProcessor")
+    public Object killProcessor(HttpServletRequest req) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        SessionProcessorQO sessionProcessorQO = objectMapper.readValue(req.getInputStream(), SessionProcessorQO.class);
+        String processorId = sessionProcessorQO.getProcessorId();
+        containerStatusService.killProcessor(Integer.valueOf(processorId));
+        return new ResponseResult();
+    }
+
+
 
     @ApiMethod("/eggroll/preNodeSessionInfo")
     public Object queryPreNodeSessionInfo(HttpServletRequest req) throws IOException {
@@ -147,6 +166,7 @@ public class EggrollServiceProvider {
         // 查询新建（等待启动）的session数量，返回一个long类型的数据
         return sessionMainDao.queryNewSession();
     }
+
 
 
 }
