@@ -23,19 +23,19 @@ filtered_packages = [pkg for pkg in packages if pkg.startswith("client")]
 package_data = {"": ["*"]}
 install_requires = [
     "click",
-    "requests",
-    "grpcio",
-    "numba",
-    "numpy",
-    "protobuf",
-    "ruamel.yaml"
+    "requests<2.26.0",
+    "grpcio==1.46.3",
+    "numba==0.56.4",
+    "numpy==1.19.5",
+    "protobuf=3.19.6",
+    "ruamel.yaml==0.16"
 ]
 
 entry_points = {"console_scripts": ["eggroll = client.cli.eggroll:eggroll_cli"]}
 
 setup_kwargs = {
     "name": "eggroll-client",
-    "version": "2.5.1",
+    "version": "2.5.3",
     "description": "Clients for Eggroll",
     "long_description_content_type": "text/markdown",
     "long_description": "Clients for Eggroll",
