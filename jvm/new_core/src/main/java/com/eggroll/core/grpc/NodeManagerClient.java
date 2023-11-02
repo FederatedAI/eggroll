@@ -114,6 +114,13 @@ public class NodeManagerClient {
     }
 
 
+    public MetaInfoResponse queryNodeMetaInfo(Context context,MetaInfoRequest metaInfoRequest) {
+        byte[] responseData = commandClient.call(context, nodeManagerEndpoint, nodeMetaInfo,metaInfoRequest.serialize());
+        MetaInfoResponse response = new MetaInfoResponse();
+        response.deserialize(responseData);
+        return response;
+    }
+
     //  def downloadContainers(downloadContainersRequest: DownloadContainersRequest): DownloadContainersResponse =
 //          commandClient.call(ContainerCommands.downloadContainers, downloadContainersRequest)
 

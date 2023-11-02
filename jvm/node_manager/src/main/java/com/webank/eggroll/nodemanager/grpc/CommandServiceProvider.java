@@ -17,6 +17,8 @@ import com.webank.eggroll.nodemanager.processor.DefaultProcessorManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.eggroll.core.grpc.CommandUri.*;
@@ -99,5 +101,23 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
         return null;
     }
 
+
+    @URI(value = nodeMetaInfo)
+    public MetaInfoResponse queryNodeMetaInfo(Context context, MetaInfoRequest metaInfoRequest) {
+        logger.info("=============queryNodeMetaInfo==============");
+        MetaInfoResponse metaInfoResponse = new MetaInfoResponse();
+        Map<String,String> metaMap = new HashMap<>();
+        Map map = MetaInfo.toMap();
+        map.keySet().stream().forEach(key -> {
+            String strValue = null;
+            Object object = map.get(key);
+            if (null != object) {
+                strValue = String.valueOf(map.get(key));
+            }
+            metaMap.put(String.valueOf(key),strValue);
+        });
+        metaInfoResponse.setMetaMap(metaMap);
+        return metaInfoResponse;
+    }
 
 }
