@@ -1,5 +1,6 @@
 package com.webank.eggroll.webapp.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.constant.ProcessorType;
@@ -47,9 +48,10 @@ public class ContainerStatusService {
         // todo 判断session状态来确定是否要发起
         ErSessionMeta session = sessionMainService.getSession(sessionId);
 
-        SessionProcessor sessionProcessorQuery = new SessionProcessor();
-        sessionProcessorQuery.setSessionId(sessionId);
-        List<SessionProcessor> processorList = sessionProcessorService.list(sessionProcessorQuery);
+        QueryWrapper<SessionProcessor> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("session_id", sessionId);
+        List<SessionProcessor> processorList = sessionProcessorService.list(queryWrapper);
+
         if (CollectionUtils.isNotEmpty(processorList)) {
             type = processorList.get(0).getProcessorType();
         }
@@ -78,11 +80,13 @@ public class ContainerStatusService {
      * 将单个进程封装到对应的请求参数中。
      * @param pid
      */
-    public void killProcessor(Integer pid) {
+    public void killProcessor(Long pid) {
         logger.info("kill processor req, pid :{}",pid);
-        SessionProcessor req = new SessionProcessor();
-        req.setPid(pid);
-        SessionProcessor sessionProcessor = sessionProcessorService.get(req);
+
+        QueryWrapper<SessionProcessor> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("processor_id", pid);
+        List<SessionProcessor> processorList = sessionProcessorService.list(queryWrapper);
+        SessionProcessor sessionProcessor = processorList.get(0);
         ErProcessor erProcessor = sessionProcessor.toErProcessor();
         String processorType = sessionProcessor.getProcessorType();
         if (ProcessorType.egg_pair.name().equals(processorType)) {
@@ -96,7 +100,7 @@ public class ContainerStatusService {
 
     private void killEggPairProcessor(Context context, ErProcessor processor) {
         logger.info("prepare to kill eggPair single processor {}", JsonUtil.object2Json(processor));
-        ErServerNode serverNodeInDb = serverNodeService.getByIdFromCache(processor.getServerNodeId());
+        ErServerNode serverNodeInDb = serverNodeService.getById(processor.getServerNodeId()).toErServerNode();
         ErSessionMeta erSessionMeta = sessionMainService.getSession(processor.getSessionId(), true, false, false);
         if (erSessionMeta != null) {
             if (CollectionUtils.isEmpty(erSessionMeta.getProcessors())) {

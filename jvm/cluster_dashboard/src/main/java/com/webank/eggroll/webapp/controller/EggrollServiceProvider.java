@@ -92,7 +92,7 @@ public class EggrollServiceProvider {
         ObjectMapper objectMapper = new ObjectMapper();
         SessionProcessorQO sessionProcessorQO = objectMapper.readValue(req.getInputStream(), SessionProcessorQO.class);
         String processorId = sessionProcessorQO.getProcessorId();
-        containerStatusService.killProcessor(Integer.valueOf(processorId));
+        containerStatusService.killProcessor(Long.valueOf(processorId));
         return new ResponseResult();
     }
 
