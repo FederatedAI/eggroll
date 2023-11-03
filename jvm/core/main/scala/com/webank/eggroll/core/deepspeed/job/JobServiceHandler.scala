@@ -38,26 +38,40 @@ object JobServiceHandler extends Logging {
 
   def handleJobKill(killJobRequest: KillJobRequest): KillJobResponse = {
     val sessionId = killJobRequest.sessionId
-    killJob(sessionId, isTimeout = false)
+    killJob(sessionId, isTimeout = false,SessionStatus.KILLED)
     KillJobResponse(sessionId)
   }
 
   def handleJobStop(stopJobRequest: StopJobRequest): StopJobResponse = {
     val sessionId = stopJobRequest.sessionId
-    killJob(sessionId, isTimeout = false)
+    killJob(sessionId, isTimeout = false,SessionStatus.KILLED)
     StopJobResponse(sessionId)
   }
 
   def handleJobQuery(queryJobRequest: QueryJobRequest): QueryJobResponse = {
     val sessionId = queryJobRequest.sessionId
-    val status = smDao.getSessionMain(sessionId).status
+    var status = smDao.getSessionMain(sessionId).status
+    if(status.equals(SessionStatus.WAITING_RESOURCE)){
+      status = SessionStatus.NEW
+    }
+    if(status.equals(SessionStatus.ALLOCATE_RESOURCE_FAILED)){
+      status = SessionStatus.ERROR
+    }
     val processors = smDao.getSession(sessionId).processors
     QueryJobResponse(sessionId = sessionId, status = status, processors = processors)
   }
 
   def handleJobStatusQuery(queryJobStatusRequest: QueryJobStatusRequest): QueryJobStatusResponse = {
     val sessionId = queryJobStatusRequest.sessionId
-    val status = smDao.getSessionMain(sessionId).status
+    var status = smDao.getSessionMain(sessionId).status
+    if(status.equals(SessionStatus.WAITING_RESOURCE)){
+      status = SessionStatus.NEW
+    }
+    if(status.equals(SessionStatus.ALLOCATE_RESOURCE_FAILED)){
+      status = SessionStatus.ERROR
+    }
+
+
     QueryJobStatusResponse(sessionId = sessionId, status = status)
   }
 
@@ -203,7 +217,7 @@ object JobServiceHandler extends Logging {
       val activeCount = session.activeProcCount
       if (activeCount < expectedWorldSize) {
         try {
-          killJob(sessionId, isTimeout = true)
+          killJob(sessionId, isTimeout = true,SessionStatus.ERROR)
         } catch {
           case e: Exception =>
             logError(s"failed to kill job $sessionId", e)
@@ -263,8 +277,9 @@ object JobServiceHandler extends Logging {
     try {
       //锁不能移到分配资源之前，会造成死锁
       ClusterResourceManager.lockSession(sessionId)
-      if(!ClusterResourceManager.killJobMap.contains(sessionId)) {
       val registeredSessionMeta = smDao.getSession(submitJobRequest.sessionId)
+      if(!registeredSessionMeta.status.equals(SessionStatus.KILLED)) {
+
       dispatchedProcessors = dispatchedProcessors.zip(registeredSessionMeta.processors).map {
         case ((processor, node), registeredProcessor) =>
           (processor.copy(id = registeredProcessor.id), node)
@@ -359,31 +374,36 @@ object JobServiceHandler extends Logging {
           required_old_status = Some(SessionStatus.NEW))
         SubmitJobResponse(sessionId, activeProcessors)
       }else{
-        logError(s"kill session ${sessionId} request was found")
-          throw new ErSessionException(s"kill session ${sessionId} request was found")
+        logError(s"killed session ${sessionId} request was found")
+          throw new ErSessionException(s"session ${sessionId} is killed")
       }
     }
     catch {
       case e: Exception =>
-        killJob(sessionId, isTimeout = false)
+        killJob(sessionId, isTimeout = false,status = SessionStatus.ERROR)
         throw e
     }finally {
        ClusterResourceManager.unlockSession(sessionId)
     }
   }
 
-  def killJob(sessionId: String, isTimeout: Boolean): Unit = {
+  def killJob(sessionId: String, isTimeout: Boolean,status:String): Unit = {
     logInfo(s"try killing job $sessionId")
     try {
       ClusterResourceManager.lockSession(sessionId)
-      ClusterResourceManager.killJobMap.put(sessionId,System.currentTimeMillis())
       if (!smDao.existSession(sessionId)) {
         return
       }
     val sessionMeta = smDao.getSession(sessionId)
-    if (StringUtils.equalsAny(sessionMeta.status, SessionStatus.FINISHED,SessionStatus.KILLED, SessionStatus.CLOSED, SessionStatus.ERROR)) {
+    if (StringUtils.equalsAny(sessionMeta.status, SessionStatus.FINISHED,SessionStatus.KILLED, SessionStatus.CLOSED, SessionStatus.ERROR,SessionStatus.ALLOCATE_RESOURCE_FAILED)) {
       return
     }
+      if (StringUtils.equalsAny(sessionMeta.status, SessionStatus.WAITING_RESOURCE)) {
+        logInfo(s"session id ${sessionId} status change from ${SessionStatus.WAITING_RESOURCE} to ${status}")
+        smDao.updateSessionStatus(sessionId=sessionId,status = status)
+        return
+      }
+
     val serverNodeCrudOperator = new ServerNodeCrudOperator()
      var nodeAndProcessors = sessionMeta.processors
       .groupBy(p => p.serverNodeId)
@@ -404,7 +424,7 @@ object JobServiceHandler extends Logging {
       }
       logInfo(s"killing job send to node over $sessionId")
       var now = System.currentTimeMillis()
-      smDao.updateSessionMain(sessionMeta.copy(status = SessionStatus.KILLED), afterCall = defaultSessionCallback)
+      smDao.updateSessionMain(sessionMeta.copy(status = status), afterCall = defaultSessionCallback)
       var cost = System.currentTimeMillis()-now
       logInfo(s"killing job update session main over $sessionId ,cost $cost")
     }finally {
