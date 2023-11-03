@@ -170,3 +170,10 @@ message MetaInfoResponse{
 message MetaInfoRequest{
 	string key = 1;
 }
+
+message QueueViewResponse{
+  int32 queueSize = 1;
+}
+message QueueViewRequest{
+  string key = 1;
+}

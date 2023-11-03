@@ -43,7 +43,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
 
     private ConcurrentHashMap<String, ReentrantLock> sessionLockMap = new ConcurrentHashMap<>();
     private Map<String, Long> killJobMap = new ConcurrentHashMap<>();
-    private FifoBroker<ResourceApplication> applicationQueue = new FifoBroker<>();
+    private FifoBroker<ResourceApplication> applicationQueue= new FifoBroker<>();
     @Inject
     SessionMainService sessionMainService;
     @Inject
