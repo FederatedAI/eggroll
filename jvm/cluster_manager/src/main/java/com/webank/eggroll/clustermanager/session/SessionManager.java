@@ -4,6 +4,7 @@ package com.webank.eggroll.clustermanager.session;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErSessionMeta;
+import com.eggroll.core.pojo.QueueViewResponse;
 
 
 public interface SessionManager {
@@ -45,5 +46,6 @@ public interface SessionManager {
 
     ErSessionMeta killAllSessions(Context context, ErSessionMeta sessionMeta);
 
+    QueueViewResponse getQueueView(Context context);
 
 }

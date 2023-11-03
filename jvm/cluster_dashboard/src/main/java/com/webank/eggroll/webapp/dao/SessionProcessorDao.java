@@ -25,20 +25,18 @@ public class SessionProcessorDao {
         QueryWrapper<SessionProcessor> queryWrapper = new QueryWrapper<>();
 
         if (StringUtils.isNotBlank(sessionProcessorQO.getSessionId())
-                || StringUtils.isNotBlank(sessionProcessorQO.getProcessorId())
                 || StringUtils.isNotBlank(sessionProcessorQO.getStatus())
                 || StringUtils.isNotBlank(sessionProcessorQO.getCreateTime())
-                || StringUtils.isNotBlank(sessionProcessorQO.getUpdateTime())) {
+                || sessionProcessorQO.getPid() != null) {
             queryWrapper.and(wrapper ->
                     wrapper.like(StringUtils.isNotBlank(sessionProcessorQO.getSessionId()), "session_id", sessionProcessorQO.getSessionId())
-                            .or()
-                            .like(StringUtils.isNotBlank(sessionProcessorQO.getProcessorId()), "processor_id", sessionProcessorQO.getProcessorId())
                             .or()
                             .like(StringUtils.isNotBlank(sessionProcessorQO.getStatus()), "status", sessionProcessorQO.getStatus())
                             .or()
                             .like(StringUtils.isNotBlank(sessionProcessorQO.getCreateTime()), "created_at", sessionProcessorQO.getCreateTime())
                             .or()
-                            .like(StringUtils.isNotBlank(sessionProcessorQO.getUpdateTime()), "updated_at", sessionProcessorQO.getUpdateTime())
+                            .like(sessionProcessorQO.getPid() != null, "pid", sessionProcessorQO.getPid())
+
             );
         }
 

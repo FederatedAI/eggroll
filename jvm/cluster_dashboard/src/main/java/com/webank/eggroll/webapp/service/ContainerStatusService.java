@@ -138,4 +138,10 @@ public class ContainerStatusService {
         Map<String, String> metaMap = metaInfoResponse.getMetaMap();
         return metaMap;
     }
+
+    public Integer getWaitingQueue() {
+        QueueViewRequest queueViewRequest = new QueueViewRequest();
+        QueueViewResponse queueViewResponse = client.getQueueView(new Context(), queueViewRequest);
+        return queueViewResponse.getQueueSize();
+    }
 }

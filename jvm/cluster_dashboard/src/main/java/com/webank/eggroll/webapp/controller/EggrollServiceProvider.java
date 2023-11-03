@@ -2,26 +2,19 @@ package com.webank.eggroll.webapp.controller;
 
 import com.eggroll.core.context.Context;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.pagehelper.PageHelper;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.webank.eggroll.clustermanager.dao.impl.QueueViewService;
 import com.webank.eggroll.webapp.dao.*;
-import com.webank.eggroll.webapp.entity.NodeDetail;
-import com.webank.eggroll.webapp.entity.NodeInfo;
-import com.webank.eggroll.webapp.global.ErrorCode;
 import com.webank.eggroll.webapp.interfaces.ApiMethod;
 import com.webank.eggroll.webapp.model.ResponseResult;
 import com.webank.eggroll.webapp.queryobject.*;
 import com.webank.eggroll.webapp.service.*;
-import com.webank.eggroll.webapp.utils.JsonFormatUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @Singleton
@@ -60,6 +53,9 @@ public class EggrollServiceProvider {
     @Inject
     private ContainerStatusService containerStatusService;
 
+    @Inject
+    private QueueViewService queueViewService;
+
 
     @ApiMethod("/eggroll/nodeSituation")
     public Object getNodeSituation(HttpServletRequest req) {
@@ -87,6 +83,12 @@ public class EggrollServiceProvider {
         containerStatusService.killSession(sessionProcessorQO);
         return new ResponseResult();
     }
+    // 获取资源分配队列等待请求数接口
+    @ApiMethod("/eggroll/getWaitingQueue")
+    public Object getWaitingQueue(HttpServletRequest req) throws IOException {
+        // 查询等待分配资源的session数量，返回一个Integer类型的数据
+        return containerStatusService.getWaitingQueue();
+    }
 
     @ApiMethod("/eggroll/killProcessor")
     public Object killProcessor(HttpServletRequest req) throws IOException {
@@ -103,7 +105,6 @@ public class EggrollServiceProvider {
         Map<String, String> result = containerStatusService.queryNodeMetaInfo(new Context(), Long.valueOf(serverNodeId));
         return new ResponseResult<>(result);
     }
-
 
 
     @ApiMethod("/eggroll/preNodeSessionInfo")
