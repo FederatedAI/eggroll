@@ -85,7 +85,7 @@ public class EggrollServiceProvider {
         ObjectMapper objectMapper = new ObjectMapper();
         SessionProcessorQO sessionProcessorQO = objectMapper.readValue(req.getInputStream(), SessionProcessorQO.class);
         containerStatusService.killSession(sessionProcessorQO);
-        return new ResponseResult();
+        return new ResponseResult("kill success");
     }
 
     @ApiMethod("/eggroll/killProcessor")
@@ -94,11 +94,14 @@ public class EggrollServiceProvider {
         SessionProcessorQO sessionProcessorQO = objectMapper.readValue(req.getInputStream(), SessionProcessorQO.class);
         String processorId = sessionProcessorQO.getProcessorId();
         containerStatusService.killProcessor(Long.valueOf(processorId));
-        return new ResponseResult();
+        return new ResponseResult("kill success");
     }
 
     @ApiMethod("/eggroll/queryNodeMetaInfo")
-    public Object queryNodeMetaInfo(String serverNodeId) {
+    public Object queryNodeMetaInfo(HttpServletRequest req) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        ServerNodeQO nodeDetailQO = objectMapper.readValue(req.getInputStream(), ServerNodeQO.class);
+        String serverNodeId = nodeDetailQO.getServerNodeId();
         logger.info("queryNodeMetaInfo serverNodeId: {}",serverNodeId);
         Map<String, String> result = containerStatusService.queryNodeMetaInfo(new Context(), Long.valueOf(serverNodeId));
         return new ResponseResult<>(result);
