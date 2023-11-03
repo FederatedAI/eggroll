@@ -25,10 +25,10 @@ install_requires = [
     "click",
     "requests<2.26.0",
     "grpcio==1.46.3",
-    "numba==0.56.4",
-    "numpy==1.19.5",
-    "protobuf=3.19.6",
-    "ruamel.yaml==0.16"
+    "numba==0.53.0",
+    "numpy==1.23.1",
+    "protobuf==3.19.6",
+    "ruamel.yaml==0.16.10"
 ]
 
 entry_points = {"console_scripts": ["eggroll = client.cli.eggroll:eggroll_cli"]}
