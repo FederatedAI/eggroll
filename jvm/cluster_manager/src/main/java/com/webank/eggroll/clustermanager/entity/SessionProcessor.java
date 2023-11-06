@@ -27,6 +27,8 @@ public class SessionProcessor {
 
     private String status;
 
+    private String beforeStatus;
+
     private String tag = "";
 
     private String commandEndpoint = "";

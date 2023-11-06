@@ -19,6 +19,8 @@ public class ErSessionMeta implements RpcMessage {
     private String id = StringConstants.EMPTY;
     private String name = StringConstants.EMPTY;
     private String status = null;
+    private String beforeStatus;
+    private String statusReason;
     private Integer totalProcCount = null;
     private Integer activeProcCount = null;
     private String tag = StringConstants.EMPTY;
