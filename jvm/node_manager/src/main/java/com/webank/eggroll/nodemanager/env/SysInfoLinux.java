@@ -128,17 +128,14 @@ public class SysInfoLinux extends SysInfo {
             Math.max(Math.round(1000D / getConf("CLK_TCK")), -1);
 
     private static long getConf(String attr) {
-        if (Shell.LINUX) {
-            try {
-                ShellCommandExecutor shellExecutorClk = new ShellCommandExecutor(
-                        new String[]{"getconf", attr});
-                shellExecutorClk.execute();
-                return Long.parseLong(shellExecutorClk.getOutput().replace("\n", ""));
-            } catch (IOException | NumberFormatException e) {
-                return -1;
-            }
+        try {
+            ShellCommandExecutor shellExecutorClk = new ShellCommandExecutor(
+                    new String[]{"getconf", attr});
+            shellExecutorClk.execute();
+            return Long.parseLong(shellExecutorClk.getOutput().replace("\n", ""));
+        } catch (IOException | NumberFormatException e) {
+            return -1;
         }
-        return -1;
     }
 
 
