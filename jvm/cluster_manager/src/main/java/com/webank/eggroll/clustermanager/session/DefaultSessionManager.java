@@ -9,10 +9,12 @@ import com.eggroll.core.context.Context;
 import com.eggroll.core.exceptions.ErSessionException;
 import com.eggroll.core.pojo.ErServerNode;
 import com.eggroll.core.pojo.ErSessionMeta;
+import com.eggroll.core.pojo.QueueViewResponse;
 import com.google.common.collect.Lists;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.cluster.ClusterResourceManager;
+import com.webank.eggroll.clustermanager.dao.impl.QueueViewService;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.entity.SessionMain;
@@ -47,6 +49,9 @@ public class DefaultSessionManager implements SessionManager {
     SessionMainService sessionMainService;
     @Inject
     ClusterResourceManager clusterResourceManager;
+
+    @Inject
+    QueueViewService queueViewService;
 
     public boolean blockSession(ErSessionMeta erSessionMeta) throws InterruptedException {
         SessionLatchHolder holder = waitingMap.get(erSessionMeta.getId());
@@ -260,6 +265,10 @@ public class DefaultSessionManager implements SessionManager {
         return sessionStateMachine.changeStatus(context, sessionMeta, null, afterState);
     }
 
+    @Override
+    public QueueViewResponse getQueueView(Context context) {
+        return queueViewService.viewQueue();
+    }
 
     @Override
     public ErSessionMeta killAllSessions(Context context, ErSessionMeta sessionMeta) {

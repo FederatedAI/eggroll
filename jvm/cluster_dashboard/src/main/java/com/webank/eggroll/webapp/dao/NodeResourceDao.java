@@ -24,9 +24,9 @@ public class NodeResourceDao {
     NodeResourceService nodeResourceService;
 
     public List<NodeResource> queryData(NodeResourceQO nodeResourceQO) {
-        PageHelper.startPage(nodeResourceQO.getPageNum(), nodeResourceQO.getPageSize());
-        QueryWrapper<NodeResource> queryWrapper = new QueryWrapper<>();
+        PageHelper.startPage(nodeResourceQO.getPageNum(), nodeResourceQO.getPageSize(),true);
 
+        QueryWrapper<NodeResource> queryWrapper = new QueryWrapper<>();
         if (StringUtils.isNotBlank(nodeResourceQO.getResourceId())
                 || StringUtils.isNotBlank(nodeResourceQO.getServerNodeId())
                 || StringUtils.isNotBlank(nodeResourceQO.getStatus())
@@ -41,6 +41,7 @@ public class NodeResourceDao {
                             .like(StringUtils.isNotBlank(nodeResourceQO.getResourceType()), "resource_type", nodeResourceQO.getResourceType())
             );
         }
+//        List<NodeResource> list = this.nodeResourceService.list(queryWrapper);
 
         return this.nodeResourceService.list(queryWrapper);
     }

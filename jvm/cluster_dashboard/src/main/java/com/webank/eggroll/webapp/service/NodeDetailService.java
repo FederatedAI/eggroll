@@ -43,6 +43,7 @@ public class NodeDetailService {
     public Object queryNodeDetail(NodeDetailQO nodeDetailQO) {
         Integer nodeNum = nodeDetailQO.getNodeNum();
         String sessionId = nodeDetailQO.getSessionId();
+
         PageHelper.startPage(nodeDetailQO.getPageNum(), nodeDetailQO.getPageSize());
         boolean isSessionId = (sessionId != null && !sessionId.isEmpty());
         if (nodeNum > 0) {// 获取单个机器详情

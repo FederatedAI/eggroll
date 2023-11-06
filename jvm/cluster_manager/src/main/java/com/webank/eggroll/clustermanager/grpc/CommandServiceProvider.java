@@ -133,6 +133,11 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
         return defaultSessionManager.killSession(context, erSessionMeta);
     }
 
+    @URI(value = getQueueView)
+    public QueueViewResponse getQueueView(Context context,QueueViewRequest queueViewRequest) {
+        return defaultSessionManager.getQueueView(context);
+    }
+
     @URI(value = killAllSessions)
     public ErSessionMeta killAllSession(Context context ,ErSessionMeta erSessionMeta) {
         context.setSessionId(erSessionMeta.getId());
