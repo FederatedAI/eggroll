@@ -4,15 +4,8 @@ package com.webank.eggroll.nodemanager.env;
 
 public abstract class SysInfo {
 
-
     public static SysInfo newInstance() {
-        if (Shell.LINUX) {
-            return new SysInfoLinux();
-        }
-//    if (Shell.WINDOWS) {
-//      return new SysInfoWindows();
-//    }
-        throw new UnsupportedOperationException("Could not determine OS");
+        return new SysInfoLinux();
     }
 
     /**

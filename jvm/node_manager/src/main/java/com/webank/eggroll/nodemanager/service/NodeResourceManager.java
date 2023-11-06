@@ -95,58 +95,34 @@ public class NodeResourceManager implements ApplicationStartedRunner {
     }
 
     public Long getPhysicalMemorySize() {
-        if (Shell.LINUX) {
-            return sysInfo.getPhysicalMemorySize();
-        } else {
-            return GetSystemInfo.getTotalMemorySize();
-        }
+        return sysInfo.getPhysicalMemorySize();
     }
 
     public Integer getGpuSize() {
-        Integer defaultSize = 0;
-        if (Shell.LINUX) {
-            try {
-                defaultSize = sysInfo.getGpuNumber();
-            } catch (IOException e) {
-                logger.error("get gpuSize failed: {}", e.getMessage());
-            }
+        int defaultSize = 0;
+        try {
+            defaultSize = sysInfo.getGpuNumber();
+        } catch (IOException e) {
+            logger.error("get gpuSize failed: {}", e.getMessage());
         }
         return defaultSize;
     }
 
     public Long getAvailablePhysicalMemorySize() {
-        if (Shell.LINUX) {
-            return sysInfo.getAvailablePhysicalMemorySize();
-        } else {
-            return GetSystemInfo.getFreePhysicalMemorySize();
-        }
+        return sysInfo.getAvailablePhysicalMemorySize();
     }
 
     public int getAvailableProcessors() {
-        if (Shell.LINUX) {
-            return sysInfo.getNumCores();
-        } else {
-            return GetSystemInfo.getAvailableProcessors();
-        }
+        return sysInfo.getNumCores();
     }
 
     public void countMemoryResource() {
-        Long available = 0L;
-        if (Shell.LINUX) {
-            available = sysInfo.getAvailablePhysicalMemorySize();
-        } else {
-            available = GetSystemInfo.getFreePhysicalMemorySize();
-        }
+        Long available = sysInfo.getAvailablePhysicalMemorySize();
         resourceMap.get(Dict.PHYSICAL_MEMORY).getUsed().set(physicalMemorySize - available);
     }
 
     public void countCpuResource() {
-        int coreUsed = 0;
-        if (Shell.LINUX) {
-            coreUsed = (int) sysInfo.getNumVCoresUsed();
-        } else {
-            coreUsed = (int) GetSystemInfo.getProcessCpuLoad();
-        }
+        int coreUsed = (int) sysInfo.getNumVCoresUsed();
         resourceMap.get(Dict.VCPU_CORE).getUsed().set(coreUsed);
     }
 
@@ -157,11 +133,7 @@ public class NodeResourceManager implements ApplicationStartedRunner {
 
 
     public List<Integer> gpuProcessorUsed() {
-        List<Integer> pids = new ArrayList<>();
-        if (Shell.LINUX) {
-            pids = sysInfo.countGpuProcessors();
-        }
-        return pids;
+        return sysInfo.countGpuProcessors();
     }
 
     public ErServerNode queryNodeResource(ErServerNode erServerNode) {
