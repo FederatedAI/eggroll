@@ -157,6 +157,7 @@ public class Dict {
 
 
     public static final String SCHEDULE_KEY = "schedule_key";
+    public static final String HEART_BEAT = "HEART BEAT";
 
 
 }

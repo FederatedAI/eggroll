@@ -3,10 +3,7 @@ package com.webank.eggroll.clustermanager.job;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.constant.ProcessorStatus;
-import com.eggroll.core.constant.ProcessorType;
-import com.eggroll.core.constant.ResourceStatus;
-import com.eggroll.core.constant.SessionStatus;
+import com.eggroll.core.constant.*;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.exceptions.ErSessionException;
 import com.eggroll.core.grpc.NodeManagerClient;
@@ -51,7 +48,7 @@ public class JobServiceHandler {
     @Inject
     SessionRanksService sessionRanksService;
 
-    public void killJob(Context context, String sessionId) {
+    public void killJob(Context context, String sessionId,String statusReason) {
         log.info("killing job {}", sessionId);
         try {
             clusterResourceManager.lockSession(sessionId);
@@ -84,7 +81,9 @@ public class JobServiceHandler {
                     log.info("send kill job command {}", sessionId);
                     new NodeManagerClient(erServerNode.getEndpoint()).killJobContainers(context, killContainersRequest);
                     final UpdateWrapper<SessionMain> updateWrapper = new UpdateWrapper<>();
-                    updateWrapper.lambda().eq(SessionMain::getSessionId, sessionId).set(SessionMain::getStatus, SessionStatus.CLOSED.name());
+                    updateWrapper.lambda().eq(SessionMain::getSessionId, sessionId)
+                            .set(SessionMain::getStatus, SessionStatus.CLOSED.name())
+                            .set(SessionMain::getStatusReason, statusReason);
                     sessionMainService.update(updateWrapper);
                 } catch (Exception e) {
                     log.error("killContainers error : ", e);
@@ -130,7 +129,7 @@ public class JobServiceHandler {
 
     public KillJobResponse handleJobKill(Context context, KillJobRequest killJobRequest) {
         String sessionId = killJobRequest.getSessionId();
-        killJob(context, sessionId);
+        killJob(context, sessionId, StatusReason.API.name());
         KillJobResponse response = new KillJobResponse();
         response.setSessionId(sessionId);
         return response;
@@ -138,7 +137,7 @@ public class JobServiceHandler {
 
     public StopJobResponse handleJobStop(Context context, StopJobRequest stopJobRequest) {
         String sessionId = stopJobRequest.getSessionId();
-        killJob(context, sessionId);
+        killJob(context, sessionId, StatusReason.API.name());
         StopJobResponse response = new StopJobResponse();
         response.setSessionId(sessionId);
         return response;
@@ -213,7 +212,7 @@ public class JobServiceHandler {
             return submitJobResponse;
 
         } catch (Exception e) {
-            killJob(new Context(), sessionId);
+            killJob(new Context(), sessionId, StatusReason.EGGROLL_ERROR.name());
             throw e;
         } finally {
             clusterResourceManager.unlockSession(sessionId);
@@ -391,7 +390,7 @@ public class JobServiceHandler {
                 throw new ErSessionException("kill session " + sessionId + " request was found");
             }
         } catch (Exception e) {
-            killJob(new Context(), sessionId);
+            killJob(new Context(), sessionId, StatusReason.EGGROLL_ERROR.name());
             throw e;
         } finally {
             clusterResourceManager.unlockSession(sessionId);
@@ -430,7 +429,7 @@ public class JobServiceHandler {
 
             if (activeCount < expectedWorldSize) {
                 try {
-                    killJob(new Context(), sessionId);
+                    killJob(new Context(), sessionId, StatusReason.TIMEOUT.name());
                 } catch (Exception e) {
                     log.error("failed to kill job " + sessionId, e);
                 }
