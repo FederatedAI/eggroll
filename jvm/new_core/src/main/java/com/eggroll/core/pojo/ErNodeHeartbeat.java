@@ -35,11 +35,12 @@ public class ErNodeHeartbeat implements RpcMessage {
 
     public Meta.NodeHeartbeat toProto() {
         Meta.NodeHeartbeat.Builder builder = Meta.NodeHeartbeat.newBuilder();
-        builder.setId(this.id)
-                .addAllGpuProcessors(gpuProcessors)
-                .setNode(this.node.toProto());
+        builder.setId(this.id).setNode(this.node.toProto());
         if (cpuProcessors != null) {
             builder.addAllCpuProcessors(cpuProcessors);
+        }
+        if (gpuProcessors != null) {
+            builder.addAllGpuProcessors(gpuProcessors);
         }
         return builder.build();
     }
