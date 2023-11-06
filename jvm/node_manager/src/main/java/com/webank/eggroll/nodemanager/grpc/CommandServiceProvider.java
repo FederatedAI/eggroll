@@ -58,7 +58,7 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
 
     @URI(value = eggpairHeartbeat)
     public ErProcessor heartbeat(Context context, ErProcessor processor) {
-        String nodeHost = MetaInfo.CONFKEY_NODE_MANAGER_HOST == null ? NetUtils.getLocalIp() : MetaInfo.CONFKEY_NODE_MANAGER_HOST;
+        String nodeHost = MetaInfo.CONFKEY_NODE_MANAGER_HOST == null ? NetUtils.getLocalHost(MetaInfo.DEVICE_NAME) : MetaInfo.CONFKEY_NODE_MANAGER_HOST;
         processor.getCommandEndpoint().setHost(nodeHost);
         processor.getTransferEndpoint().setHost(nodeHost);
         return defaultProcessorManager.heartbeat(context, processor);

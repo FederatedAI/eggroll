@@ -219,7 +219,7 @@ public class NodeResourceManager implements ApplicationStartedRunner {
 
 
     public ErNodeHeartbeat generateNodeBeat(Long seq) {
-        String nodeHost = MetaInfo.CONFKEY_NODE_MANAGER_HOST == null ? NetUtils.getLocalIp() : MetaInfo.CONFKEY_NODE_MANAGER_HOST;
+        String nodeHost = MetaInfo.CONFKEY_NODE_MANAGER_HOST == null ? NetUtils.getLocalHost(MetaInfo.DEVICE_NAME) : MetaInfo.CONFKEY_NODE_MANAGER_HOST;
         int nodePort = MetaInfo.CONFKEY_NODE_MANAGER_PORT;
         ErEndpoint endpoint = new ErEndpoint(nodeHost, nodePort);
         ErServerNode erServerNode = new ErServerNode(NodeManagerMeta.serverNodeId, Dict.NODE_MANAGER, endpoint, NodeManagerMeta.status);
