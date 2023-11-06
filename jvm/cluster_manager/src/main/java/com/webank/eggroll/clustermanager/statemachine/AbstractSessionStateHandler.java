@@ -34,6 +34,7 @@ public abstract class AbstractSessionStateHandler implements StateHandler<ErSess
         sessionMain.setSessionId(erSessionMeta.getId());
         sessionMain.setStatus(desStateParam);
         sessionMain.setActiveProcCount(erSessionMeta.getActiveProcCount());
+        sessionMain.setBeforeStatus(preStateParam);
         sessionMainService.updateById(sessionMain);
     }
 

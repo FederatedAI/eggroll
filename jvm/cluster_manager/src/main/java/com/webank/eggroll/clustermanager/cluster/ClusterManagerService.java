@@ -4,6 +4,7 @@ import com.eggroll.core.config.Dict;
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.constant.ProcessorStatus;
 import com.eggroll.core.constant.SessionStatus;
+import com.eggroll.core.constant.StatusReason;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.exceptions.ErSessionException;
 import com.eggroll.core.grpc.NodeManagerClient;
@@ -99,7 +100,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         long interval = current - session.getCreateTime().getTime();
         log.debug("watch deepspeed new session: {} {}  {}", session.getId(), interval, maxInterval);
         if (interval > maxInterval) {
-            jobServiceHandler.killJob(context, session.getId());
+            jobServiceHandler.killJob(context, session.getId(), StatusReason.TIMEOUT.name());
         }
     }
 
@@ -138,7 +139,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         if (sessionProcessors.stream().anyMatch(p -> ProcessorStatus.ERROR.name().equals(p.getStatus()))) {
             log.info("session watcher kill session " + session);
             try {
-                jobServiceHandler.killJob(context, session.getId());
+                jobServiceHandler.killJob(context, session.getId(),StatusReason.PROCESS_ERROR.name());
             } catch (ErSessionException e) {
                 log.error("failed to kill session " + session.getId(), e);
             }

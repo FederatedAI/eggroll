@@ -19,6 +19,10 @@ public class SessionMain {
 
     private String status;
 
+    private String beforeStatus;
+
+    private String statusReason;
+
     private String tag;
 
     private Integer totalProcCount;

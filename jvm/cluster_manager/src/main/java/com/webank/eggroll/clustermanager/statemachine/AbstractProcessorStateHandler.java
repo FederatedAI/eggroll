@@ -59,7 +59,9 @@ public abstract class AbstractProcessorStateHandler implements StateHandler<ErPr
         }
         if (data.getTransferEndpoint() != null) {
             lambdaUpdateWrapper.set(SessionProcessor::getTransferEndpoint, data.getTransferEndpoint().toString());
-
+        }
+        if (data.getBeforeStatus() != null) {
+            lambdaUpdateWrapper.set(SessionProcessor::getBeforeStatus, data.getBeforeStatus());
         }
 
         sessionProcessorService.update(lambdaUpdateWrapper);
