@@ -243,17 +243,7 @@ public class NodeResourceManager implements ApplicationStartedRunner {
                     currentGrpcThread = new Thread(new Runnable() {
                         @Override
                         public void run() {
-//                            logger.info("before send nodeHearBeat info to cluster-manager: nodeHost:{}, nodePort:{}, nodeId: {}",
-//                                    erNodeHeartbeat.getNode().getEndpoint().getHost(),
-//                                    erNodeHeartbeat.getNode().getEndpoint().getPort(),
-//                                    erNodeHeartbeat.getNode().getId()
-//                            );
                             ErNodeHeartbeat nodeHeartBeat = client.nodeHeartbeat(new Context(), erNodeHeartbeat);
-//                            //logger.info("recive nodeHearBeat info from cluster-manager: nodeHost:{}, nodePort:{}, nodeId: {}",
-//                                    nodeHeartBeat.getNode().getEndpoint().getHost(),
-//                                    nodeHeartBeat.getNode().getEndpoint().getPort(),
-//                                    nodeHeartBeat.getNode().getId()
-//                            );
                             if (nodeHeartBeat != null && nodeHeartBeat.getNode() != null) {
                                 if (NodeManagerMeta.status.equals(Dict.INIT)) {
                                     if (nodeHeartBeat.getNode().getId() != -1) {

@@ -18,9 +18,12 @@ public class CommandUri {
     public static final String heartbeat = "v1/cluster-manager/session/heartbeat";
     public static final String nodeHeartbeat = "v1/cluster-manager/manager/nodeHeartbeat";
     public static final String stopSession = "v1/cluster-manager/session/stopSession";
+    public static final String nodeMetaInfo = "v1/cluster-manager/manager/nodeMetaInfo";
 
     public static final String killSession = "v1/cluster-manager/session/killSession";
     public static final String killAllSessions = "v1/cluster-manager/session/killAllSessions";
+
+    public static final String getQueueView = "v1/cluster-manager/session/getQueueView";
 
     public static final String startContainers = "v1/node-manager/processor/startContainers";
     public static final String stopContainers = "v1/node-manager/processor/stopContainers";

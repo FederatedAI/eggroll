@@ -50,6 +50,14 @@ public class ClusterManagerClient {
         return response;
     }
 
+    // 获取队列中的任务数量
+    public QueueViewResponse getQueueView(Context context,QueueViewRequest queueViewRequest) {
+        byte[] responseData = cc.call(context, endpoint, getQueueView, queueViewRequest.serialize());
+        QueueViewResponse response = new QueueViewResponse();
+        response.deserialize(responseData);
+        return response;
+    }
+
     public ErSessionMeta killAllSession(Context context, ErSessionMeta erSessionMeta) {
         byte[] responseData = cc.call(context, endpoint, killAllSessions, erSessionMeta.serialize());
         ErSessionMeta response = new ErSessionMeta();
@@ -81,5 +89,13 @@ public class ClusterManagerClient {
         response.deserialize(responseData);
         return response;
     }
+
+    public KillJobResponse killJob(Context context ,KillJobRequest request){
+        byte[] responseData = cc.call(context, endpoint, killJob, request.serialize());
+        KillJobResponse response = new KillJobResponse();
+        response.deserialize(responseData);
+        return response;
+    }
+
 
 }
