@@ -24,7 +24,7 @@ public class SessionMainDao {
     public Object topQueryOrQueryData(SessionMainQO sessionMainQO) {
         // 根据topCount参数是否有值，判断该查询前top数据还是查询所有数据
         Integer topCount = sessionMainQO.getTopCount();
-        if (topCount > 0) {
+        if (topCount != null && topCount > 0) {
             return topQuery(topCount);
         } else {
             return queryData(sessionMainQO);
@@ -38,14 +38,14 @@ public class SessionMainDao {
 
         boolean hasSessionId = StringUtils.isNotBlank(sessionMainQO.getSessionId());
         boolean hasName = StringUtils.isNotBlank(sessionMainQO.getName());
-        boolean hasTag = StringUtils.isNotBlank(sessionMainQO.getTag());
+        boolean createdAt = (sessionMainQO.getCreatedAt() != null);
         boolean hasStatus = StringUtils.isNotBlank(sessionMainQO.getStatus());
         // 构建查询条件
-        if (hasSessionId || hasName || hasTag || hasStatus) {
+        if (hasSessionId || hasName || createdAt || hasStatus) {
             queryWrapper.and(wrapper -> {
                 if (hasSessionId) wrapper.like("session_id", sessionMainQO.getSessionId());
                 if (hasName) wrapper.or().like("name", sessionMainQO.getName());
-                if (hasTag) wrapper.or().like("tag", sessionMainQO.getTag());
+                if (createdAt) wrapper.or().like("created_at", sessionMainQO.getCreatedAt());
                 if (hasStatus) wrapper.or().like("status", sessionMainQO.getStatus());
             });
         }
@@ -61,4 +61,15 @@ public class SessionMainDao {
         return this.sessionMainService.list(queryWrapper);
     }
 
+    public Long queryActiveSession(){
+        QueryWrapper<SessionMain> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("status", "ACTIVATED" );
+        return this.sessionMainService.count(queryWrapper);
+    }
+
+    public Long queryNewSession(){
+        QueryWrapper<SessionMain> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("status", "NEW" );
+        return this.sessionMainService.count(queryWrapper);
+    }
 }

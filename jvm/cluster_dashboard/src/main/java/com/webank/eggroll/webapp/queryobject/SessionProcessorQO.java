@@ -18,6 +18,7 @@ public class SessionProcessorQO {
     private String status;
     private String createTime;
     private String updateTime;
+    private Long pid;
 
     private Integer pageNum = 1;
     private Integer pageSize = 10;
