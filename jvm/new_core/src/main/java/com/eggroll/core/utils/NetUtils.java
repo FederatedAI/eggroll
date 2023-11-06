@@ -16,14 +16,15 @@
 
 package com.eggroll.core.utils;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.*;
-import java.util.Enumeration;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Pattern;
 
@@ -52,12 +53,7 @@ public class NetUtils {
     private static volatile InetAddress LOCAL_ADDRESS = null;
 
     public static void main(String[] args) {
-//        System.out.println(NetUtils.getLocalHost());
-//        System.out.println(NetUtils.getAvailablePort());
-//        System.out.println(NetUtils.getLocalAddress());
-//        System.out.println(NetUtils.getLocalIp());
-//        System.out.println(NetUtils.getIpByHost("127.0.0.1"));
-//        System.out.println(NetUtils.getLocalAddress0(""));
+       System.out.println(NetUtils.getLocalHost(""));
     }
 
     public static int getRandomPort() {
@@ -180,17 +176,19 @@ public class NetUtils {
         return address;
     }
 
-    public static String getLocalHost() {
-        InetAddress address = getLocalAddress();
-        return address == null ? LOCALHOST_VALUE : address.getHostAddress();
+    public static String getLocalHost(String deviceName) {
+        String  result = "";
+        InetAddress address = getLocalAddress(deviceName);
+        result= address == null ? LOCALHOST_VALUE : address.getHostAddress();
+        return  result;
     }
 
 
-    public static InetAddress getLocalAddress() {
+    public static InetAddress getLocalAddress(String deviceName) {
         if (LOCAL_ADDRESS != null) {
             return LOCAL_ADDRESS;
         }
-        InetAddress localAddress = getLocalAddress0("");
+        InetAddress localAddress = getLocalAddress0(deviceName);
         LOCAL_ADDRESS = localAddress;
         return localAddress;
     }
@@ -209,26 +207,26 @@ public class NetUtils {
     }
 
 
-    public static String getLocalIp() {
-
-        try {
-            InetAddress inetAddress = getLocalAddress0("eth0");
-            if (inetAddress != null) {
-                return inetAddress.getHostAddress();
-            } else {
-                inetAddress = getLocalAddress0("");
-            }
-            if (inetAddress != null) {
-                return inetAddress.getHostAddress();
-            } else {
-                throw new RuntimeException("can not get local ip");
-            }
-
-        } catch (Throwable e) {
-            logger.error(e.getMessage(), e);
-        }
-        return "";
-    }
+//    public static String getLocalIp() {
+//
+//        try {
+//            InetAddress inetAddress = getLocalAddress0("eth0");
+//            if (inetAddress != null) {
+//                return inetAddress.getHostAddress();
+//            } else {
+//                inetAddress = getLocalAddress0("");
+//            }
+//            if (inetAddress != null) {
+//                return inetAddress.getHostAddress();
+//            } else {
+//                throw new RuntimeException("can not get local ip");
+//            }
+//
+//        } catch (Throwable e) {
+//            logger.error(e.getMessage(), e);
+//        }
+//        return "";
+//    }
 
     private static String getIpByEthNum(String ethNum) {
         try {
@@ -258,62 +256,80 @@ public class NetUtils {
         String osName = System.getProperty("os.name");
         return osName;
     }
+    private static InetAddress  chooseAddressFromInterface(NetworkInterface network){
+        Enumeration<InetAddress> addresses = network.getInetAddresses();
+        while (addresses.hasMoreElements()) {
+            try {
+                Optional<InetAddress> addressOp = toValidAddress(addresses.nextElement());
+                if (addressOp.isPresent()) {
+                    try {
+                        if (addressOp.get().isReachable(10000)) {
+                            return addressOp.get();
+                        }
+                    } catch (IOException e) {
+                        // ignore
+                    }
+                }
+            } catch (Throwable e) {
+                logger.warn(e.getMessage());
+            }
+        }
+        return  null;
+    }
 
 
     private static InetAddress getLocalAddress0(String name) {
         InetAddress localAddress = null;
+        InetAddress other = null;
         try {
             localAddress = InetAddress.getLocalHost();
             Optional<InetAddress> addressOp = toValidAddress(localAddress);
             if (addressOp.isPresent()) {
-                return addressOp.get();
+//                return addressOp.get();
             } else {
                 localAddress = null;
             }
         } catch (Throwable e) {
-            logger.warn(e.getMessage());
+            e.printStackTrace();
         }
+//        if(StringUtils.isNotEmpty(name)||localAddress.getHostAddress().equals(LOCALHOST_VALUE)) {
 
-        try {
-            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
-            if (null == interfaces) {
-                return localAddress;
-            }
-            while (interfaces.hasMoreElements()) {
-                try {
+            try {
+                Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+                if (null == interfaces) {
+                    return localAddress;
+                }
+                Map<String,NetworkInterface> networkIMap= Maps.newLinkedHashMap();
+                while (interfaces.hasMoreElements()){
                     NetworkInterface network = interfaces.nextElement();
-                    if (network.isLoopback() || network.isVirtual() || !network.isUp()) {
-                        continue;
-                    }
-                    if (StringUtils.isNotEmpty(name)) {
-                        if (!network.getName().equals(name)) {
+                    networkIMap.put(network.getName(),network);
+                }
+                if (StringUtils.isNotEmpty(name)&&networkIMap.get(name)!=null) {
+                    return chooseAddressFromInterface(networkIMap.get(name));
+                }
+
+                List<String> names = Lists.newArrayList(networkIMap.keySet());
+                for(Map.Entry<String,NetworkInterface>  entry:networkIMap.entrySet()){
+                    try {
+                        if (entry.getValue().isLoopback() || entry.getValue().isVirtual() || !entry.getValue().isUp()) {
                             continue;
                         }
-                    }
-                    Enumeration<InetAddress> addresses = network.getInetAddresses();
-                    while (addresses.hasMoreElements()) {
-                        try {
-                            Optional<InetAddress> addressOp = toValidAddress(addresses.nextElement());
-                            if (addressOp.isPresent()) {
-                                try {
-                                    if (addressOp.get().isReachable(10000)) {
-                                        return addressOp.get();
-                                    }
-                                } catch (IOException e) {
-                                    // ignore
-                                }
-                            }
-                        } catch (Throwable e) {
-                            logger.warn(e.getMessage());
+                        other=  chooseAddressFromInterface(entry.getValue());
+                        if(other!=null){
+                            break;
                         }
+                    }catch (Throwable e){
+
                     }
-                } catch (Throwable e) {
-                    logger.warn(e.getMessage());
                 }
+
+            } catch (Throwable e) {
+                logger.warn(e.getMessage());
             }
-        } catch (Throwable e) {
-            logger.warn(e.getMessage());
-        }
+            if(localAddress==null||localAddress.getHostAddress().equals(LOCALHOST_VALUE)&&other!=null){
+                localAddress=other;
+            }
+
         return localAddress;
     }
 
@@ -530,5 +546,6 @@ public class NetUtils {
         }
         return Integer.parseInt(ipSegment, 16);
     }
+
 
 }

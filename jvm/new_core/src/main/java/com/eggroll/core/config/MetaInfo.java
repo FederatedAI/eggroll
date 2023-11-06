@@ -32,6 +32,9 @@ public class MetaInfo {
 
     static Logger logger = LoggerFactory.getLogger(MetaInfo.class);
 
+    @Config(confKey = "eggroll.network.local.device")
+    public static String DEVICE_NAME = "";
+
     @Config(confKey = "eggroll.security.login.username")
     public static String USERNAME;
     @Config(confKey = "eggroll.security.login.password")

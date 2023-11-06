@@ -47,7 +47,7 @@ public class ZooKeeperRegistration {
                 String url = generateZkUrl(MetaInfo.ZOOKEEPER_HOST, MetaInfo.ZOOKEEPER_PORT);
 
                 //String urls = MetaInfo.ZOOKEEPER_HOST+":"+2181;
-                String localIp = NetUtils.getLocalIp();
+                String localIp = NetUtils.getLocalHost(MetaInfo.DEVICE_NAME);
                 String path = PATH_SEPARATOR + DEFAULT_COMPONENT_ROOT + PATH_SEPARATOR + project + PATH_SEPARATOR + localIp + ":" + PORT;
 
                 String instanceId = localIp + ":" + PORT;
