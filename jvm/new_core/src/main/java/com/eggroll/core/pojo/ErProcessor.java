@@ -18,6 +18,7 @@ public class ErProcessor implements RpcMessage {
     private String name = StringConstants.EMPTY;
     private String processorType = StringConstants.EMPTY;
     private String status = StringConstants.EMPTY;
+    private String beforeStatus = StringConstants.EMPTY;
     private ErEndpoint commandEndpoint = null;
     private ErEndpoint transferEndpoint = null;
     private Integer pid = -1;
