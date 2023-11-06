@@ -155,7 +155,10 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         ErServerNode serverNode = nodeHeartbeat.getNode();
         try {
             LockUtils.lock(lockMap, serverNode.getId());
-            if (serverNode.getId() == -1) {
+            if (nodeHeartbeat.getId() == -1) {
+                log.info("node will be loss {}", JsonUtil.object2Json(serverNode));
+                updateNode(serverNode, false, false);
+            } else if (serverNode.getId() == -1) {
                 ServerNode existNode = serverNodeService.getByEndPoint(serverNode.getEndpoint());
                 if (existNode == null) {
                     log.info("create new node {}", JsonUtil.object2Json(serverNode));

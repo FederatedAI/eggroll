@@ -21,6 +21,7 @@ import org.apache.commons.beanutils.BeanUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.PreDestroy;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
@@ -216,18 +217,27 @@ public class NodeResourceManager implements ApplicationStartedRunner {
         }
     }
 
+
+    public ErNodeHeartbeat generateNodeBeat(Long seq) {
+        String nodeHost = MetaInfo.CONFKEY_NODE_MANAGER_HOST == null ? NetUtils.getLocalIp() : MetaInfo.CONFKEY_NODE_MANAGER_HOST;
+        int nodePort = MetaInfo.CONFKEY_NODE_MANAGER_PORT;
+        ErEndpoint endpoint = new ErEndpoint(nodeHost, nodePort);
+        ErServerNode erServerNode = new ErServerNode(NodeManagerMeta.serverNodeId, Dict.NODE_MANAGER, endpoint, NodeManagerMeta.status);
+        ErNodeHeartbeat nodeHeartbeat = new ErNodeHeartbeat(seq, queryNodeResource(erServerNode));
+        nodeHeartbeat.setGpuProcessors(gpuProcessorUsed());
+        return nodeHeartbeat;
+    }
+
+    @PreDestroy
+    public void shutDownNodeBeat() {
+        logger.info("node will bell shutdown,send loss heartbeat to cluster");
+        ErNodeHeartbeat erNodeHeartbeat = generateNodeBeat(-1L);
+        erNodeHeartbeat.getNode().setStatus(Dict.LOSS);
+        client.nodeHeartbeat(new Context(), erNodeHeartbeat);
+    }
+
     class HeartBeatThread extends Thread {
         Thread currentGrpcThread = null;
-
-        public ErNodeHeartbeat generateNodeBeat(Long seq) {
-            String nodeHost = MetaInfo.CONFKEY_NODE_MANAGER_HOST == null ? NetUtils.getLocalIp() : MetaInfo.CONFKEY_NODE_MANAGER_HOST;
-            int nodePort = MetaInfo.CONFKEY_NODE_MANAGER_PORT;
-            ErEndpoint endpoint = new ErEndpoint(nodeHost, nodePort);
-            ErServerNode erServerNode = new ErServerNode(NodeManagerMeta.serverNodeId, Dict.NODE_MANAGER, endpoint, NodeManagerMeta.status);
-            ErNodeHeartbeat nodeHeartbeat = new ErNodeHeartbeat(seq, queryNodeResource(erServerNode));
-            nodeHeartbeat.setGpuProcessors(gpuProcessorUsed());
-            return nodeHeartbeat;
-        }
 
         @Override
         public void run() {
