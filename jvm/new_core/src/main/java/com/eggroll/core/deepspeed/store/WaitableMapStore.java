@@ -20,11 +20,11 @@ public class WaitableMapStore {
         log.info("set key: " + key + ", value: " + Arrays.toString(value) + ", store count: " + store.size() + " done");
     }
 
-    public byte[] get(String key, int timeout) throws InterruptedException {
+    public byte[] get(String key, long timeout) throws InterruptedException {
         long startTime = System.currentTimeMillis();
         while (!store.containsKey(key)) {
-            log.info("waiting for key: " + key + ", store count: " + store.size());
-            long elapsedTime = System.currentTimeMillis() - startTime;
+            log.info("waiting for key: {}, timeout {} store count: {}",key,timeout, store.size());
+            long elapsedTime = (System.currentTimeMillis() - startTime)/1000;
             if (elapsedTime > timeout) {
                 log.error("Timeout after waiting for key: " + key + " for " + timeout + ", store count: " + store.size());
                 return null;
@@ -63,5 +63,9 @@ public class WaitableMapStore {
 
     public void destroy() {
         store.clear();
+    }
+
+    public  static void main(String[] args){
+        System.err.println(992/100);
     }
 }
