@@ -26,7 +26,7 @@ public class NodeManagerMeta {
     public static Long clusterId = -1L;
 
     public static void refreshServerNodeMetaIntoFile() {
-        String nodeHost = MetaInfo.CONFKEY_NODE_MANAGER_HOST == null ? NetUtils.getLocalHost(MetaInfo.DEVICE_NAME) : MetaInfo.CONFKEY_NODE_MANAGER_HOST;
+        String nodeHost = MetaInfo.CONFKEY_NODE_MANAGER_HOST == null ? NetUtils.getLocalHost(MetaInfo.CONFKEY_NODE_MANAGER_NET_DEVICE) : MetaInfo.CONFKEY_NODE_MANAGER_HOST;
         int nodePort = MetaInfo.CONFKEY_NODE_MANAGER_PORT;
 
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -51,7 +51,7 @@ public class NodeManagerMeta {
 
     public static void loadNodeManagerMetaFromFile() {
         if (new File(getFilePath()).exists()) {
-            String nodeHost = MetaInfo.CONFKEY_NODE_MANAGER_HOST == null ? NetUtils.getLocalHost(MetaInfo.DEVICE_NAME) : MetaInfo.CONFKEY_NODE_MANAGER_HOST;
+            String nodeHost = MetaInfo.CONFKEY_NODE_MANAGER_HOST == null ? NetUtils.getLocalHost(MetaInfo.CONFKEY_NODE_MANAGER_NET_DEVICE) : MetaInfo.CONFKEY_NODE_MANAGER_HOST;
             int nodePort = MetaInfo.CONFKEY_NODE_MANAGER_PORT;
             try {
                 String content = FileSystemUtils.fileReader(getFilePath());
