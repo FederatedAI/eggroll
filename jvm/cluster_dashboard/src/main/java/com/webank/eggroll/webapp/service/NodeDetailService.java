@@ -2,6 +2,7 @@ package com.webank.eggroll.webapp.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import com.google.inject.Inject;
 import com.webank.eggroll.clustermanager.dao.impl.NodeResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
@@ -9,6 +10,7 @@ import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionProcessorService;
 import com.webank.eggroll.clustermanager.entity.NodeResource;
 import com.webank.eggroll.clustermanager.entity.ServerNode;
+import com.webank.eggroll.clustermanager.entity.SessionMain;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import com.webank.eggroll.webapp.entity.NodeDetail;
 import com.webank.eggroll.webapp.entity.NodeInfo;
@@ -44,7 +46,6 @@ public class NodeDetailService {
         Integer nodeNum = nodeDetailQO.getNodeNum();
         String sessionId = nodeDetailQO.getSessionId();
 
-        PageHelper.startPage(nodeDetailQO.getPageNum(), nodeDetailQO.getPageSize());
         boolean isSessionId = (sessionId != null && !sessionId.isEmpty());
         if (nodeNum > 0) {// 获取单个机器详情
             return getNodeDetails(nodeNum);
@@ -84,7 +85,6 @@ public class NodeDetailService {
         }
         return nodeInfos;
     }
-
     public List<NodeInfo> getNodeDetails(String sessionId) {
         QueryWrapper queryWrapper = new QueryWrapper();
         queryWrapper.eq("session_id", sessionId);
