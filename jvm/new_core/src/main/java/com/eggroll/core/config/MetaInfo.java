@@ -36,6 +36,9 @@ public class MetaInfo {
     @Config(confKey = "eggroll.resourcemanager.nodemanager.net.device")
     public static String CONFKEY_NODE_MANAGER_NET_DEVICE = "";
 
+    @Config(confKey = "eggroll.resourcemanager.nodemanager.gpu.num.shell")
+    public static String CONFKEY_NODE_MANAGER_GPU_NUM_SHELL = "";
+
     @Config(confKey = "eggroll.security.login.username")
     public static String USERNAME;
     @Config(confKey = "eggroll.security.login.password")
