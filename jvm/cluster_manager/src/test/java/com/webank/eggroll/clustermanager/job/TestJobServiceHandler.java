@@ -20,7 +20,7 @@ import static com.eggroll.core.grpc.CommandUri.*;
 
 public class TestJobServiceHandler {
 
-    ErEndpoint endpoint = new ErEndpoint(NetUtils.getLocalHost(MetaInfo.DEVICE_NAME), 4670);
+    ErEndpoint endpoint = new ErEndpoint(NetUtils.getLocalHost(MetaInfo.CONFKEY_NODE_MANAGER_NET_DEVICE), 4670);
 
     @Inject
     JobServiceHandler jobServiceHandler;

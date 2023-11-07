@@ -30,10 +30,11 @@ import java.util.regex.Pattern;
 
 public class MetaInfo {
 
+
     static Logger logger = LoggerFactory.getLogger(MetaInfo.class);
 
-    @Config(confKey = "eggroll.network.local.device")
-    public static String DEVICE_NAME = "";
+    @Config(confKey = "eggroll.resourcemanager.nodemanager.net.device")
+    public static String CONFKEY_NODE_MANAGER_NET_DEVICE = "";
 
     @Config(confKey = "eggroll.security.login.username")
     public static String USERNAME;

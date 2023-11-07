@@ -1,11 +1,13 @@
 package com.webank.eggroll.nodemanager;
 
 import com.eggroll.core.boostrap.CommonBoostrap;
+import com.eggroll.core.config.Dict;
 import com.eggroll.core.postprocessor.ApplicationStartedRunnerUtils;
 import com.google.common.collect.Lists;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.webank.eggroll.guice.module.NodeModule;
+import com.webank.eggroll.nodemanager.meta.NodeManagerMeta;
 import com.webank.eggroll.nodemanager.service.NodeResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +28,8 @@ public class Bootstrap {
             public void run() {
                 logger.info("==============shutdownHook===============");
                 NodeResourceManager instance = injector.getInstance(NodeResourceManager.class);
-                instance.shutDownNodeBeat();
+                NodeManagerMeta.status = Dict.LOSS;
+                instance.tryNodeHeartbeat();
             }
         });
         synchronized (injector) {

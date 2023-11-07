@@ -36,12 +36,12 @@ public class NodeResourceManager implements ApplicationStartedRunner {
     private SysInfoLinux sysInfo;
 
     ClusterManagerClient client;
-
     Long physicalMemorySize;
     HeartBeatThread heartBeatThread;
     ResourceCountThread resourceCountThread;
-
     Map<String, ResourceWrapper> resourceMap;
+
+    Long seq = 0L;
 
     public NodeResourceManager() {
         sysInfo = new SysInfoLinux();
@@ -190,42 +190,32 @@ public class NodeResourceManager implements ApplicationStartedRunner {
     }
 
 
-    public ErNodeHeartbeat generateNodeBeat(Long seq) {
-        String nodeHost = MetaInfo.CONFKEY_NODE_MANAGER_HOST == null ? NetUtils.getLocalHost(MetaInfo.DEVICE_NAME) : MetaInfo.CONFKEY_NODE_MANAGER_HOST;
+    @PreDestroy
+    public ErNodeHeartbeat tryNodeHeartbeat() {
+        String nodeHost = MetaInfo.CONFKEY_NODE_MANAGER_HOST == null ? NetUtils.getLocalHost(MetaInfo.CONFKEY_NODE_MANAGER_NET_DEVICE) : MetaInfo.CONFKEY_NODE_MANAGER_HOST;
         int nodePort = MetaInfo.CONFKEY_NODE_MANAGER_PORT;
         ErEndpoint endpoint = new ErEndpoint(nodeHost, nodePort);
         ErServerNode erServerNode = new ErServerNode(NodeManagerMeta.serverNodeId, Dict.NODE_MANAGER, endpoint, NodeManagerMeta.status);
         ErNodeHeartbeat nodeHeartbeat = new ErNodeHeartbeat(seq, queryNodeResource(erServerNode));
         nodeHeartbeat.setGpuProcessors(gpuProcessorUsed());
-        return nodeHeartbeat;
-    }
-
-    @PreDestroy
-    public void shutDownNodeBeat() {
-        logger.info("node will bell shutdown,send loss heartbeat to cluster");
-        ErNodeHeartbeat erNodeHeartbeat = generateNodeBeat(-1L);
-        erNodeHeartbeat.getNode().setStatus(Dict.LOSS);
-        client.nodeHeartbeat(new Context(), erNodeHeartbeat);
+        return client.nodeHeartbeat(new Context(), nodeHeartbeat);
     }
 
     class HeartBeatThread extends Thread {
         Thread currentGrpcThread = null;
-
         @Override
         public void run() {
             Boolean notOver = true;
-            Long seq = 0L;
             while (notOver) {
                 try {
                     seq += 1;
-                    ErNodeHeartbeat erNodeHeartbeat = generateNodeBeat(seq);
                     if (currentGrpcThread != null && currentGrpcThread.isAlive()) {
                         currentGrpcThread.interrupt();
                     }
                     currentGrpcThread = new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            ErNodeHeartbeat nodeHeartBeat = client.nodeHeartbeat(new Context(), erNodeHeartbeat);
+                            ErNodeHeartbeat nodeHeartBeat = tryNodeHeartbeat();
                             if (nodeHeartBeat != null && nodeHeartBeat.getNode() != null) {
                                 if (NodeManagerMeta.status.equals(Dict.INIT)) {
                                     if (nodeHeartBeat.getNode().getId() != -1) {
@@ -234,7 +224,6 @@ public class NodeResourceManager implements ApplicationStartedRunner {
                                         NodeManagerMeta.refreshServerNodeMetaIntoFile();
                                         NodeManagerMeta.status = Dict.HEALTHY;
                                         logger.info("get node id {} from cluster-manager", NodeManagerMeta.serverNodeId);
-
                                     }
                                 }
                             }
