@@ -28,7 +28,7 @@
     ],
     "federatedml.ensemble.basic_algorithms.decision_tree.tree_core.g_h_optim": [
         "SplitInfoPackage",
-		"SplitInfoPackage2"
+        "SplitInfoPackage2"
     ],
     "federatedml.ensemble.basic_algorithms.decision_tree.tree_core.node": [
         "Node"
