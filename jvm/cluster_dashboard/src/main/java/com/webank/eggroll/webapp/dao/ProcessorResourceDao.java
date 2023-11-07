@@ -2,6 +2,7 @@ package com.webank.eggroll.webapp.dao;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import com.google.inject.Inject;
 import com.webank.eggroll.clustermanager.dao.impl.ProcessorResourceService;
 import com.webank.eggroll.clustermanager.entity.ProcessorResource;
@@ -9,6 +10,8 @@ import com.webank.eggroll.webapp.queryobject.ProcessorResourceQO;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 public class ProcessorResourceDao {
 
@@ -24,7 +27,7 @@ public class ProcessorResourceDao {
     }
 
     public Object queryData(ProcessorResourceQO processorResourceQO) {
-        PageHelper.startPage(processorResourceQO.getPageNum(), processorResourceQO.getPageSize());
+        PageHelper.startPage(processorResourceQO.getPageNum(), processorResourceQO.getPageSize(),true);
 
         QueryWrapper<ProcessorResource> queryWrapper = new QueryWrapper<>();
         // 保存非空检查结果到变量中
@@ -44,6 +47,8 @@ public class ProcessorResourceDao {
                 if (hasSessionId) wrapper.or().like("session_id", processorResourceQO.getSessionId());
             });
         }
-        return this.processorResourceService.list(queryWrapper);
+        List<ProcessorResource> list = this.processorResourceService.list(queryWrapper);
+        PageInfo<ProcessorResource> result = new PageInfo<>(list);
+        return result;
     }
 }

@@ -2,6 +2,7 @@ package com.webank.eggroll.webapp.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import com.google.inject.Inject;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionProcessorService;
@@ -28,7 +29,6 @@ public class PrenodeSessionInfoService {
 
 
     public Object querySession(NodeDetailQO nodeDetailQO) {
-        PageHelper.startPage(nodeDetailQO.getPageNum(), nodeDetailQO.getPageSize());
         Integer nodeNum = nodeDetailQO.getNodeNum();
         String sessionId = nodeDetailQO.getSessionId();
         boolean isSessionId = (sessionId != null && !sessionId.isEmpty());
@@ -39,7 +39,6 @@ public class PrenodeSessionInfoService {
         }
         return new ResponseResult(ErrorCode.PARAM_ERROR);
     }
-
     public List<SessionMain> getNodeSessions(int nodeNum) {
 
         QueryWrapper spWrapper = new QueryWrapper();
@@ -58,6 +57,7 @@ public class PrenodeSessionInfoService {
         QueryWrapper sessionMainWrapper = new QueryWrapper();
         sessionMainWrapper.in("session_id", sessionIds);
         List<SessionMain> list = sessionMainService.list(sessionMainWrapper);
+
         return list;
     }
 
