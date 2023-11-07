@@ -3,6 +3,7 @@ package com.webank.eggroll.webapp.dao;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import com.google.inject.Inject;
 import com.webank.eggroll.clustermanager.dao.impl.SessionProcessorService;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
@@ -20,8 +21,8 @@ public class SessionProcessorDao {
     @Inject
     SessionProcessorService sessionProcessorService;
 
-    public List<SessionProcessor> queryData(SessionProcessorQO sessionProcessorQO) {
-        PageHelper.startPage(sessionProcessorQO.getPageNum(), sessionProcessorQO.getPageSize());
+    public PageInfo<SessionProcessor> queryData(SessionProcessorQO sessionProcessorQO) {
+        PageHelper.startPage(sessionProcessorQO.getPageNum(), sessionProcessorQO.getPageSize(),true);
         QueryWrapper<SessionProcessor> queryWrapper = new QueryWrapper<>();
 
         if (StringUtils.isNotBlank(sessionProcessorQO.getSessionId())
@@ -39,8 +40,9 @@ public class SessionProcessorDao {
 
             );
         }
-
-        return this.sessionProcessorService.list(queryWrapper);
+        List<SessionProcessor> list = this.sessionProcessorService.list(queryWrapper);
+        PageInfo<SessionProcessor> result = new PageInfo<>(list);
+        return result;
     }
 
 
