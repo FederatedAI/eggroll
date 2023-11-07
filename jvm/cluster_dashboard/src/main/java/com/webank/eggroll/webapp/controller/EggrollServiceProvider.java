@@ -114,6 +114,7 @@ public class EggrollServiceProvider {
     public Object queryPreNodeSessionInfo(HttpServletRequest req) throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
         NodeDetailQO nodeDetailQO = objectMapper.readValue(req.getInputStream(), NodeDetailQO.class);
+        logger.info("queryPreNodeSessionInfo nodeDetailQO: {}",nodeDetailQO);
         return prenodeSessionInfoService.querySession(nodeDetailQO);
     }
 
@@ -122,6 +123,7 @@ public class EggrollServiceProvider {
         // 查询processor_resource表的所有信息 包含分页和模糊查询
         ObjectMapper objectMapper = new ObjectMapper();
         ProcessorResourceQO processorResourceQO = objectMapper.readValue(req.getInputStream(), ProcessorResourceQO.class);
+        logger.info("queryProcessorResource processorResourceQO: {}",processorResourceQO);
         return resourceDao.queryData(processorResourceQO);
     }
 
@@ -130,12 +132,14 @@ public class EggrollServiceProvider {
         // 查找所有的servernode，可以根据字段进行筛选（模糊查找）
         ObjectMapper objectMapper = new ObjectMapper();
         ServerNodeQO serverNodeQO = objectMapper.readValue(req.getInputStream(), ServerNodeQO.class);
+        logger.info("getServerNode serverNodeQO: {}",serverNodeQO);
         return serverNodeDao.queryData(serverNodeQO);
     }
     @ApiMethod("/eggroll/nodeResource")
     public Object getNodeResource(HttpServletRequest req) throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
         NodeResourceQO nodeResourceQO = objectMapper.readValue(req.getInputStream(), NodeResourceQO.class);
+        logger.info("getNodeResource nodeResourceQO: {}",nodeResourceQO);
         return nodeResourceDao.queryData(nodeResourceQO);
     }
     @ApiMethod("/eggroll/sessionProcessor")
@@ -143,6 +147,7 @@ public class EggrollServiceProvider {
         // 查询session_processor表的所有信息 包含分页和模糊查询
         ObjectMapper objectMapper = new ObjectMapper();
         SessionProcessorQO sessionProcessorQO = objectMapper.readValue(req.getInputStream(), SessionProcessorQO.class);
+        logger.info("getSessionProcessor sessionProcessorQO: {}",sessionProcessorQO);
         return sessionProcessorDao.queryData(sessionProcessorQO);
     }
 
@@ -152,6 +157,7 @@ public class EggrollServiceProvider {
         // 查询所有数据，包含分页和模糊查询
         ObjectMapper objectMapper = new ObjectMapper();
         SessionMainQO sessionMainQO = objectMapper.readValue(req.getInputStream(), SessionMainQO.class);
+        logger.info("getSessionMain sessionMainQO: {}",sessionMainQO);
         return sessionMainDao.topQueryOrQueryData(sessionMainQO);
     }
 

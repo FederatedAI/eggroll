@@ -2,6 +2,7 @@ package com.webank.eggroll.webapp.dao;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import com.google.inject.Inject;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.entity.ServerNode;
@@ -19,8 +20,8 @@ public class ServerNodeDao {
     @Inject
     ServerNodeService serverNodeService;
 
-    public List<ServerNode> queryData(ServerNodeQO serverNodeQO) {
-        PageHelper.startPage(serverNodeQO.getPageNum(), serverNodeQO.getPageSize());
+    public PageInfo<ServerNode> queryData(ServerNodeQO serverNodeQO) {
+        PageHelper.startPage(serverNodeQO.getPageNum(), serverNodeQO.getPageSize(),true);
 
         QueryWrapper<ServerNode> queryWrapper = new QueryWrapper<>();
         boolean hasServerNodeId = StringUtils.isNotBlank(serverNodeQO.getServerNodeId());
@@ -40,8 +41,9 @@ public class ServerNodeDao {
                 if (hasLastHeartbeatAt) wrapper.or().like("last_heartbeat_at", serverNodeQO.getLastHeartbeatAt());
             });
         }
-
-        return this.serverNodeService.list(queryWrapper);
+        List<ServerNode> list = this.serverNodeService.list(queryWrapper);
+        PageInfo<ServerNode> result = new PageInfo<>(list);
+        return result;
     }
 
 }
