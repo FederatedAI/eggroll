@@ -2,6 +2,7 @@ package com.webank.eggroll.webapp.dao;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.impl.NodeResourceService;
@@ -23,7 +24,7 @@ public class NodeResourceDao {
     @Inject
     NodeResourceService nodeResourceService;
 
-    public List<NodeResource> queryData(NodeResourceQO nodeResourceQO) {
+    public PageInfo<NodeResource> queryData(NodeResourceQO nodeResourceQO) {
         PageHelper.startPage(nodeResourceQO.getPageNum(), nodeResourceQO.getPageSize(),true);
 
         QueryWrapper<NodeResource> queryWrapper = new QueryWrapper<>();
@@ -41,9 +42,9 @@ public class NodeResourceDao {
                             .like(StringUtils.isNotBlank(nodeResourceQO.getResourceType()), "resource_type", nodeResourceQO.getResourceType())
             );
         }
-//        List<NodeResource> list = this.nodeResourceService.list(queryWrapper);
-
-        return this.nodeResourceService.list(queryWrapper);
+        List<NodeResource> list = this.nodeResourceService.list(queryWrapper);
+        PageInfo<NodeResource> result = new PageInfo<>(list);
+        return result;
     }
 
     // 查询cpu剩余资源数据

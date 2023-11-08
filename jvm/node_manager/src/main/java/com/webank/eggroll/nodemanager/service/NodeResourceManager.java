@@ -36,12 +36,12 @@ public class NodeResourceManager implements ApplicationStartedRunner {
     private SysInfoLinux sysInfo;
 
     ClusterManagerClient client;
-
     Long physicalMemorySize;
     HeartBeatThread heartBeatThread;
     ResourceCountThread resourceCountThread;
-
     Map<String, ResourceWrapper> resourceMap;
+
+    Long seq = 0L;
 
     public NodeResourceManager() {
         sysInfo = new SysInfoLinux();
@@ -95,58 +95,34 @@ public class NodeResourceManager implements ApplicationStartedRunner {
     }
 
     public Long getPhysicalMemorySize() {
-        if (Shell.LINUX) {
-            return sysInfo.getPhysicalMemorySize();
-        } else {
-            return GetSystemInfo.getTotalMemorySize();
-        }
+        return sysInfo.getPhysicalMemorySize();
     }
 
     public Integer getGpuSize() {
-        Integer defaultSize = 0;
-        if (Shell.LINUX) {
-            try {
-                defaultSize = sysInfo.getGpuNumber();
-            } catch (IOException e) {
-                logger.error("get gpuSize failed: {}", e.getMessage());
-            }
+        int defaultSize = 0;
+        try {
+            defaultSize = sysInfo.getGpuNumber();
+        } catch (IOException e) {
+            logger.error("get gpuSize failed: {}", e.getMessage());
         }
         return defaultSize;
     }
 
     public Long getAvailablePhysicalMemorySize() {
-        if (Shell.LINUX) {
-            return sysInfo.getAvailablePhysicalMemorySize();
-        } else {
-            return GetSystemInfo.getFreePhysicalMemorySize();
-        }
+        return sysInfo.getAvailablePhysicalMemorySize();
     }
 
     public int getAvailableProcessors() {
-        if (Shell.LINUX) {
-            return sysInfo.getNumCores();
-        } else {
-            return GetSystemInfo.getAvailableProcessors();
-        }
+        return sysInfo.getNumCores();
     }
 
     public void countMemoryResource() {
-        Long available = 0L;
-        if (Shell.LINUX) {
-            available = sysInfo.getAvailablePhysicalMemorySize();
-        } else {
-            available = GetSystemInfo.getFreePhysicalMemorySize();
-        }
+        Long available = sysInfo.getAvailablePhysicalMemorySize();
         resourceMap.get(Dict.PHYSICAL_MEMORY).getUsed().set(physicalMemorySize - available);
     }
 
     public void countCpuResource() {
-        int coreUsed = 0;
-        if (Shell.LINUX) {
-            coreUsed = (int) sysInfo.getNumVCoresUsed();
-        } else {
-            coreUsed = (int) GetSystemInfo.getProcessCpuLoad();
-        }
+        int coreUsed = (int) sysInfo.getNumVCoresUsed();
         resourceMap.get(Dict.VCPU_CORE).getUsed().set(coreUsed);
     }
 
@@ -157,11 +133,7 @@ public class NodeResourceManager implements ApplicationStartedRunner {
 
 
     public List<Integer> gpuProcessorUsed() {
-        List<Integer> pids = new ArrayList<>();
-        if (Shell.LINUX) {
-            pids = sysInfo.countGpuProcessors();
-        }
-        return pids;
+        return sysInfo.countGpuProcessors();
     }
 
     public ErServerNode queryNodeResource(ErServerNode erServerNode) {
@@ -218,42 +190,32 @@ public class NodeResourceManager implements ApplicationStartedRunner {
     }
 
 
-    public ErNodeHeartbeat generateNodeBeat(Long seq) {
-        String nodeHost = MetaInfo.CONFKEY_NODE_MANAGER_HOST == null ? NetUtils.getLocalIp() : MetaInfo.CONFKEY_NODE_MANAGER_HOST;
+    @PreDestroy
+    public ErNodeHeartbeat tryNodeHeartbeat() {
+        String nodeHost = MetaInfo.CONFKEY_NODE_MANAGER_HOST == null ? NetUtils.getLocalHost(MetaInfo.CONFKEY_NODE_MANAGER_NET_DEVICE) : MetaInfo.CONFKEY_NODE_MANAGER_HOST;
         int nodePort = MetaInfo.CONFKEY_NODE_MANAGER_PORT;
         ErEndpoint endpoint = new ErEndpoint(nodeHost, nodePort);
         ErServerNode erServerNode = new ErServerNode(NodeManagerMeta.serverNodeId, Dict.NODE_MANAGER, endpoint, NodeManagerMeta.status);
         ErNodeHeartbeat nodeHeartbeat = new ErNodeHeartbeat(seq, queryNodeResource(erServerNode));
         nodeHeartbeat.setGpuProcessors(gpuProcessorUsed());
-        return nodeHeartbeat;
-    }
-
-    @PreDestroy
-    public void shutDownNodeBeat() {
-        logger.info("node will bell shutdown,send loss heartbeat to cluster");
-        ErNodeHeartbeat erNodeHeartbeat = generateNodeBeat(-1L);
-        erNodeHeartbeat.getNode().setStatus(Dict.LOSS);
-        client.nodeHeartbeat(new Context(), erNodeHeartbeat);
+        return client.nodeHeartbeat(new Context(), nodeHeartbeat);
     }
 
     class HeartBeatThread extends Thread {
         Thread currentGrpcThread = null;
-
         @Override
         public void run() {
             Boolean notOver = true;
-            Long seq = 0L;
             while (notOver) {
                 try {
                     seq += 1;
-                    ErNodeHeartbeat erNodeHeartbeat = generateNodeBeat(seq);
                     if (currentGrpcThread != null && currentGrpcThread.isAlive()) {
                         currentGrpcThread.interrupt();
                     }
                     currentGrpcThread = new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            ErNodeHeartbeat nodeHeartBeat = client.nodeHeartbeat(new Context(), erNodeHeartbeat);
+                            ErNodeHeartbeat nodeHeartBeat = tryNodeHeartbeat();
                             if (nodeHeartBeat != null && nodeHeartBeat.getNode() != null) {
                                 if (NodeManagerMeta.status.equals(Dict.INIT)) {
                                     if (nodeHeartBeat.getNode().getId() != -1) {
@@ -262,7 +224,6 @@ public class NodeResourceManager implements ApplicationStartedRunner {
                                         NodeManagerMeta.refreshServerNodeMetaIntoFile();
                                         NodeManagerMeta.status = Dict.HEALTHY;
                                         logger.info("get node id {} from cluster-manager", NodeManagerMeta.serverNodeId);
-
                                     }
                                 }
                             }

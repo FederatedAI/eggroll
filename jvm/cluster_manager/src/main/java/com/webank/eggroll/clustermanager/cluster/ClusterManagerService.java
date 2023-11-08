@@ -139,7 +139,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         if (sessionProcessors.stream().anyMatch(p -> ProcessorStatus.ERROR.name().equals(p.getStatus()))) {
             log.info("session watcher kill session " + session);
             try {
-                jobServiceHandler.killJob(context, session.getId(),StatusReason.PROCESS_ERROR.name());
+                jobServiceHandler.killJob(context, session.getId(), StatusReason.PROCESS_ERROR.name());
             } catch (ErSessionException e) {
                 log.error("failed to kill session " + session.getId(), e);
             }
@@ -155,36 +155,41 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         ErServerNode serverNode = nodeHeartbeat.getNode();
         try {
             LockUtils.lock(lockMap, serverNode.getId());
-            if (nodeHeartbeat.getId() == -1) {
-                log.info("node will be loss {}", JsonUtil.object2Json(serverNode));
-                updateNode(serverNode, false, false);
-            } else if (serverNode.getId() == -1) {
-                ServerNode existNode = serverNodeService.getByEndPoint(serverNode.getEndpoint());
-                if (existNode == null) {
-                    log.info("create new node {}", JsonUtil.object2Json(serverNode));
-                    serverNodeService.createByErNode(serverNode);
-                } else {
-                    log.info("node already exist {}", existNode);
-                    serverNode.setId(existNode.getServerNodeId());
-                    updateNode(serverNode, true, true);
-                }
-            } else {
-                if (nodeHeartbeatMap.containsKey(serverNode.getId())
-                        && (nodeHeartbeatMap.get(serverNode.getId()).getId() < nodeHeartbeat.getId())) {
-                    //正常心跳
-                    updateNode(serverNode, false, true);
-                } else {
-                    //nodemanger重启过
-                    ErServerNode existsServerNode = serverNodeService.getByIdFromCache(serverNode.getId());
-                    if (existsServerNode == null) {
-                        serverNode = createNewNode(serverNode);
+            if (!Dict.LOSS.equals(serverNode.getStatus())) {
+                if (serverNode.getId() == -1) {
+                    ServerNode existNode = serverNodeService.getByEndPoint(serverNode.getEndpoint());
+                    if (existNode == null) {
+                        log.info("create new node {}", JsonUtil.object2Json(serverNode));
+                        serverNodeService.createByErNode(serverNode);
                     } else {
+                        log.info("node already exist {}", existNode);
+                        serverNode.setId(existNode.getServerNodeId());
                         updateNode(serverNode, true, true);
                     }
+                } else {
+                    if (nodeHeartbeatMap.containsKey(serverNode.getId())
+                            && (nodeHeartbeatMap.get(serverNode.getId()).getId() < nodeHeartbeat.getId())) {
+                        //正常心跳
+                        updateNode(serverNode, false, true);
+                    } else {
+                        //nodemanger重启过
+                        ErServerNode existsServerNode = serverNodeService.getByIdFromCache(serverNode.getId());
+                        if (existsServerNode == null) {
+                            serverNode = createNewNode(serverNode);
+                        } else {
+                            updateNode(serverNode, true, true);
+                        }
+                    }
+                }
+            } else {
+                if (serverNode.getId() != -1) {
+                    log.info("receive node {} quit heart beat", serverNode.getId());
+                    updateNode(serverNode, false, true);
                 }
             }
             nodeHeartbeatMap.put(serverNode.getId(), nodeHeartbeat);
             nodeHeartbeat.setNode(serverNode);
+
         } finally {
             LockUtils.unLock(lockMap, serverNode.getId());
         }

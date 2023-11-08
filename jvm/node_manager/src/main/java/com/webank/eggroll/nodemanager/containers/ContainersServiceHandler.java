@@ -2,6 +2,7 @@ package com.webank.eggroll.nodemanager.containers;
 
 
 import com.eggroll.core.config.Dict;
+import com.eggroll.core.config.ExtendEnvConf;
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.constant.ProcessorStatus;
 import com.eggroll.core.containers.container.*;
@@ -13,6 +14,7 @@ import com.eggroll.core.exceptions.PathNotExistException;
 import com.eggroll.core.grpc.ClusterManagerClient;
 import com.eggroll.core.pojo.*;
 import com.eggroll.core.utils.JsonUtil;
+import com.eggroll.core.utils.PropertiesUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.inject.Singleton;
@@ -34,10 +36,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -91,15 +90,34 @@ public class ContainersServiceHandler {
         }
     }
 
-    private StartContainersResponse startDeepspeedContainers(
-            StartDeepspeedContainerRequest startDeepspeedContainerRequest) {
+    /**
+     * 每提交一次大模型任务就重新加载一次外部配置文件
+     * @param startDeepspeedContainerRequest
+     * @return
+     */
+//    private void initExtendEnvConf() {
+//        logger.info("=============initDeepExtendConfig==============");
+//        String confName = "node-extend-env.properties";
+//        String eggrollHome = System.getenv("EGGROLL_HOME");
+//        if (eggrollHome == null) {
+//            logger.error("EGGROLL_HOME not set");
+//            return;
+//        }
+//        String extendConfPath = eggrollHome + "/bin/gpu/" + confName;
+//        logger.info("load extend config file {}", extendConfPath);
+//        Properties extendPro = PropertiesUtil.getProperties(extendConfPath);
+//        ExtendEnvConf.initToMap(extendPro);
+//    }
+
+    private StartContainersResponse startDeepspeedContainers(StartDeepspeedContainerRequest startDeepspeedContainerRequest) {
         String sessionId = startDeepspeedContainerRequest.getSessionId();
         logger.info("(sessionId=" + sessionId + ") starting deepspeed containers");
-
         startDeepspeedContainerRequest.getDeepspeedConfigs().forEach((containerId, deepspeedConfig) -> {
-            WarpedDeepspeedContainerConfig warpedDeepspeedContainerConfig =
-                    new WarpedDeepspeedContainerConfig(deepspeedConfig);
-//            DeepSpeedContainer container = null;
+            WarpedDeepspeedContainerConfig warpedDeepspeedContainerConfig = new WarpedDeepspeedContainerConfig(deepspeedConfig);
+            Map<String, String> envMap = new HashMap<>();
+            envMap.putAll(startDeepspeedContainerRequest.getEnvironmentVariables());
+            envMap.putAll(ExtendEnvConf.confMap);
+            logger.info("containerId :{} env map :{}", containerId, envMap);
             try {
                 DeepSpeedContainer container = new DeepSpeedContainer(
                         sessionId,
@@ -107,24 +125,19 @@ public class ContainersServiceHandler {
                         warpedDeepspeedContainerConfig,
                         getContainerWorkspace(sessionId, deepspeedConfig.getRank()),
                         startDeepspeedContainerRequest.getCommandArguments(),
-                        startDeepspeedContainerRequest.getEnvironmentVariables(),
+                        envMap,
                         startDeepspeedContainerRequest.getFiles(),
                         startDeepspeedContainerRequest.getZippedFiles(),
                         startDeepspeedContainerRequest.getOptions()
                 );
-
                 containersManager.addContainer(containerId, container);
                 containersManager.startContainer(containerId);
             } catch (Exception e) {
                 logger.error(" starting deepspeed containers failed: {}", e);
                 e.printStackTrace();
             }
-//            containersManager.addContainer(containerId, container);
-//            containersManager.startContainer(containerId);
-
             logger.info("(sessionId=" + sessionId + ") deepspeed container started: " + containerId);
         });
-
         logger.info("(sessionId=" + sessionId + ") deepspeed co started");
         StartContainersResponse startContainersResponse = new StartContainersResponse();
         startContainersResponse.setSessionId(sessionId);
@@ -145,10 +158,10 @@ public class ContainersServiceHandler {
         String sessionId = killContainersRequest.getSessionId();
         Gson gson = new Gson();
         String killContainersRequestStr = gson.toJson(killContainersRequest);
-        logger.info("====================killJobContainers==============reqParam: {}",killContainersRequestStr);
+        logger.info("====================killJobContainers==============reqParam: {}", killContainersRequestStr);
         logger.info("(sessionId=" + sessionId + ") killing containers");
         for (Long containerId : killContainersRequest.getContainers()) {
-            logger.info("to kill container {}",containerId);
+            logger.info("to kill container {}", containerId);
             containersManager.killContainer(containerId);
         }
         KillContainersResponse killContainersResponse = new KillContainersResponse();

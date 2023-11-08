@@ -2,6 +2,7 @@
 
 package com.webank.eggroll.nodemanager.env;
 
+import com.eggroll.core.config.MetaInfo;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -128,36 +129,67 @@ public class SysInfoLinux extends SysInfo {
             Math.max(Math.round(1000D / getConf("CLK_TCK")), -1);
 
     private static long getConf(String attr) {
-        if (Shell.LINUX) {
-            try {
-                ShellCommandExecutor shellExecutorClk = new ShellCommandExecutor(
-                        new String[]{"getconf", attr});
-                shellExecutorClk.execute();
-                return Long.parseLong(shellExecutorClk.getOutput().replace("\n", ""));
-            } catch (IOException | NumberFormatException e) {
-                return -1;
-            }
+        try {
+            ShellCommandExecutor shellExecutorClk = new ShellCommandExecutor(
+                    new String[]{"getconf", attr});
+            shellExecutorClk.execute();
+            return Long.parseLong(shellExecutorClk.getOutput().replace("\n", ""));
+        } catch (IOException | NumberFormatException e) {
+            return -1;
         }
-        return -1;
     }
 
-
-    public int getGpuNumber() throws IOException {
-        String gpus = null;
+    public int getGpuNumberV2() throws IOException {
         int result = 0;
         try {
             String[] cmd = new String[]{"/bin/sh", "-c", "nvidia-smi --query-gpu=name --format=csv, noheader"};
             ShellCommandExecutor shellExecutorClk = new ShellCommandExecutor(cmd);
-//    name
-//    NVIDIA Tesla V100-SXM2-32GB
-//    NVIDIA Tesla V100-SXM2-32GB
-//    NVIDIA Tesla V100-SXM2-32GB
-//    NVIDIA Tesla V100-SXM2-32GB
             shellExecutorClk.execute();
             String cmdReturnString = shellExecutorClk.getOutput();
-            if (StringUtils.isNotEmpty(cmdReturnString))
-                result = cmdReturnString.split("\n").length - 1;
+            if (StringUtils.isNotEmpty(cmdReturnString)) {
+                String[] elems = cmdReturnString.split("\n");
+                for (String e : elems) {
+                    if (e.contains("NVIDIA"))
+                        result = result + 1;
+                }
+            }
         } catch (Exception ignore) {
+        }
+        return result;
+    }
+
+    public int getGpuNumber() throws IOException {
+        int result = 0;
+        try {
+            String shell = MetaInfo.CONFKEY_NODE_MANAGER_GPU_NUM_SHELL;
+            String eggrollHome = System.getenv("EGGROLL_HOME");
+            if (eggrollHome == null) {
+                LOG.error("EGGROLL_HOME not set");
+            }
+            String path = eggrollHome + "/bin/gpu/" + shell;
+            File file = new File(path);
+            if (StringUtils.isNotEmpty(path) && file.exists()) {
+                String[] cmd = new String[]{"/bin/sh", "-c", path};
+                ShellCommandExecutor shellExecutorClk = new ShellCommandExecutor(cmd);
+                shellExecutorClk.execute();
+                String cmdReturnString = shellExecutorClk.getOutput();
+                try {
+                    cmdReturnString = cmdReturnString.replace("\n", "");
+                    cmdReturnString = cmdReturnString.replace("\r", "");
+                    result = new Integer(cmdReturnString);
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+                System.err.println("get gpu num exec " + path + " return " + cmdReturnString + " result :" + result);
+                LOG.error("get gpu num exec {} return {} result {}", path, cmdReturnString, result);
+            } else {
+                LOG.error("get gpu shell is not set");
+            }
+        } catch (Exception ignore) {
+            ignore.printStackTrace();
+        }
+        if (result == 0) {
+            result = getGpuNumberV2();
         }
         return result;
     }
@@ -165,10 +197,8 @@ public class SysInfoLinux extends SysInfo {
     public List<Integer> countGpuProcessors() {
         List<Integer> pids = new ArrayList<>();
         try {
-
             String[] cmd = new String[]{"/bin/sh", "-c", "nvidia-smi --query-compute-apps=pid --format=csv,noheader"};
             ShellCommandExecutor shellExecutorClk = new ShellCommandExecutor(cmd);
-
             shellExecutorClk.execute();
             String cmdReturnString = shellExecutorClk.getOutput();
             if (StringUtils.isNoneEmpty(cmdReturnString)) {
@@ -182,18 +212,9 @@ public class SysInfoLinux extends SysInfo {
     }
 
     public int getProcess(int pid) {
-
-
         try {
-
             String[] cmd = new String[]{"/bin/sh", "-c", "ps"};
-            ShellCommandExecutor shellExecutorClk = new ShellCommandExecutor(
-                    cmd);
-//    name
-//    NVIDIA Tesla V100-SXM2-32GB
-//    NVIDIA Tesla V100-SXM2-32GB
-//    NVIDIA Tesla V100-SXM2-32GB
-//    NVIDIA Tesla V100-SXM2-32GB
+            ShellCommandExecutor shellExecutorClk = new ShellCommandExecutor(cmd);
             shellExecutorClk.execute();
             String cmdReturnString = shellExecutorClk.getOutput();
 
