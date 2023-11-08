@@ -39,10 +39,7 @@ public abstract class AbstractSessionStateHandler implements StateHandler<ErSess
     }
 
     void doInserSession(Context context, ErSessionMeta erSessionMeta) {
-        int activeProcCount = 0;
-        SessionMain sessionMain = new SessionMain(erSessionMeta.getId(), erSessionMeta.getName(), SessionStatus.NEW.name(),
-                erSessionMeta.getTag(), erSessionMeta.getProcessors().size(), activeProcCount, new Date(), new Date());
-        sessionMainService.save(sessionMain);
+
         Map<String, String> options = erSessionMeta.getOptions();
 
         options.forEach((k, v) -> {
