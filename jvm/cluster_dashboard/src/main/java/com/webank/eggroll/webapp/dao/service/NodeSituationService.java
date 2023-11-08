@@ -1,4 +1,4 @@
-package com.webank.eggroll.webapp.service;
+package com.webank.eggroll.webapp.dao.service;
 
 
 import com.google.inject.Inject;
