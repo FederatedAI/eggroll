@@ -32,14 +32,13 @@ public class ServerNodeDao {
         boolean hasLastHeartbeatAt = StringUtils.isNotBlank(serverNodeQO.getLastHeartbeatAt());
         // 构建查询条件
         if (hasServerNodeId || hasName || hasServerClusterId || hasNodeType || hasStatus || hasLastHeartbeatAt) {
-            queryWrapper.and(wrapper -> {
-                if (hasServerNodeId) wrapper.like("server_node_id", serverNodeQO.getServerNodeId());
-                if (hasName) wrapper.or().like("name", serverNodeQO.getName());
-                if (hasServerClusterId) wrapper.or().like("server_cluster_id", serverNodeQO.getServerClusterId());
-                if (hasNodeType) wrapper.or().like("node_type", serverNodeQO.getNodeType());
-                if (hasStatus) wrapper.or().like("status", serverNodeQO.getStatus());
-                if (hasLastHeartbeatAt) wrapper.or().like("last_heartbeat_at", serverNodeQO.getLastHeartbeatAt());
-            });
+            queryWrapper.lambda()
+                    .like(hasServerNodeId, ServerNode::getServerNodeId, serverNodeQO.getServerNodeId())
+                    .and(hasName, i -> i.like(ServerNode::getName, serverNodeQO.getName()))
+                    .and(hasServerClusterId, i -> i.like(ServerNode::getServerClusterId, serverNodeQO.getServerClusterId()))
+                    .and(hasNodeType, i -> i.like(ServerNode::getNodeType, serverNodeQO.getNodeType()))
+                    .and(hasStatus, i -> i.like(ServerNode::getStatus, serverNodeQO.getStatus()))
+                    .and(hasLastHeartbeatAt, i -> i.like(ServerNode::getLastHeartbeatAt, serverNodeQO.getLastHeartbeatAt()));
         }
         List<ServerNode> list = this.serverNodeService.list(queryWrapper);
         PageInfo<ServerNode> result = new PageInfo<>(list);

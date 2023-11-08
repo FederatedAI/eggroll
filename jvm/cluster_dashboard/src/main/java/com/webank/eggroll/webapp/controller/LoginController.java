@@ -5,7 +5,7 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.webapp.entity.UserInfo;
 import com.webank.eggroll.webapp.global.ErrorCode;
-import com.webank.eggroll.webapp.service.LoginService;
+import com.webank.eggroll.webapp.dao.service.LoginService;
 import com.webank.eggroll.webapp.utils.JsonFormatUtil;
 
 import javax.servlet.http.HttpServlet;

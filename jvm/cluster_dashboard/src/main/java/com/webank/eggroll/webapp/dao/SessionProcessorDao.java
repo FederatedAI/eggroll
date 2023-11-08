@@ -22,23 +22,18 @@ public class SessionProcessorDao {
     SessionProcessorService sessionProcessorService;
 
     public PageInfo<SessionProcessor> queryData(SessionProcessorQO sessionProcessorQO) {
-        PageHelper.startPage(sessionProcessorQO.getPageNum(), sessionProcessorQO.getPageSize(),true);
+        PageHelper.startPage(sessionProcessorQO.getPageNum(), sessionProcessorQO.getPageSize(), true);
         QueryWrapper<SessionProcessor> queryWrapper = new QueryWrapper<>();
 
         if (StringUtils.isNotBlank(sessionProcessorQO.getSessionId())
                 || StringUtils.isNotBlank(sessionProcessorQO.getStatus())
-                || StringUtils.isNotBlank(sessionProcessorQO.getCreateTime())
+                || StringUtils.isNotBlank(sessionProcessorQO.getCreatedAt())
                 || sessionProcessorQO.getPid() != null) {
-            queryWrapper.and(wrapper ->
-                    wrapper.like(StringUtils.isNotBlank(sessionProcessorQO.getSessionId()), "session_id", sessionProcessorQO.getSessionId())
-                            .or()
-                            .like(StringUtils.isNotBlank(sessionProcessorQO.getStatus()), "status", sessionProcessorQO.getStatus())
-                            .or()
-                            .like(StringUtils.isNotBlank(sessionProcessorQO.getCreateTime()), "created_at", sessionProcessorQO.getCreateTime())
-                            .or()
-                            .like(sessionProcessorQO.getPid() != null, "pid", sessionProcessorQO.getPid())
-
-            );
+            queryWrapper.lambda()
+                    .like(StringUtils.isNotBlank(sessionProcessorQO.getSessionId()), SessionProcessor::getSessionId, sessionProcessorQO.getSessionId())
+                    .and(StringUtils.isNotBlank(sessionProcessorQO.getStatus()), i -> i.like(SessionProcessor::getStatus, sessionProcessorQO.getStatus()))
+                    .and(StringUtils.isNotBlank(sessionProcessorQO.getCreatedAt()), i -> i.like(SessionProcessor::getCreatedAt, sessionProcessorQO.getCreatedAt()))
+                    .and(sessionProcessorQO.getPid() != null, i -> i.eq(SessionProcessor::getPid, sessionProcessorQO.getPid()));
         }
         List<SessionProcessor> list = this.sessionProcessorService.list(queryWrapper);
         PageInfo<SessionProcessor> result = new PageInfo<>(list);
