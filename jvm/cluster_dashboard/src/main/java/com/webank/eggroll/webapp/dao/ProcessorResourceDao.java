@@ -39,13 +39,12 @@ public class ProcessorResourceDao {
 
         // 构建查询条件
         if (hasProcessorId || hasSessionId || hasServerNodeId || hasStatus || hasResourceType) {
-            queryWrapper.and(wrapper -> {
-                if (hasProcessorId) wrapper.like("processor_id", processorResourceQO.getProcessorId());
-                if (hasServerNodeId) wrapper.or().like("server_node_id", processorResourceQO.getServerNodeId());
-                if (hasStatus) wrapper.or().like("status", processorResourceQO.getStatus());
-                if (hasResourceType) wrapper.or().like("resource_type", processorResourceQO.getResourceType());
-                if (hasSessionId) wrapper.or().like("session_id", processorResourceQO.getSessionId());
-            });
+            queryWrapper.lambda()
+                    .like(hasProcessorId, ProcessorResource::getProcessorId, processorResourceQO.getProcessorId())
+                    .and(hasSessionId, i -> i.like(ProcessorResource::getSessionId, processorResourceQO.getSessionId()))
+                    .and(hasServerNodeId, i -> i.like(ProcessorResource::getServerNodeId, processorResourceQO.getServerNodeId()))
+                    .and(hasStatus, i -> i.like(ProcessorResource::getStatus, processorResourceQO.getStatus()))
+                    .and(hasResourceType, i -> i.like(ProcessorResource::getResourceType, processorResourceQO.getResourceType()));
         }
         List<ProcessorResource> list = this.processorResourceService.list(queryWrapper);
         PageInfo<ProcessorResource> result = new PageInfo<>(list);

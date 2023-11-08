@@ -1,4 +1,4 @@
-package com.webank.eggroll.webapp.service;
+package com.webank.eggroll.webapp.dao.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.eggroll.core.config.Dict;

@@ -16,8 +16,8 @@ public class SessionProcessorQO {
     private Integer serverNodeId;
     private String processorId;
     private String status;
-    private String createTime;
-    private String updateTime;
+    private String createdAt;
+    private String updateAt;
     private Long pid;
 
     private Integer pageNum = 1;

@@ -1,6 +1,6 @@
 package com.webank.eggroll.webapp.controller;
 
-import com.webank.eggroll.webapp.service.ZookeeperQueryService;
+import com.webank.eggroll.webapp.dao.service.ZookeeperQueryService;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;

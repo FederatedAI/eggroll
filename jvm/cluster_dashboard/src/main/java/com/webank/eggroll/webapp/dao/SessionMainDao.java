@@ -44,12 +44,12 @@ public class SessionMainDao {
         boolean hasStatus = StringUtils.isNotBlank(sessionMainQO.getStatus());
         // 构建查询条件
         if (hasSessionId || hasName || createdAt || hasStatus) {
-            queryWrapper.and(wrapper -> {
-                if (hasSessionId) wrapper.like("session_id", sessionMainQO.getSessionId());
-                if (hasName) wrapper.or().like("name", sessionMainQO.getName());
-                if (createdAt) wrapper.or().like("created_at", sessionMainQO.getCreatedAt());
-                if (hasStatus) wrapper.or().like("status", sessionMainQO.getStatus());
-            });
+            queryWrapper.lambda()
+                    .like(hasSessionId, SessionMain::getSessionId, sessionMainQO.getSessionId())
+                    .and(hasName, i -> i.like(SessionMain::getName, sessionMainQO.getName()))
+                    .and(createdAt, i -> i.like(SessionMain::getCreatedAt, sessionMainQO.getCreatedAt()))
+                    .and(hasStatus, i -> i.like(SessionMain::getStatus, sessionMainQO.getStatus()));
+
         }
         List<SessionMain> list = this.sessionMainService.list(queryWrapper);
         PageInfo<SessionMain> result = new PageInfo<>(list);
