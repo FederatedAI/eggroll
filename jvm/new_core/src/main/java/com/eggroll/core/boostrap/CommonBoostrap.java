@@ -1,5 +1,6 @@
 package com.eggroll.core.boostrap;
 
+import com.eggroll.core.config.ExtendEnvConf;
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.utils.CommandArgsUtils;
 import com.eggroll.core.utils.PropertiesUtil;
@@ -26,7 +27,7 @@ public class CommonBoostrap {
         } else {
             confPath = "./conf/eggroll.properties";
         }
-        logger.info("load config file {}", confPath);
+        logger.info("load eggroll config file {}", confPath);
         File file = new File(confPath);
         MetaInfo.STATIC_CONF_PATH = file.getAbsolutePath();
         Properties environment = PropertiesUtil.getProperties(confPath);

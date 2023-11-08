@@ -1,6 +1,7 @@
 package com.webank.eggroll.clustermanager.job;
 
 
+import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.grpc.CommandClient;
 import com.eggroll.core.pojo.*;
@@ -19,7 +20,7 @@ import static com.eggroll.core.grpc.CommandUri.*;
 
 public class TestJobServiceHandler {
 
-    ErEndpoint endpoint = new ErEndpoint(NetUtils.getLocalHost(), 4670);
+    ErEndpoint endpoint = new ErEndpoint(NetUtils.getLocalHost(MetaInfo.CONFKEY_NODE_MANAGER_NET_DEVICE), 4670);
 
     @Inject
     JobServiceHandler jobServiceHandler;

@@ -69,7 +69,7 @@ public class GrpcServer implements ApplicationStartedRunner {
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
             @Override
             public void run() {
-                logger.info("*** shutting down gRPC server in shutdown hook. host: {}, port: {} ***", NetUtils.getLocalHost(), MetaInfo.CONFKEY_NODE_MANAGER_PORT);
+                logger.info("*** shutting down gRPC server in shutdown hook. host: {}, port: {} ***", NetUtils.getLocalHost(MetaInfo.CONFKEY_NODE_MANAGER_NET_DEVICE), MetaInfo.CONFKEY_NODE_MANAGER_PORT);
             }
         }));
 
