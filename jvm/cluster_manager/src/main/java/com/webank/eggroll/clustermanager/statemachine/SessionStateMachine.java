@@ -30,6 +30,10 @@ public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta> {
 
     @Inject
     SessionCreateHandler sessionCreateHandler;
+    @Inject
+    SessionWaitResourceHandler sessionWaitResourceHandler;
+    @Inject
+    SessionWaitNewHandler sessionWaitNewHandler;
 
     @Inject
     SessionIgnoreHandler sessionIgnoreHandler;
@@ -63,6 +67,8 @@ public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta> {
 
     @Inject
     public void afterPropertiesSet() throws Exception {
+        this.registeStateHander("_WAITING_RESOURCE", sessionWaitResourceHandler);
+        this.registeStateHander("WAITING_RESOURCE_NEW", sessionWaitNewHandler);
         this.registeStateHander("_NEW", sessionCreateHandler);
         this.registeStateHander("NEW_NEW", sessionRepeatedCreateHandler);
         this.registeStateHander("NEW_ACTIVE", sessionActiveHandler);

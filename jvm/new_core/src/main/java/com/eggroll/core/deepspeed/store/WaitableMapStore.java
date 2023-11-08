@@ -24,12 +24,12 @@ public class WaitableMapStore {
         long startTime = System.currentTimeMillis();
         while (!store.containsKey(key)) {
             log.info("waiting for key: {}, timeout {} store count: {}",key,timeout, store.size());
-            long elapsedTime = (System.currentTimeMillis() - startTime)/1000;
+            long elapsedTime = (System.currentTimeMillis() - startTime);
             if (elapsedTime > timeout) {
                 log.error("Timeout after waiting for key: " + key + " for " + timeout + ", store count: " + store.size());
                 return null;
             }
-            Thread.sleep(1000);
+            Thread.sleep(300);
         }
         return store.get(key);
     }

@@ -20,8 +20,8 @@ import java.util.Date;
 import java.util.List;
 
 @Singleton
-public class SessionCreateHandler extends AbstractSessionStateHandler {
-    Logger logger = LoggerFactory.getLogger(SessionCreateHandler.class);
+public class SessionWaitNewHandler extends AbstractSessionStateHandler {
+    Logger logger = LoggerFactory.getLogger(SessionWaitNewHandler.class);
 
     @Override
     public ErSessionMeta prepare(Context context, ErSessionMeta data, String preStateParam, String desStateParam) {
@@ -76,11 +76,11 @@ public class SessionCreateHandler extends AbstractSessionStateHandler {
                 processor.setSessionId(erSessionMeta.getId());
             }
         }
-
         int activeProcCount = 0;
         SessionMain sessionMain = new SessionMain(erSessionMeta.getId(), erSessionMeta.getName(), SessionStatus.NEW.name(),
                 erSessionMeta.getTag(), erSessionMeta.getProcessors().size(), activeProcCount, new Date(), new Date());
-        sessionMainService.save(sessionMain);
+        sessionMainService.updateById(sessionMain);
+
         doInserSession(context, erSessionMeta);
 
         this.openAsynPostHandle(context);

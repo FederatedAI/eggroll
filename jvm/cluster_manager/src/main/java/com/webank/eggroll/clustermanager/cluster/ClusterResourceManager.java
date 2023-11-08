@@ -19,6 +19,7 @@ import com.webank.eggroll.clustermanager.dao.impl.*;
 import com.webank.eggroll.clustermanager.entity.ProcessorResource;
 import com.webank.eggroll.clustermanager.schedule.ClusterManagerTask;
 import com.webank.eggroll.clustermanager.session.SessionManager;
+import com.webank.eggroll.clustermanager.statemachine.SessionStateMachine;
 import lombok.Data;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.collections.CollectionUtils;
@@ -56,6 +57,8 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
     ProcessorResourceService processorResourceService;
     @Inject
     SessionManager sessionManager;
+    @Inject
+    SessionStateMachine sessionStateMachine;
 
 
     BlockingQueue<Long> nodeResourceUpdateQueue = new ArrayBlockingQueue(100);
@@ -215,7 +218,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                         try {
                             lockSession(resourceApplication.getSessionId());
                             final ErSessionMeta sessionMain = sessionMainService.getSessionMain(resourceApplication.getSessionId());
-                            if (sessionMain.getStatus().equals(SessionStatus.WAITING_RESOURCE.name())) {
+                            if (!sessionMain.getStatus().equals(SessionStatus.WAITING_RESOURCE.name())) {
                                 log.error("session " + resourceApplication.getSessionId() + " is already canceled, drop it");
                                 applicationQueue.getBroker().remove();
                                 break;
@@ -668,6 +671,11 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
     }
 
     public void submitResourceRequest(ResourceApplication resourceRequest) throws InterruptedException {
+        final ErSessionMeta erSessionMeta = new ErSessionMeta();
+        erSessionMeta.setId(resourceRequest.getSessionId());
+        erSessionMeta.setName(resourceRequest.getSessionName());
+        erSessionMeta.setStatus(SessionStatus.WAITING_RESOURCE.name());
+        sessionStateMachine.changeStatus(new Context(),erSessionMeta,null,SessionStatus.WAITING_RESOURCE.name());
         applicationQueue.getBroker().put(resourceRequest);
     }
 

@@ -107,7 +107,15 @@ public class JobServiceHandler {
         ErSessionMeta sessionMain = sessionMainService.getSessionMain(sessionId);
         QueryJobStatusResponse queryJobStatusResponse = new QueryJobStatusResponse();
         queryJobStatusResponse.setSessionId(sessionId);
-        queryJobStatusResponse.setStatus(sessionMain == null ? null : sessionMain.getStatus());
+        if (sessionMain != null) {
+            if (SessionStatus.WAITING_RESOURCE.name().equals(sessionMain.getStatus())) {
+                queryJobStatusResponse.setStatus(SessionStatus.NEW.name());
+            } else if (SessionStatus.ALLOCATE_RESOURCE_FAILED.name().equals(sessionMain.getStatus())) {
+                queryJobStatusResponse.setStatus(SessionStatus.ERROR.name());
+            } else {
+                queryJobStatusResponse.setStatus(sessionMain.getStatus());
+            }
+        }
         return queryJobStatusResponse;
     }
 
