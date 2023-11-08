@@ -232,7 +232,6 @@ public class Tasks implements Provider<Configuration>, ConfigurationSettingListe
                             || SessionStatus.CLOSED.name().equals(es.getStatus())
                             || SessionStatus.FINISHED.name().equals(es.getStatus()))) {
                         clusterResourceManager.getSessionLockMap().remove(es.getId());
-                        clusterResourceManager.getKillJobMap().remove(es.getId());
                     }
                 }
             } catch (Throwable e) {

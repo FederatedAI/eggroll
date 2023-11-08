@@ -137,6 +137,8 @@ public class StoreCrudOperator {
 
     public ErStore doGetOrCreateStore(Context context, ErStore input) {
         ErStoreLocator inputStoreLocator = input.getStoreLocator();
+        context.putLogData("name",inputStoreLocator.getName());
+        context.putLogData("namespace",inputStoreLocator.getNamespace());
         String inputStoreType = inputStoreLocator.getStoreType();
         ErStore inputWithoutType = ObjectUtils.clone(input);
         inputWithoutType.getStoreLocator().setStoreType(StringConstants.EMPTY);
