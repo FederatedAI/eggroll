@@ -234,7 +234,7 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
 //        }
         Context context = new Context();
         context.putData(Dict.KEY_PROCESSOR_TYPE, ProcessorType.DeepSpeed.name());
-        sessionStateMachine.changeStatus(context, erSessionMeta, null, SessionStatus.NEW.name());
+        sessionStateMachine.changeStatus(context, erSessionMeta, SessionStatus.WAITING_RESOURCE.name(), SessionStatus.NEW.name());
     }
 
 }
