@@ -32,15 +32,12 @@ public class NodeResourceDao {
                 || StringUtils.isNotBlank(nodeResourceQO.getServerNodeId())
                 || StringUtils.isNotBlank(nodeResourceQO.getStatus())
                 || StringUtils.isNotBlank(nodeResourceQO.getResourceType())) {
-            queryWrapper.and(wrapper ->
-                    wrapper.like(StringUtils.isNotBlank(nodeResourceQO.getResourceId()), "resource_id", nodeResourceQO.getResourceId())
-                            .or()
-                            .like(StringUtils.isNotBlank(nodeResourceQO.getServerNodeId()), "server_node_id", nodeResourceQO.getServerNodeId())
-                            .or()
-                            .like(StringUtils.isNotBlank(nodeResourceQO.getStatus()), "status", nodeResourceQO.getStatus())
-                            .or()
-                            .like(StringUtils.isNotBlank(nodeResourceQO.getResourceType()), "resource_type", nodeResourceQO.getResourceType())
-            );
+
+            queryWrapper.lambda()
+                    .like(StringUtils.isNotBlank(nodeResourceQO.getResourceId()), NodeResource::getResourceId, nodeResourceQO.getResourceId())
+                    .and(StringUtils.isNotBlank(nodeResourceQO.getServerNodeId()), i -> i.like(NodeResource::getServerNodeId, nodeResourceQO.getServerNodeId()))
+                    .and(StringUtils.isNotBlank(nodeResourceQO.getStatus()), i -> i.like(NodeResource::getStatus, nodeResourceQO.getStatus()))
+                    .and(StringUtils.isNotBlank(nodeResourceQO.getResourceType()), i -> i.like(NodeResource::getResourceType, nodeResourceQO.getResourceType()));
         }
         List<NodeResource> list = this.nodeResourceService.list(queryWrapper);
         PageInfo<NodeResource> result = new PageInfo<>(list);

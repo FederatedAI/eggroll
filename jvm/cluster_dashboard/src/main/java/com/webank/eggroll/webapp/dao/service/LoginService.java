@@ -1,4 +1,4 @@
-package com.webank.eggroll.webapp.service;
+package com.webank.eggroll.webapp.dao.service;
 
 import com.webank.eggroll.webapp.entity.UserInfo;
 import com.webank.eggroll.webapp.utils.RequestUtils;
