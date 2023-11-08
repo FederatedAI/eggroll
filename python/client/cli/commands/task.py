@@ -17,6 +17,7 @@ import os
 import tempfile
 import datetime
 import click
+import time
 
 from ..utils.cli_utils import load_yaml, prettify, unzip
 from client.sdk import EggrollClient
@@ -67,6 +68,7 @@ def submit(ctx, **kwargs):
     while True:
         response = client.task.query_status(session_id=session_id)
         print(f'task session_id:{session_id} status:{response["status"]}')
+        time.sleep(1)
         if response["status"] != "NEW":
             break
     log_type = kwargs.get("log_type") if not kwargs.get("log_type") else "stdout"
