@@ -298,7 +298,7 @@ public class JobServiceHandler {
             //锁不能移到分配资源之前，会造成死锁
             clusterResourceManager.lockSession(sessionId);
             final ErSessionMeta sessionMain = sessionMainService.getSessionMain(resourceApplication.getSessionId());
-            if (sessionMain.getStatus().equals(SessionStatus.WAITING_RESOURCE.name())) {
+            if (sessionMain.getStatus().equals(SessionStatus.NEW.name())) {
                 ErSessionMeta registeredSessionMeta = sessionMainService.getSession(submitJobRequest.getSessionId());
                 List<MutableTriple<ErProcessor, ErServerNode, ErProcessor>> pariList = new ArrayList<>();
                 //scala .zip
