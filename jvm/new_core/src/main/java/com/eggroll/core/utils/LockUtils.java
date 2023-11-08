@@ -31,6 +31,7 @@ public class LockUtils {
         ReentrantLock lock = lockMap.get(key);
         if (lock != null) {
             lock.unlock();
+//            lockMap.remove(key);
         }
     }
 

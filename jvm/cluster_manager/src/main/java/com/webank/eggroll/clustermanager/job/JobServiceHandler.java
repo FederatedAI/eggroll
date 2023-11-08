@@ -48,12 +48,11 @@ public class JobServiceHandler {
     @Inject
     SessionRanksService sessionRanksService;
 
-    public void killJob(Context context, String sessionId,String statusReason) {
+    public void killJob(Context context, String sessionId, String statusReason) {
         log.info("killing job {}", sessionId);
         try {
             clusterResourceManager.lockSession(sessionId);
             log.info("start kill job {}", sessionId);
-            clusterResourceManager.getKillJobMap().put(sessionId, System.currentTimeMillis());
             if (sessionMainService.getById(sessionId) == null) {
                 log.error("can not found session {} ", sessionId);
                 return;
@@ -117,7 +116,13 @@ public class JobServiceHandler {
         QueryJobResponse queryJobResponse = new QueryJobResponse();
         queryJobResponse.setSessionId(queryJobRequest.getSessionId());
         if (sessionMain != null) {
-            queryJobResponse.setStatus(sessionMain.getStatus());
+            if (SessionStatus.WAITING_RESOURCE.name().equals(sessionMain.getStatus())) {
+                queryJobResponse.setStatus(SessionStatus.NEW.name());
+            } else if (SessionStatus.ALLOCATE_RESOURCE_FAILED.name().equals(sessionMain.getStatus())) {
+                queryJobResponse.setStatus(SessionStatus.ERROR.name());
+            } else {
+                queryJobResponse.setStatus(sessionMain.getStatus());
+            }
         }
         ErSessionMeta erSession = sessionMainService.getSession(queryJobRequest.getSessionId());
         if (erSession != null) {
@@ -284,7 +289,8 @@ public class JobServiceHandler {
         try {
             //锁不能移到分配资源之前，会造成死锁
             clusterResourceManager.lockSession(sessionId);
-            if (!clusterResourceManager.getKillJobMap().containsKey(sessionId)) {
+            final ErSessionMeta sessionMain = sessionMainService.getSessionMain(resourceApplication.getSessionId());
+            if (sessionMain.getStatus().equals(SessionStatus.WAITING_RESOURCE.name())) {
                 ErSessionMeta registeredSessionMeta = sessionMainService.getSession(submitJobRequest.getSessionId());
                 List<MutableTriple<ErProcessor, ErServerNode, ErProcessor>> pariList = new ArrayList<>();
                 //scala .zip

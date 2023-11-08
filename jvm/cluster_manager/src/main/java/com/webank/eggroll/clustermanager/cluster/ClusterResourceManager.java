@@ -42,7 +42,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
     Logger log = LoggerFactory.getLogger(ClusterResourceManager.class);
 
     private ConcurrentHashMap<String, ReentrantLock> sessionLockMap = new ConcurrentHashMap<>();
-    private Map<String, Long> killJobMap = new ConcurrentHashMap<>();
+//    private Map<String, Long> killJobMap = new ConcurrentHashMap<>();
     private FifoBroker<ResourceApplication> applicationQueue= new FifoBroker<>();
     @Inject
     SessionMainService sessionMainService;
@@ -110,16 +110,11 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
     }
 
 
-    /**
-     * @param context
-     * @param request
-     * @return
-     */
     public CheckResourceEnoughResponse checkResourceEnoughForFlow(Context context, CheckResourceEnoughRequest request) {
         log.info("checkResourceEnoughForFlow request info: {}", request.toString());
         CheckResourceEnoughResponse response = new CheckResourceEnoughResponse();
         boolean result = false;
-        Long globalRemainResource = 0L;
+        long globalRemainResource = 0L;
         List<ErServerNode> erServerNodes = getServerNodeWithResource();
         for (ErServerNode n : erServerNodes) {
             for (ErResource r : n.getResources()) {
@@ -147,8 +142,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
             try {
                 List<Long> nodeList = Lists.newArrayList();
                 nodeResourceUpdateQueue.drainTo(nodeList);
-                Set<Long> nodeSet = new HashSet<>();
-                nodeSet.addAll(nodeList);
+                Set<Long> nodeSet = new HashSet<>(nodeList);
                 for (Long nodeId : nodeSet) {
                     countAndUpdateNodeResourceInner(nodeId);
                 }
@@ -179,7 +173,6 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                                 || SessionStatus.CLOSED.name().equals(es.getStatus())
                                 || SessionStatus.FINISHED.name().equals(es.getStatus()))) {
                             sessionLockMap.remove(es.getId());
-                            killJobMap.remove(es.getId());
                         }
                     }
                 } catch (Throwable e) {
@@ -217,11 +210,12 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
             while (resourceDispartcherFlag) {
                 try {
                     if (resourceApplication != null) {
-                        long now = System.currentTimeMillis();
+//                        long now = System.currentTimeMillis();
                         List<ErServerNode> serverNodes = null;
                         try {
                             lockSession(resourceApplication.getSessionId());
-                            if (killJobMap.containsKey(resourceApplication.getSessionId())) {
+                            final ErSessionMeta sessionMain = sessionMainService.getSessionMain(resourceApplication.getSessionId());
+                            if (sessionMain.getStatus().equals(SessionStatus.WAITING_RESOURCE.name())) {
                                 log.error("session " + resourceApplication.getSessionId() + " is already canceled, drop it");
                                 applicationQueue.getBroker().remove();
                                 break;
@@ -252,6 +246,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                                         resourceDispartcherFlag = false;
                                         continue;
                                     case Dict.WAITING:
+                                        unlockSession(resourceApplication.getSessionId());
                                         Thread.sleep(MetaInfo.EGGROLL_RESOURCE_DISPATCH_INTERVAL);
                                         log.info("resource is not enough, waiting next loop");
                                         continue;

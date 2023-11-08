@@ -13,8 +13,16 @@ package com.eggroll.core.constant;
 
 public enum SessionStatus {
 
-
-    PREPARE("PREPARE", false), NEW("NEW", false), NEW_TIMEOUT("NEW_TIMEOUT", true), ACTIVE("ACTIVE", false), CLOSED("CLOSED", true), KILLED("KILLED", true), ERROR("ERROR", true), FINISHED("FINISHED", true);
+    WAITING_RESOURCE("WAITING_RESOURCE",false),
+    PREPARE("PREPARE", false),
+    NEW("NEW", false),
+    NEW_TIMEOUT("NEW_TIMEOUT", true),
+    ACTIVE("ACTIVE", false),
+    CLOSED("CLOSED", true),
+    KILLED("KILLED", true),
+    ERROR("ERROR", true),
+    ALLOCATE_RESOURCE_FAILED("ALLOCATE_RESOURCE_FAILED",true),
+    FINISHED("FINISHED", true);
 
     private SessionStatus(String name, boolean isOver) {
         this.name = name;
