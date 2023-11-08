@@ -50,16 +50,16 @@ public class NodeManagerMeta {
 
     public static void loadNodeManagerMetaFromFile() {
         if (new File(getFilePath()).exists()) {
-            String nodeHost = MetaInfo.CONFKEY_NODE_MANAGER_HOST == null ? NetUtils.getLocalHost(MetaInfo.CONFKEY_NODE_MANAGER_NET_DEVICE) : MetaInfo.CONFKEY_NODE_MANAGER_HOST;
-            int nodePort = MetaInfo.CONFKEY_NODE_MANAGER_PORT;
+            String confNodeHost = MetaInfo.CONFKEY_NODE_MANAGER_HOST == null ? NetUtils.getLocalHost(MetaInfo.CONFKEY_NODE_MANAGER_NET_DEVICE) : MetaInfo.CONFKEY_NODE_MANAGER_HOST;
+            int confNodePort = MetaInfo.CONFKEY_NODE_MANAGER_PORT;
             try {
                 String content = FileSystemUtils.fileReader(getFilePath());
                 logger.info("===========load node manager meta {}============", content);
                 Map<String, Object> map = JsonUtil.json2Object(content, new TypeReference<Map<String, Object>>() {
                 });
-                String dictHost = String.valueOf(map.get(Dict.KEY_NODE_IP));
-                int dictPort = (int) map.get(Dict.KEY_NODE_PORT);
-                if (nodeHost.equals(dictHost) && dictPort == nodePort) {
+                String dictHost = String.valueOf( map.get(Dict.KEY_NODE_IP));
+                int dictPort = Integer.parseInt((String) map.get(Dict.KEY_NODE_PORT));
+                if (confNodeHost.equals(dictHost) && dictPort == confNodePort) {
                     serverNodeId = Long.valueOf((Integer) map.get(Dict.KEY_SERVER_NODE_ID));
                     clusterId = Long.valueOf((Integer) map.get(Dict.KEY_CLUSTER_ID));
                 } else {

@@ -32,11 +32,5 @@ public class CommonBoostrap {
         MetaInfo.STATIC_CONF_PATH = file.getAbsolutePath();
         Properties environment = PropertiesUtil.getProperties(confPath);
         MetaInfo.init(environment);
-
-        String extendConfPath =confPath.replace("eggroll.properties","node-extend-env.properties");
-        logger.info("load extend config file {}", confPath);
-        Properties extendPro = PropertiesUtil.getProperties(extendConfPath);
-        ExtendEnvConf.initToMap(extendPro);
-
     }
 }
