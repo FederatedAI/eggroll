@@ -15,8 +15,9 @@ public class CommandClient {
     public byte[] call(Context oriContext, ErEndpoint erEndpoint, String uri, byte[] request) {
         Context context = new Context();
         context.setUri(uri);
-        if (oriContext != null)
+        if (oriContext != null) {
             context.setSeq(oriContext.getSeq());
+        }
         context.setActionType(ActionType.CLIENT.name());
         context.setEndpoint(erEndpoint);
         try {
@@ -30,28 +31,12 @@ public class CommandClient {
             context.setThrowable(e);
             throw e;
         } finally {
-            if (MetaInfo.EGGROLL_FLOWLOG_PRINT_CLIENT)
+            if (MetaInfo.EGGROLL_FLOWLOG_PRINT_CLIENT) {
                 FlowLogUtil.printFlowLog(context);
+            }
+
         }
     }
 
-    //  def call[T](commandUri: CommandURI, args: RpcMessage*)(implicit tag:ClassTag[T]): T = {
-//    logDebug(s"[CommandClient.call, single endpoint] commandUri: ${commandUri.uriString}, endpoint: ${defaultEndpoint}")
-//    try {
-//      val stub = CommandServiceGrpc.newBlockingStub(GrpcClientUtils.getChannel(defaultEndpoint))
-//      val argBytes = args.map(x => ByteString.copyFrom(SerdesUtils.rpcMessageToBytes(x, SerdesTypes.PROTOBUF)))
-//      val resp = stub.call(Command.CommandRequest.newBuilder
-//              .setId(System.currentTimeMillis + "")
-//              .setUri(commandUri.uri.toString)
-//              .addAllArgs(argBytes.asJava)
-//              .build)
-//      SerdesUtils.rpcMessageFromBytes(resp.getResults(0).toByteArray,
-//              tag.runtimeClass, SerdesTypes.PROTOBUF).asInstanceOf[T]
-//    } catch {
-//      case t: Throwable =>
-//        logError(s"[COMMAND] error calling to ${defaultEndpoint}, message: ${args(0)}. commandUri: ${commandUri.uriString}", t)
-//        throw new CommandCallException(commandUri, defaultEndpoint, t)
-//    }
-//  }
 
 }

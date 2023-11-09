@@ -58,8 +58,9 @@ public class SessionKillHandler extends AbstractSessionStateHandler {
         if (StringUtils.isNotEmpty(preStateParam) && preStateParam.equals(erSessionMeta.getStatus())) {
             throw new RuntimeException("");
         }
-        if (data.getActiveProcCount() != null)
+        if (data.getActiveProcCount() != null) {
             erSessionMeta.setActiveProcCount(data.getActiveProcCount());
+        }
         this.openAsynPostHandle(context);
 
         return erSessionMeta;

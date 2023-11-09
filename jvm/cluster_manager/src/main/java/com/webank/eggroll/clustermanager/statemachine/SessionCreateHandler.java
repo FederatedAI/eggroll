@@ -40,8 +40,9 @@ public class SessionCreateHandler extends AbstractSessionStateHandler {
         logger.info("session create handle begin");
         erSessionMeta.setStatus(SessionStatus.NEW.name());
         ErSessionMeta sessionInDb = sessionMainService.getSession(erSessionMeta.getId(), true, true, false);
-        if (sessionInDb != null)
+        if (sessionInDb != null) {
             return sessionInDb;
+        }
         // TODO: 2023/8/3
         List<ErServerNode> serverNodeList = (List<ErServerNode>) context.getData(Dict.SERVER_NODES);
         if (CollectionUtils.isEmpty(serverNodeList)) {
@@ -98,18 +99,16 @@ public class SessionCreateHandler extends AbstractSessionStateHandler {
 
         serverNodes.parallelStream().forEach(node -> {
             ErSessionMeta sendSession = new ErSessionMeta();
-
-            //BeanUtils.copyProperties(data, sendSession);
             List<ErProcessor> processors = Lists.newArrayList();
             data.getProcessors().forEach(erProcessor -> {
-                if (erProcessor.getServerNodeId().equals(node.getId()))
+                if (erProcessor.getServerNodeId().equals(node.getId())) {
                     processors.add(erProcessor);
+                }
             });
             sendSession.setId(data.getId());
             logger.info("==============processor {}", processors);
             sendSession.setProcessors(processors);
             NodeManagerClient nodeManagerClient = new NodeManagerClient(node.getEndpoint());
-            //sendSession.getOptions().put("eggroll.resourcemanager.server.node.id",Long.toString(node.getId()));
             nodeManagerClient.startContainers(context, sendSession);
         });
 

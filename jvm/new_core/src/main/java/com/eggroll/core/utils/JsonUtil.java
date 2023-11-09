@@ -131,7 +131,9 @@ public class JsonUtil {
      * format json string
      */
     public static String formatJson(String jsonStr, String formatChar) {
-        if (null == jsonStr || "".equals(jsonStr)) return "";
+        if (null == jsonStr || "".equals(jsonStr)) {
+            return "";
+        }
         jsonStr = jsonStr.replace("\\n", "");
         StringBuilder sb = new StringBuilder();
         char last;

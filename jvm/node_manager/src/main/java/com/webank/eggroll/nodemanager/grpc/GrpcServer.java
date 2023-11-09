@@ -55,8 +55,12 @@ public class GrpcServer implements ApplicationStartedRunner {
                                Map<String, String> options) throws SSLException {
 
 
-        if (port < 0) throw new IllegalArgumentException("${modulePrefix} cannot listen to port <= 0");
-        if (grpcServices.isEmpty()) throw new IllegalArgumentException("grpc services cannot be empty");
+        if (port < 0) {
+            throw new IllegalArgumentException("${modulePrefix} cannot listen to port <= 0");
+        }
+        if (grpcServices.isEmpty()) {
+            throw new IllegalArgumentException("grpc services cannot be empty");
+        }
 
         InetSocketAddress addr = new InetSocketAddress(host, port);
 
@@ -93,17 +97,27 @@ public class GrpcServer implements ApplicationStartedRunner {
                 .maxInboundMetadataSize(maxInboundMetadataSize)
                 .flowControlWindow(flowControlWindow);
 
-        if (channelKeepAliveTimeSec > 0) nettyServerBuilder.keepAliveTime(channelKeepAliveTimeSec, TimeUnit.SECONDS);
-        if (channelKeepAliveTimeoutSec > 0)
+        if (channelKeepAliveTimeSec > 0) {
+            nettyServerBuilder.keepAliveTime(channelKeepAliveTimeSec, TimeUnit.SECONDS);
+        }
+        if (channelKeepAliveTimeoutSec > 0) {
             nettyServerBuilder.keepAliveTimeout(channelKeepAliveTimeoutSec, TimeUnit.SECONDS);
-        if (channelPermitKeepAliveTime > 0)
+        }
+        if (channelPermitKeepAliveTime > 0) {
             nettyServerBuilder.permitKeepAliveTime(channelPermitKeepAliveTime, TimeUnit.SECONDS);
-        if (channelKeepAliveWithoutCallsEnabled)
+        }
+        if (channelKeepAliveWithoutCallsEnabled) {
             nettyServerBuilder.permitKeepAliveWithoutCalls(channelKeepAliveWithoutCallsEnabled);
-        if (maxConnectionIdle > 0) nettyServerBuilder.maxConnectionIdle(maxConnectionIdle, TimeUnit.SECONDS);
-        if (maxConnectionAge > 0) nettyServerBuilder.maxConnectionAge(maxConnectionAge, TimeUnit.SECONDS);
-        if (maxConnectionAgeGrace > 0)
+        }
+        if (maxConnectionIdle > 0) {
+            nettyServerBuilder.maxConnectionIdle(maxConnectionIdle, TimeUnit.SECONDS);
+        }
+        if (maxConnectionAge > 0) {
+            nettyServerBuilder.maxConnectionAge(maxConnectionAge, TimeUnit.SECONDS);
+        }
+        if (maxConnectionAgeGrace > 0) {
             nettyServerBuilder.maxConnectionAgeGrace(maxConnectionAgeGrace, TimeUnit.SECONDS);
+        }
 
         boolean secureClusterEnabled = MetaInfo.CONFKEY_CORE_SECURITY_SECURE_CLUSTER_ENABLED;
         if (secureClusterEnabled) {
@@ -122,8 +136,11 @@ public class GrpcServer implements ApplicationStartedRunner {
             SslContextBuilder sslContextBuilder = GrpcSslContexts.forServer(keyCrt, key).trustManager(caCrt).sessionTimeout(sslSessionTimeout)
                     .sessionCacheSize(sslSessionCacheSize);
 
-            if (clientAuthEnabled) sslContextBuilder.clientAuth(ClientAuth.REQUIRE);
-            else sslContextBuilder.clientAuth(ClientAuth.OPTIONAL);
+            if (clientAuthEnabled) {
+                sslContextBuilder.clientAuth(ClientAuth.REQUIRE);
+            } else {
+                sslContextBuilder.clientAuth(ClientAuth.OPTIONAL);
+            }
 
             nettyServerBuilder.sslContext(sslContextBuilder.build());
 

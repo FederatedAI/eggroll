@@ -35,25 +35,12 @@ public class NodeManagerClient {
     ErEndpoint nodeManagerEndpoint;
 
     public NodeManagerClient(ErEndpoint nodeManagerEndpoint) {
-//    logger.info("create new  nodemanager client {}",nodeManagerEndpoint);
-        if (nodeManagerEndpoint == null)
+        if (nodeManagerEndpoint == null) {
             throw new IllegalArgumentException("failed to create NodeManagerClient for endpoint: " + nodeManagerEndpoint);
+        }
         this.nodeManagerEndpoint = nodeManagerEndpoint;
         commandClient = new CommandClient();
     }
-
-
-//  public static final String startContainers = "v1/node_manager/processor/startContainers";
-//  public static final String stopContainers = "v1/node_manager/processor/stopContainers";
-//  public static final String killContainers = "v1/node_manager/processor/killContainers";
-//  public static final String nodeHeartbeat = "v1/node_manager/processor/heartbeat";
-
-//  public ErProcessor heartbeat(ErProcessor processor){
-//    byte[] responseData = commandClient.call(nodeManagerEndpoint, null,processor.serialize());
-//    ErProcessor response = new ErProcessor();
-//    response.deserialize(responseData);
-//    return response;
-//  }
 
     public ErSessionMeta startContainers(Context context, ErSessionMeta sessionMeta) {
         byte[] responseData = commandClient.call(context, nodeManagerEndpoint, startContainers, sessionMeta.serialize());

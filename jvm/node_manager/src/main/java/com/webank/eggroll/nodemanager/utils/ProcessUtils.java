@@ -37,7 +37,9 @@ public class ProcessUtils {
             StringBuffer b = new StringBuffer();
             while (true) {
                 try {
-                    if (!((line = br.readLine()) != null)) break;
+                    if (!((line = br.readLine()) != null)) {
+                        break;
+                    }
                 } catch (IOException ex) {
                     throw new RuntimeException(ex);
                 }

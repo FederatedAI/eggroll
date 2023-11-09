@@ -52,8 +52,9 @@ public class SessionRepeatedCreateHandler extends AbstractSessionStateHandler {
             if (cur == null) {
                 return false;
             }
-            if (cur.isOverState() || SessionStatus.ACTIVE.name().equals(cur.getStatus()))
+            if (cur.isOverState() || SessionStatus.ACTIVE.name().equals(cur.getStatus())) {
                 return true;
+            }
 
             if (SessionStatus.NEW.name().equals(cur.getStatus()) &&
                     ((cur.getActiveProcCount() == null || cur.getTotalProcCount() == null) ||

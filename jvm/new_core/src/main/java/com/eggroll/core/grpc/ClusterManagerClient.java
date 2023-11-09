@@ -14,8 +14,9 @@ public class ClusterManagerClient {
     ErEndpoint endpoint;
     Logger logger = LoggerFactory.getLogger(ClusterManagerClient.class);
     public ClusterManagerClient(ErEndpoint endpoint) {
-        if (endpoint == null)
+        if (endpoint == null) {
             throw new IllegalArgumentException("failed to create NodeManagerClient for endpoint: " + endpoint);
+        }
         this.endpoint = endpoint;
         cc = new CommandClient();
     }

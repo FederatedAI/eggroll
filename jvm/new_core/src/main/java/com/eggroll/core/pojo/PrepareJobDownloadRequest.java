@@ -21,13 +21,13 @@ public class PrepareJobDownloadRequest implements RpcMessage {
     public byte[] serialize() {
         DeepspeedDownload.PrepareDownloadRequest.Builder builder = DeepspeedDownload.PrepareDownloadRequest.newBuilder();
         builder.setSessionId(sessionId);
-        if (ranks != null)
+        if (ranks != null) {
             builder.addAllRanks(ranks);
-        if (StringUtils.isNotEmpty(compressMethod))
+        }
+        if (StringUtils.isNotEmpty(compressMethod)) {
             builder.setCompressMethod(compressMethod);
-
+        }
         builder.setCompressLevel(compressLevel);
-        // .setContentType(Containers.ContentType.valueOf(contentType))
         return builder.build().toByteArray();
     }
 
@@ -41,7 +41,6 @@ public class PrepareJobDownloadRequest implements RpcMessage {
             if (request.getCompressLevel() > 0) {
                 compressLevel = request.getCompressLevel();
             }
-            // this.contentType = request.getContentType();
         } catch (InvalidProtocolBufferException e) {
             e.printStackTrace();
         }

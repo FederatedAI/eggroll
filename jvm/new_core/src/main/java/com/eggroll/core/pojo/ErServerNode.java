@@ -79,18 +79,24 @@ public class ErServerNode implements RpcMessage {
 
     public Meta.ServerNode toProto() {
         Meta.ServerNode.Builder builder = Meta.ServerNode.newBuilder();
-        if (this.id != null)
+        if (this.id != null) {
             builder.setId(this.id);
-        if (this.name != null)
+        }
+        if (this.name != null) {
             builder.setName(this.name);
-        if (this.clusterId != null)
+        }
+        if (this.clusterId != null) {
             builder.setClusterId(this.clusterId);
-        if (this.nodeType != null)
+        }
+        if (this.nodeType != null) {
             builder.setNodeType(this.nodeType);
-        if (this.status != null)
+        }
+        if (this.status != null) {
             builder.setStatus(this.status);
-        if (this.endpoint != null)
+        }
+        if (this.endpoint != null) {
             builder.setEndpoint(endpoint.toProto());
+        }
         if (this.resources != null) {
             builder.addAllResources(this.resources.stream().map(ErResource::toProto).collect(Collectors.toList()));
         }

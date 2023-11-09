@@ -98,18 +98,16 @@ public class SessionWaitNewHandler extends AbstractSessionStateHandler {
 
         serverNodes.parallelStream().forEach(node -> {
             ErSessionMeta sendSession = new ErSessionMeta();
-
-            //BeanUtils.copyProperties(data, sendSession);
             List<ErProcessor> processors = Lists.newArrayList();
             data.getProcessors().forEach(erProcessor -> {
-                if (erProcessor.getServerNodeId().equals(node.getId()))
+                if (erProcessor.getServerNodeId().equals(node.getId())) {
                     processors.add(erProcessor);
+                }
             });
             sendSession.setId(data.getId());
             logger.info("==============processor {}", processors);
             sendSession.setProcessors(processors);
             NodeManagerClient nodeManagerClient = new NodeManagerClient(node.getEndpoint());
-            //sendSession.getOptions().put("eggroll.resourcemanager.server.node.id",Long.toString(node.getId()));
             nodeManagerClient.startContainers(context, sendSession);
         });
 

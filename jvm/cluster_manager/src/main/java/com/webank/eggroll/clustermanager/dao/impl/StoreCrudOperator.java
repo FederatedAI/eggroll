@@ -79,7 +79,9 @@ public class StoreCrudOperator {
 
         for (StorePartition storePartition : storePartitionResult) {
             Long nodeId = storePartition.getNodeId();
-            if (!nodeIdToNode.containsKey(nodeId)) missingNodeId.add(nodeId);
+            if (!nodeIdToNode.containsKey(nodeId)) {
+                missingNodeId.add(nodeId);
+            }
             partitionAtNodeIds.add(nodeId);
         }
         if (!missingNodeId.isEmpty()) {
@@ -115,7 +117,9 @@ public class StoreCrudOperator {
             outputOptions.putAll(inputOptions);
         }
         if (storeOpts != null) {
-            for (StoreOption r : storeOpts) outputOptions.put(r.getName(), r.getData());
+            for (StoreOption r : storeOpts) {
+                outputOptions.put(r.getName(), r.getData());
+            }
         }
 
         // process output partitions
@@ -189,7 +193,9 @@ public class StoreCrudOperator {
         int nodesCount = serverNodes.size();
         List<ErPartition> specifiedPartitions = input.getPartitions();
         boolean isPartitionsSpecified = specifiedPartitions.size() > 0;
-        if (newTotalPartitions <= 0) newTotalPartitions = nodesCount << 2;
+        if (newTotalPartitions <= 0) {
+            newTotalPartitions = nodesCount << 2;
+        }
         ArrayList<Long> serverNodeIds = new ArrayList<>();
         for (int i = 0; i < newTotalPartitions; i++) {
             ErServerNode node = serverNodes.get(i % nodesCount);
@@ -216,7 +222,9 @@ public class StoreCrudOperator {
                     , -1));
         }
         ConcurrentHashMap<String, String> newOptions = new ConcurrentHashMap<>();
-        if (inputOptions != null) newOptions.putAll(inputOptions);
+        if (inputOptions != null) {
+            newOptions.putAll(inputOptions);
+        }
         for (Map.Entry<String, String> entry : newOptions.entrySet()) {
             StoreOption newStoreOption = new StoreOption();
             newStoreOption.setStoreLocatorId(newStoreLocator.getStoreLocatorId());
