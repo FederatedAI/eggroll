@@ -19,6 +19,7 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
   private var port = 0
   private var standaloneTag = "0"
 
+
   //private var sessionId = "er_session_null"
   override def init(args: Array[String]): Unit = {
 
@@ -198,6 +199,8 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
   }
 
   override def start(): Unit = {
+
+    RdbConnectionPool.dataSource.start()
     // TODO:0: use user's config
     val server = GrpcServerUtils.createServer(port = this.port, grpcServices = List(new CommandService,new ClusterManagerExtendTransferService))
     server.start()
@@ -206,6 +209,7 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
     StaticErConf.setPort(port)
     logInfo(s"$standaloneTag server started at port $port")
     println(s"$standaloneTag server started at port $port")
+
     ClusterResourceManager.start()
     ClusterManagerService.start()
   }

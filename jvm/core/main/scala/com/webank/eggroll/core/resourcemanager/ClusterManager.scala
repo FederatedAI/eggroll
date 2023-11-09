@@ -104,16 +104,17 @@ object ClusterManagerService extends Logging {
             residualHeartbeatMap.remove(k)
           } catch {
             case e: Throwable =>
-                  e.printStackTrace()
                   logError(s"kill residual processor error: ${e.getMessage}")
           }
         })
       }
       catch {
         case e: Throwable =>
-          e.printStackTrace()
+          logError("")
+      }finally {
+        Thread.sleep(CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt)
       }
-      Thread.sleep(CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt)
+
     }
   },"REDIDUAL_PROCESS_CHECK_THREAD"
 )
@@ -130,8 +131,10 @@ object ClusterManagerService extends Logging {
         case e: Throwable =>
           e.printStackTrace()
 
+      }finally {
+        Thread.sleep(CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt)
       }
-      Thread.sleep(CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt)
+
     }
   }
   ,"NODE_PROCESS_CHECK_THREAD")
@@ -143,7 +146,7 @@ object ClusterManagerService extends Logging {
     var interval = current - session.createTime.getTime
     logDebug(s"watch deepspeed new session: ${session.id} ${interval}  ${maxInterval}")
     if (interval > maxInterval) {
-      JobServiceHandler.killJob(session.id, isTimeout = true)
+      JobServiceHandler.killJob(session.id, isTimeout = true,SessionStatus.ERROR)
     }
   }
 
@@ -192,7 +195,7 @@ object ClusterManagerService extends Logging {
     if (sessionProcessors.exists(_.status == ProcessorStatus.ERROR)) {
       logInfo(s"session watcher kill session ${session}")
       try {
-        killJob(session.id, isTimeout = false)
+        killJob(session.id, isTimeout = false,SessionStatus.ERROR)
       } catch {
         case e: ErSessionException =>
           logError(s"failed to kill session ${session.id}", e)
@@ -241,14 +244,16 @@ object ClusterManagerService extends Logging {
                 catch {
                   case e: Throwable=>
                   logError(s"session watcher handle session ${session.id} error ${e.getMessage}")
-                  e.printStackTrace()
+//                  e.printStackTrace()
                 }
             }
-            Thread.sleep(EGGROLL_SESSION_STATUS_CHECK_INTERVAL_MS.get().toLong)
+
           }catch {
             case e: Throwable=>
                   logError(s"session watcher handle error ${e.getMessage}")
-                 e.printStackTrace()
+//                 e.printStackTrace()
+          }finally {
+            Thread.sleep(EGGROLL_SESSION_STATUS_CHECK_INTERVAL_MS.get().toLong)
           }
         }
       }
@@ -354,35 +359,40 @@ class ClusterManagerService extends ClusterManager with Logging {
   override def nodeHeartbeat(nodeHeartbeat: ErNodeHeartbeat): ErNodeHeartbeat = synchronized {
     //logInfo(s" nodeHeartbeat ${nodeHeartbeat}")
     var serverNode = nodeHeartbeat.node
-    if (serverNode.id == -1) {
-      var existNode = queryNodeByEndPoint(serverNode)
-      if (existNode == null) {
-        logInfo(s"create new node ${serverNode}")
-        createNewNode(serverNode)
-      } else {
-        logInfo(s"node already exist ${existNode}")
-        serverNode = serverNode.copy(id = existNode.id)
-        updateNode(serverNode, true, true)
-      }
-
-    } else {
-      if (nodeHeartbeatMap.contains(serverNode.id) && (nodeHeartbeatMap(serverNode.id).id < nodeHeartbeat.id)) {
-        //正常心跳
-        updateNode(serverNode, false, true)
-      } else {
-        //nodemanger重启过
-        var existNode = queryNodeById(serverNode)
+    if(!serverNode.status.equals(ServerNodeStatus.LOSS)) {
+      if (serverNode.id == -1) {
+        var existNode = queryNodeByEndPoint(serverNode)
         if (existNode == null) {
-          serverNode = createNewNode(serverNode)
+          logInfo(s"create new node ${serverNode}")
+          createNewNode(serverNode)
         } else {
+          logInfo(s"node already exist ${existNode}")
+          serverNode = serverNode.copy(id = existNode.id)
           updateNode(serverNode, true, true)
         }
+      } else {
+        if (nodeHeartbeatMap.contains(serverNode.id) && (nodeHeartbeatMap(serverNode.id).id < nodeHeartbeat.id)) {
+          //正常心跳
+          updateNode(serverNode, false, true)
+        } else {
+          //nodemanger重启过
+          var existNode = queryNodeById(serverNode)
+          if (existNode == null) {
+            serverNode = createNewNode(serverNode)
+          } else {
+            updateNode(serverNode, true, true)
+          }
+        }
       }
+      nodeHeartbeatMap.put(serverNode.id, nodeHeartbeat);
+      nodeHeartbeat.copy(node = serverNode)
+    }else{
+      logInfo(s"receive node ${serverNode.id} quit heart beat")
+      if (serverNode.id != -1) {
+        updateNode(serverNode, false, true)
+      }
+      nodeHeartbeat
     }
-    nodeHeartbeatMap.put(serverNode.id, nodeHeartbeat);
-    nodeHeartbeat.copy(node = serverNode)
   }
-
-
 }
 

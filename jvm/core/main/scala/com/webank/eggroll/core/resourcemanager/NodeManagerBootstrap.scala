@@ -4,9 +4,10 @@ import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.containers.ContainersServiceHandler
-import com.webank.eggroll.core.ex.grpc.{NodeManagerExtendTransferService}
+import com.webank.eggroll.core.ex.grpc.NodeManagerExtendTransferService
 import com.webank.eggroll.core.meta.{ErProcessor, ErResourceAllocation, ErServerNode, ErSessionMeta}
-import com.webank.eggroll.core.session.StaticErConf
+import com.webank.eggroll.core.resourcemanager.NodeResourceManager.tryNodeHeartbeat
+import com.webank.eggroll.core.session.{ExtendEnvConf, StaticErConf}
 import com.webank.eggroll.core.transfer.GrpcServerUtils
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
 import io.grpc.Server
@@ -28,8 +29,14 @@ class NodeManagerBootstrap extends BootstrapBase with Logging {
     this.confPath = cmd.getOptionValue('c', "./conf/eggroll.properties")
 
     // val sessionId = cmd.getOptionValue('s')
-    StaticErConf.addProperties(confPath)
 
+    StaticErConf.addProperties(confPath)
+    var extendConfPath:String =  this.confPath.replace("eggroll.properties","node-extend-env.properties")
+    var extendEnvConfFile = new File(extendConfPath)
+    if(extendEnvConfFile.exists()) {
+        log.info("load extend env config file : "+extendConfPath)
+        ExtendEnvConf.addProperties(extendConfPath)
+    }
     // register services
     // To support parameters to NodeManagerService,
     // we instantiate a NodeManagerService instance here
@@ -138,6 +145,8 @@ class NodeManagerBootstrap extends BootstrapBase with Logging {
 
   override def shutdown(): Unit = {
     println("shutting down")
+    NodeManagerMeta.status=ServerNodeStatus.LOSS
+    tryNodeHeartbeat()
     // Gracefully shut down the ForkJoinPool
     if (forkJoinPool != null) {
       forkJoinPool.shutdown()
@@ -155,6 +164,8 @@ class NodeManagerBootstrap extends BootstrapBase with Logging {
     if (server != null) {
       println("shutting down server")
       server.shutdown()
+
+
       println("server shutdown done")
     }
     println("shutting down done")

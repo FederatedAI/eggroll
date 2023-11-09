@@ -8,7 +8,8 @@ import com.webank.eggroll.core.containers.meta._
 import com.webank.eggroll.core.error.PathNotExistException
 import com.webank.eggroll.core.meta.ErProcessor
 import com.webank.eggroll.core.resourcemanager.NodeManagerMeta
-import com.webank.eggroll.core.session.StaticErConf
+import com.webank.eggroll.core.session
+import com.webank.eggroll.core.session.{ExtendEnvConf, StaticErConf}
 import com.webank.eggroll.core.transfer.Extend
 import com.webank.eggroll.core.util.{Logging, ProcessUtils}
 import io.grpc.Status
@@ -88,14 +89,18 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
   private def startDeepspeedContainers(startDeepspeedContainerRequest: StartDeepspeedContainerRequest): StartContainersResponse = {
     val sessionId = startDeepspeedContainerRequest.sessionId
     logInfo(s"(sessionId=$sessionId) starting deepspeed containers")
+
+
     startDeepspeedContainerRequest.deepspeedConfigs.par.foreach { case (containerId, deepspeedConfig) =>
+      var  envMap :Map[String, String] =startDeepspeedContainerRequest.environmentVariables.++(ExtendEnvConf.getAll)
+      logInfo("containerId "+containerId+"env map : "+envMap)
       val container = new DeepSpeedContainer(
         sessionId = sessionId,
         processorId = containerId,
         deepspeedContainerConfig = new WarpedDeepspeedContainerConfig(deepspeedConfig),
         containerWorkspace = getContainerWorkspace(sessionId, deepspeedConfig.rank),
         commandArguments = startDeepspeedContainerRequest.commandArguments,
-        environmentVariables = startDeepspeedContainerRequest.environmentVariables,
+        environmentVariables =envMap ,
         files = startDeepspeedContainerRequest.files,
         zippedFiles = startDeepspeedContainerRequest.zippedFiles,
         options = startDeepspeedContainerRequest.options
@@ -319,4 +324,5 @@ object ContainersServiceHandler extends Logging {
     logInfo(s"zipped path: $path")
     byteStream.toByteArray
   }
+
 }

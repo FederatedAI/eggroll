@@ -5,6 +5,7 @@ import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, N
 import com.webank.eggroll.core.meta.{ErEndpoint, ErNodeHeartbeat, ErProcessor, ErResource, ErResourceAllocation, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.session.RuntimeErConf
 import com.webank.eggroll.core.client.ClusterManagerClient
+import com.webank.eggroll.core.constant.NodeManagerConfKeys.CONFKEY_NODE_MANAGER_NET_DEVICE
 import com.webank.eggroll.core.constant.ServerNodeStatus.{HEALTHY, INIT}
 import com.webank.eggroll.core.session.{RuntimeErConf, StaticErConf}
 import com.webank.eggroll.core.env.{Shell, SysInfoLinux}
@@ -25,11 +26,12 @@ object NodeManagerMeta  {
   var status=INIT
   var serverNodeId = -1:Long;
   var clusterId = -1:Long;
-   def refreshServerNodeMetaIntoFile(): Unit = {
-
+  var ip:String =StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST,
+    NetUtils.getLocalHost( StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_NET_DEVICE, "eth0") )) ;
+  var port:Integer =  StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT).toInt
+  def refreshServerNodeMetaIntoFile(): Unit = {
      var filePath =  CoreConfKeys.EGGROLL_DATA_DIR.get()+ StringConstants.SLASH+"NodeManagerMeta";
      var  gson= new Gson()
-
       FileSystemUtils.fileWriter(filePath, gson.toJson(NodeManagerMeta))
   }
   def loadNodeManagerMetaFromFile():Unit = {
@@ -38,14 +40,22 @@ object NodeManagerMeta  {
       var gson = new Gson()
       var content = FileSystemUtils.fileReader(filePath)
       var  contentMap = gson.fromJson(content,classOf[NodeManagerMeta]);
-      NodeManagerMeta.serverNodeId = contentMap.serverNodeId
-      NodeManagerMeta.clusterId = contentMap.clusterId
+
+      if(NodeManagerMeta.ip.equals(contentMap.ip)&&NodeManagerMeta.port==contentMap.port){
+        NodeManagerMeta.serverNodeId = contentMap.serverNodeId
+        NodeManagerMeta.clusterId = contentMap.clusterId
+      }else{
+        System.err.println("load meta file , found invalid content : "+content)
+      }
     }
   }
 }
 case  class  NodeManagerMeta(status :String,
- serverNodeId : Long,
- clusterId : Long)
+                             serverNodeId : Long,
+                             clusterId : Long,
+                              ip: String,
+                             port:Integer
+                            )
 
 trait NodeManager {
   def startContainers(sessionMeta: ErSessionMeta): ErSessionMeta
@@ -163,7 +173,7 @@ class NodeManagerService extends NodeManager with Logging {
 
 object  NodeResourceManager extends  Logging {
 
-  private  var sysInfo= if(Shell.LINUX)new  SysInfoLinux else null
+  private  var sysInfo= new  SysInfoLinux
   private  var client = new  ClusterManagerClient
   private  var resourceEventQueue=  new ArrayBlockingQueue[ResourceEvent](100);
 
@@ -223,12 +233,22 @@ object  NodeResourceManager extends  Logging {
   }
 
   def getGpuSize():Long = {
-    if(Shell.LINUX){
+//    if(Shell.LINUX){
       sysInfo.getGpuNumber
-    }else{
-      0
-    }
+//    }else{
+//      0
+//    }
   }
+
+  def tryNodeHeartbeat():ErNodeHeartbeat ={
+    client.nodeHeartbeat(ErNodeHeartbeat (id= seq ,node =queryNodeResource(ErServerNode(id = NodeManagerMeta.serverNodeId,
+      nodeType = ServerNodeTypes.NODE_MANAGER,
+      endpoint = ErEndpoint(host = NodeManagerMeta.ip,
+        port = NodeManagerMeta.port),
+      status = NodeManagerMeta.status))))
+
+  }
+
 
 
   def getAvailablePhysicalMemorySize():Long ={
@@ -297,37 +317,30 @@ object  NodeResourceManager extends  Logging {
                       used=r.used.get(),
                       allocated = r.allocated.get())}))
   }
-
+  var  seq :Long = 0
   class HeartBeatThread extends Thread{
     override def run(){
       var  notOver : Boolean = true
-      var  seq :Long = 0
+
       while(notOver){
         try {
           seq +=1
-          var nodeHeartBeat = client.nodeHeartbeat(ErNodeHeartbeat (id= seq ,node =queryNodeResource(ErServerNode(id = NodeManagerMeta.serverNodeId,
-            nodeType = ServerNodeTypes.NODE_MANAGER,
-            endpoint = ErEndpoint(host = StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST, NetUtils.getLocalHost),
-              port = StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT).toInt),
-            status = NodeManagerMeta.status)
-          ))
-
-          )
+          var nodeHeartBeat = tryNodeHeartbeat()
           if (nodeHeartBeat != null&&nodeHeartBeat.node!=null) {
           if (NodeManagerMeta.status.equals(INIT)) {
               if(nodeHeartBeat.node.id != -1) {
                 NodeManagerMeta.serverNodeId = nodeHeartBeat.node.id
                 NodeManagerMeta.clusterId = nodeHeartBeat.node.clusterId
                 logInfo(s"get node id ${NodeManagerMeta.serverNodeId} from cluster-manager ")
-                NodeManagerMeta.refreshServerNodeMetaIntoFile()
                 NodeManagerMeta.status = HEALTHY
+                NodeManagerMeta.refreshServerNodeMetaIntoFile()
+
               }
             logInfo(s"get node id ${NodeManagerMeta.serverNodeId} from cluster-manager ")
           }
         }
         }catch {
           case t: Throwable =>
-//            t.printStackTrace()
             logError("node heart beat error "+t.getMessage)
         }
         Thread.sleep(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt)

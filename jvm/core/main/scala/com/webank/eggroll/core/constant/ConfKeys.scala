@@ -127,7 +127,7 @@ object ClusterManagerConfKeys {
   val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_DEFAULT_AUTO_COMMIT = "eggroll.resourcemanager.clustermanager.datasource.db.default.auto.commit"
   val CONFKEY_CLUSTER_MANAGER_HOST = "eggroll.resourcemanager.clustermanager.host"
   val CONFKEY_CLUSTER_MANAGER_PORT = "eggroll.resourcemanager.clustermanager.port"
-  var CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT = ErConfKey("eggroll.resourcemanager.clustermanager.node.heartbeat.expire.count",200)
+  var CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT = ErConfKey("eggroll.resourcemanager.clustermanager.node.heartbeat.expire.count",30)
   val EGGROLL_RESOURCEMANAGER_CLUSTERMANAGER_JDBC_PASSWORD_DECRYPTOR = ErConfKey("eggroll.resourcemanager.clustermanager.jdbc.password.decryptor")
   val EGGROLL_RESOURCEMANAGER_CLUSTERMANAGER_JDBC_PASSWORD_DECRYPTOR_ARGS = ErConfKey("eggroll.resourcemanager.clustermanager.jdbc.password.decryptor.args")
   val EGGROLL_RESOURCEMANAGER_CLUSTERMANAGER_JDBC_PASSWORD_DECRYPTOR_ARGS_SPLITER = ErConfKey("eggroll.resourcemanager.clustermanager.jdbc.password.decryptor.args.spliter", ",")
@@ -141,10 +141,11 @@ object NodeManagerConfKeys {
   val CONFKEY_NODE_MANAGER_HOST = "eggroll.resourcemanager.nodemanager.host"
   val CONFKEY_NODE_MANAGER_PORT = "eggroll.resourcemanager.nodemanager.port"
   var CONFKEY_NODE_MANAGER_ID = "eggroll.resourcemanager.nodemanager.id"
+  var CONFKEY_NODE_MANAGER_GPU_NUM_SHELL= ErConfKey("eggroll.resourcemanager.nodemanager.gpu.num.shell","nvidia.sh")
   var CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL = ErConfKey("eggroll.resourcemanager.nodemanager.heartbeat.interval",10000)
   val CONFKEY_NODE_MANAGER_CPU_VCORES =  ErConfKey(  "eggroll.resourcemanager.nodemanager.cpu.vcores",16)
   val CONFKEY_NODE_MANAGER_GPU_VCORES =  ErConfKey(  "eggroll.resourcemanager.nodemanager.gpu.vcores",16)
-
+  var CONFKEY_NODE_MANAGER_NET_DEVICE =    "eggroll.resourcemanager.nodemanager.net.device"
   val CONFKEY_NODE_MANAGER_CONTAINERS_DATA_DIR = "eggroll.resourcemanager.nodemanager.containers.data.dir"
 
 
