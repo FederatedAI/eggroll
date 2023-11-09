@@ -52,8 +52,9 @@ public class ServerNodeService extends EggRollBaseServiceImpl<ServerNodeMapper, 
         } catch (Exception e) {
 
         }
-        if (result == null)
+        if (result == null) {
             logger.info("server node cache {}", cache.asMap());
+        }
         return result;
     }
 

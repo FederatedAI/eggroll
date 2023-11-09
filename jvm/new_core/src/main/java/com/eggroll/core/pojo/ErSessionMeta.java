@@ -50,8 +50,9 @@ public class ErSessionMeta implements RpcMessage {
         }
         builder.setTag(this.tag);
         builder.addAllProcessors(this.processors.stream().map(ErProcessor::toProto).collect(Collectors.toList()));
-        if (options.size() > 0)
+        if (options.size() > 0) {
             builder.putAllOptions(this.options);
+        }
         return builder.build();
     }
 

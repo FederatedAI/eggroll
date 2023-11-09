@@ -149,8 +149,9 @@ public class SysInfoLinux extends SysInfo {
             if (StringUtils.isNotEmpty(cmdReturnString)) {
                 String[] elems = cmdReturnString.split("\n");
                 for (String e : elems) {
-                    if (e.contains("NVIDIA"))
+                    if (e.contains("NVIDIA")) {
                         result = result + 1;
+                    }
                 }
             }
         } catch (Exception ignore) {

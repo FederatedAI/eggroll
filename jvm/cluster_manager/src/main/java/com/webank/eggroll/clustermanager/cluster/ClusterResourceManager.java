@@ -82,16 +82,18 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                     nodeResource = resourceMap.get(processorResource.getResourceType());
                 }
                 if (status.equals(ResourceStatus.ALLOCATED.getValue())) {
-                    if (nodeResource.getAllocated() != null)
+                    if (nodeResource.getAllocated() != null) {
                         nodeResource.setAllocated(nodeResource.getAllocated() + processorResource.getAllocated());
-                    else
+                    } else {
                         nodeResource.setAllocated(processorResource.getAllocated());
+                    }
 
                 } else {
-                    if (nodeResource.getPreAllocated() != null)
+                    if (nodeResource.getPreAllocated() != null) {
                         nodeResource.setPreAllocated(nodeResource.getPreAllocated() + processorResource.getAllocated());
-                    else
+                    } else {
                         nodeResource.setPreAllocated(processorResource.getAllocated());
+                    }
                 }
             });
             prepareUpdateResource.addAll(resourceMap.values());
