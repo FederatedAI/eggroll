@@ -42,6 +42,7 @@ public class ProcessorStateRunningHandler extends AbstractProcessorStateHandler 
         return sessionProcessorService.getById(data.getId()).toErProcessor();
     }
 
+    @Override
     public void asynPostHandle(Context context, ErProcessor data, String preStateParam, String desStateParam) {
         ErProcessor processorInDb = (ErProcessor) context.getData(Dict.PROCESSOR_IN_DB);
         boolean isAllReady = sessionMainService.updateSessionMainActiveCount(processorInDb.getSessionId());

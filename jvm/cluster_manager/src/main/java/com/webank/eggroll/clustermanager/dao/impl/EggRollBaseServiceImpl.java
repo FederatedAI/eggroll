@@ -3,7 +3,6 @@ package com.webank.eggroll.clustermanager.dao.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
-//import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 
 import java.util.Collection;
 import java.util.List;
@@ -22,7 +21,7 @@ public class EggRollBaseServiceImpl<M extends BaseMapper<T>, T> extends ServiceI
     }
 
 
-    //guice的原生saveBatch没有效果
+    @Override
     public boolean saveBatch(Collection<T> entityList) {
         if (entityList != null) {
             entityList.forEach(this::save);

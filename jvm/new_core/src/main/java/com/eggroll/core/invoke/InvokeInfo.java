@@ -47,6 +47,7 @@ public class InvokeInfo {
     Method method;
     Class paramClass;
 
+    @Override
     public String toString() {
         return uri;
     }

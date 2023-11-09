@@ -13,6 +13,7 @@ public class RendezvousStoreSetResponse implements RpcMessage {
         return builder.build().toByteArray();
     }
 
+    @Override
     public void deserialize(byte[] data) {
     }
 }

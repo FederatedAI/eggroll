@@ -46,6 +46,7 @@ public class ProcessContainer implements ContainerTrait {
     public void postStart() {
     }
 
+    @Override
     public boolean start() {
         preStart();
         Boolean output = null;
@@ -89,6 +90,7 @@ public class ProcessContainer implements ContainerTrait {
     }
 
 
+    @Override
     public int waitForCompletion() {
         try {
             process.waitFor();
@@ -100,6 +102,7 @@ public class ProcessContainer implements ContainerTrait {
     }
 
 
+    @Override
     public boolean stop() {
         if (process.isAlive()) {
             process.destroy();
@@ -107,6 +110,7 @@ public class ProcessContainer implements ContainerTrait {
         return process.isAlive();
     }
 
+    @Override
     public boolean kill() {
         if (process.isAlive()) {
             process.destroyForcibly();
