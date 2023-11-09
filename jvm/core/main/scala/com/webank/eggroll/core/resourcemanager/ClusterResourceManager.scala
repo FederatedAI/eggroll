@@ -57,7 +57,7 @@ object ClusterResourceManager extends Logging{
 
     var   sessionLockMap = new  ConcurrentHashMap[String,ReentrantLock]()
 
-    var   killJobMap = new ConcurrentHashMap[String,Long]()
+//    var   killJobMap = new ConcurrentHashMap[String,Long]()
     val   applicationQueue   =   new FifoBroker[ResourceApplication]
     var   resourceEventQueue = new FifoBroker[ResourceEvent]
     lazy val serverNodeCrudOperator = new ServerNodeCrudOperator()
@@ -80,10 +80,11 @@ object ClusterResourceManager extends Logging{
               var serverNodes  :Array[ErServerNode]= null
               try {
                 lockSession(resourceApplication.sessionId)
-                if(killJobMap.contains(resourceApplication.sessionId)){
+                 var  sessionInDb = smDao.getSessionMain(resourceApplication.sessionId)
+                if(sessionInDb.status.equals(SessionStatus.KILLED)){
                   logError(s"session ${resourceApplication.sessionId} is already canceled , drop it")
-
                   applicationQueue.broker.remove()
+                  resourceApplication.countDown()
                   break()
                 }
 
@@ -91,6 +92,7 @@ object ClusterResourceManager extends Logging{
                 ) {
                   //过期资源申请
                   logError(s"expired resource request : ${resourceApplication} !!!")
+                  smDao.updateSessionStatus(sessionId = resourceApplication.sessionId,SessionStatus.ALLOCATE_RESOURCE_FAILED)
                   applicationQueue.broker.remove()
                   break()
                 }
@@ -103,7 +105,7 @@ object ClusterResourceManager extends Logging{
                       Thread.sleep(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toLong)
                 }while((serverNodes==null||serverNodes.length==0)&&tryCount<2)
                 var enough = checkResourceEnough(serverNodes, resourceApplication)
-                logInfo(s"check resource is enough ? ${enough}")
+                logInfo(s"check session id ${resourceApplication.sessionId} resource is enough ? ${enough}")
                 if (!enough) {
                   resourceApplication.resourceExhaustedStrategy match {
                     case ResourceExhaustedStrategy.IGNORE => ;
@@ -152,7 +154,6 @@ object ClusterResourceManager extends Logging{
         }catch {
           case  e:Throwable => {
             logError("dispatch resource error: "+e.getMessage)
-            e.printStackTrace()
           }
         }
 
@@ -163,9 +164,9 @@ object ClusterResourceManager extends Logging{
 
 
   var  maxResourceCountThread =  new  Thread(()=> {
+    logInfo("SYSTEM-RESOURCE-COUNT-THREAD start")
     while (true) {
       try{
-
         var serverNodes = getServerNodeWithResource();
         countMaxResource(serverNodes:Array[ErServerNode])
         serverNodes.map(   node=>{
@@ -174,16 +175,11 @@ object ClusterResourceManager extends Logging{
       }catch {
         case  e:Throwable => {
           logError("count resource error: "+e.getMessage)
-          e.printStackTrace()
         }
       }
       Thread.sleep(EGGROLL_RESOURCE_COUNT_INTERVAL.get().toInt)
     }
   },"SYSTEM-RESOURCE-COUNT-THREAD")
-
-
-
-
 
   var  lockCleanThread =  new  Thread(()=> {
     while (true) {
@@ -194,19 +190,19 @@ object ClusterResourceManager extends Logging{
           var es:ErSessionMeta  =   smDao.getSessionMain(k)
           if(es.updateTime!=null){
             var updateTime = es.updateTime.getTime
-            if(now -updateTime>EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL.get().toInt&& (es.status== SessionStatus.KILLED||
-              es.status==SessionStatus.ERROR||
-              es.status== SessionStatus.CLOSED||
-              es.status== SessionStatus.FINISHED)){
+            if(now -updateTime>EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL.get().toInt&& (es.status.equals( SessionStatus.KILLED)||
+              es.status.equals(SessionStatus.ERROR)||
+              es.status.equals( SessionStatus.CLOSED)||
+              es.status.equals( SessionStatus.FINISHED))||
+              es.status.equals(SessionStatus.ALLOCATE_RESOURCE_FAILED)
+            ){
               sessionLockMap.remove(es.id)
-              killJobMap.remove(es.id)
             }
           }
 
         }catch {
           case e:Throwable  =>
               logError(s"lock clean error ${e.getMessage}")
-           // e.printStackTrace()
         }
       })
       Thread.sleep(EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL.get().toInt)
@@ -517,8 +513,11 @@ object ClusterResourceManager extends Logging{
     }
 
     def  submitResourceRequest(resourceRequest: ResourceApplication):Unit={
-
-
+      smDao.registerWithResource(ErSessionMeta(
+        id = resourceRequest.sessionId,
+        name = resourceRequest.sessionName,
+        status = SessionStatus.WAITING_RESOURCE)
+      )
       applicationQueue.broker.put(resourceRequest)
     }
 

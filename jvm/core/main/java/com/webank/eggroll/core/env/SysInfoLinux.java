@@ -2,11 +2,7 @@
 
 package com.webank.eggroll.core.env;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.InputStreamReader;
-import java.io.IOException;
+import java.io.*;
 import java.math.BigInteger;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -19,6 +15,8 @@ import java.util.regex.Pattern;
 import com.google.common.annotations.VisibleForTesting;
 
 
+import com.webank.eggroll.core.constant.ErConfKey;
+import com.webank.eggroll.core.constant.NodeManagerConfKeys;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -151,25 +149,60 @@ public class SysInfoLinux extends SysInfo {
   }
 
 
+  public int getGpuNumberV2() throws IOException {
+    String gpus = null;
+    int result = 0;
+    try {
+      String[] cmd = new String[]{"/bin/sh", "-c", "nvidia-smi --query-gpu=name --format=csv, noheader"};
+      ShellCommandExecutor shellExecutorClk = new ShellCommandExecutor(cmd);
+      shellExecutorClk.execute();
+      String cmdReturnString = shellExecutorClk.getOutput();
+      if (StringUtils.isNotEmpty(cmdReturnString)) {
+        String[] elems = cmdReturnString.split("\n");
+        for(String e:elems){
+          if(e.contains("NVIDIA"))
+            result=result+1;
+        }
+      }
+    } catch (Exception ignore) {
+    }
+    return result;
+  }
+
   public int  getGpuNumber() throws IOException {
     String gpus = null;
     int result = 0;
     try{
-
-      String[] cmd = new String[] { "/bin/sh", "-c", "nvidia-smi --query-gpu=name --format=csv, noheader" };
-      ShellCommandExecutor shellExecutorClk = new ShellCommandExecutor(cmd);
-//    name
-//    NVIDIA Tesla V100-SXM2-32GB
-//    NVIDIA Tesla V100-SXM2-32GB
-//    NVIDIA Tesla V100-SXM2-32GB
-//    NVIDIA Tesla V100-SXM2-32GB
-    shellExecutorClk.execute();
-    String cmdReturnString = shellExecutorClk.getOutput();
-    if (StringUtils.isNotEmpty(cmdReturnString))
-      result = cmdReturnString.split("\n").length-1;
-  }catch(Exception ignore){}
+      ErConfKey shellConfig = NodeManagerConfKeys.CONFKEY_NODE_MANAGER_GPU_NUM_SHELL();
+      String shell = shellConfig.get();
+      String eggrollHome = System.getenv("EGGROLL_HOME");
+      String path =   eggrollHome+"/bin/gpu/"+shell;
+      File file =  new File(path);
+      if(StringUtils.isNotEmpty(path)&&file.exists()) {
+        String[] cmd = new String[]{"/bin/sh", "-c", path};
+        ShellCommandExecutor shellExecutorClk = new ShellCommandExecutor(cmd);
+        shellExecutorClk.execute();
+        String cmdReturnString = shellExecutorClk.getOutput();
+        try {
+          cmdReturnString=cmdReturnString.replace("\n","");
+          cmdReturnString=cmdReturnString.replace("\r","");
+          result = new Integer(cmdReturnString);
+        } catch (Throwable e) {
+          e.printStackTrace();
+        }
+        System.err.println("get gpu num exec "+path +" return "+cmdReturnString +" result :"+result) ;
+      }else{
+        System.err.println("get gpu shell is not set");
+      }
+  }catch(Exception ignore){
+      ignore.printStackTrace();
+    }
+    if(result==0){
+        result = getGpuNumberV2();
+    }
     return result;
   }
+
 
 
   public int  getProcess(int  pid) {
@@ -724,43 +757,7 @@ public class SysInfoLinux extends SysInfo {
     return numDisksBytesWritten;
   }
 
-  /**
-   * Test the {@link SysInfoLinux}.
-   *
-   * @param args - arguments to this calculator test
-   */
-  public static void main(String[] args) {
-    SysInfoLinux plugin = new SysInfoLinux();
-//    System.out.println("Physical memory Size (bytes) : "
-//        + plugin.getPhysicalMemorySize());
-//    System.out.println("Total Virtual memory Size (bytes) : "
-//        + plugin.getVirtualMemorySize());
-//    System.out.println("Available Physical memory Size (bytes) : "
-//        + plugin.getAvailablePhysicalMemorySize());
-//    System.out.println("Total Available Virtual memory Size (bytes) : "
-//        + plugin.getAvailableVirtualMemorySize());
-//    System.out.println("Number of Processors : " + plugin.getNumProcessors());
-//    System.out.println("CPU frequency (kHz) : " + plugin.getCpuFrequency());
-//    System.out.println("Cumulative CPU time (ms) : " +
-//            plugin.getCumulativeCpuTime());
-//    System.out.println("Total network read (bytes) : "
-//            + plugin.getNetworkBytesRead());
-//    System.out.println("Total network written (bytes) : "
-//            + plugin.getNetworkBytesWritten());
-//    System.out.println("Total storage read (bytes) : "
-//            + plugin.getStorageBytesRead());
-//    System.out.println("Total storage written (bytes) : "
-//            + plugin.getStorageBytesWritten());
-//    try {
-//      // Sleep so we can compute the CPU usage
-//      Thread.sleep(500L);
-//    } catch (InterruptedException e) {
-//      // do nothing
-//    }
-//    System.out.println("CPU usage % : " + plugin.getCpuUsagePercentage());
 
-    plugin.getProcess(1000);
-  }
 
   @VisibleForTesting
   void setReadCpuInfoFile(boolean readCpuInfoFileValue) {
