@@ -20,6 +20,7 @@ import com.webank.eggroll.clustermanager.entity.ServerNode;
 import com.webank.eggroll.clustermanager.entity.SessionMain;
 
 import com.webank.eggroll.clustermanager.entity.SessionRanks;
+import com.webank.eggroll.clustermanager.statemachine.SessionStateMachine;
 import com.webank.eggroll.core.meta.Containers;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -47,6 +48,8 @@ public class JobServiceHandler {
 
     @Inject
     SessionRanksService sessionRanksService;
+    @Inject
+    SessionStateMachine sessionStateMachine;
 
     public void killJob(Context context, String sessionId, String statusReason) {
         log.info("killing job {}", sessionId);
@@ -61,6 +64,11 @@ public class JobServiceHandler {
             if (StringUtils.equalsAny(sessionMeta.getStatus(),
                     SessionStatus.KILLED.name(), SessionStatus.CLOSED.name(), SessionStatus.ERROR.name(), SessionStatus.FINISHED.name())) {
                 log.error(" session {} status is {}, will not send kill request to nodemanager", sessionId, sessionMeta.getStatus());
+                return;
+            }
+            if(sessionMeta.getStatus().equals(SessionStatus.WAITING_RESOURCE.name())){
+                sessionMeta.setStatusReason(statusReason);
+                sessionStateMachine.changeStatus(context,sessionMeta,SessionStatus.WAITING_RESOURCE.name(),SessionStatus.KILLED.name());
                 return;
             }
 
