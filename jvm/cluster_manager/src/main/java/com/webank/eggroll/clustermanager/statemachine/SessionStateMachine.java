@@ -34,7 +34,8 @@ public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta> {
     SessionWaitResourceHandler sessionWaitResourceHandler;
     @Inject
     SessionWaitNewHandler sessionWaitNewHandler;
-
+    @Inject
+    SessionWaitingKillHandler sessionWaitingKillHandler;
     @Inject
     SessionIgnoreHandler sessionIgnoreHandler;
     @Inject
@@ -77,6 +78,9 @@ public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta> {
         this.registeStateHander("ACTIVE_KILLED", sessionKillHandler);
         this.registeStateHander("ACTIVE_ERROR", sessionKillHandler);
         this.registeStateHander("ACTIVE_CLOSED", sessionStopHandler);
+        this.registeStateHander("WAITING_RESOURCE_KILLED", sessionWaitingKillHandler);
+        this.registeStateHander("WAITING_RESOURCE_ERROR", sessionWaitingKillHandler);
+        this.registeStateHander("WAITING_RESOURCE_CLOSED", sessionWaitingKillHandler);
         this.registeStateHander(IGNORE, sessionIgnoreHandler);
     }
 
