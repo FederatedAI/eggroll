@@ -137,10 +137,12 @@ public class MybatisPlusConfigurationProvider implements Provider<Configuration>
         this.failFast = failFast;
     }
 
+    @Override
     public void addConfigurationSetting(ConfigurationSetting configurationSetting) {
         this.configurationSettings.add(configurationSetting);
     }
 
+    @Override
     public void addMapperConfigurationSetting(MapperConfigurationSetting mapperConfigurationSetting) {
         this.mapperConfigurationSettings.add(mapperConfigurationSetting);
     }
@@ -159,6 +161,7 @@ public class MybatisPlusConfigurationProvider implements Provider<Configuration>
     }
 
 
+    @Override
     public Configuration get() {
         MybatisConfiguration configuration = this.newConfiguration(this.environment);
         configuration.setLazyLoadingEnabled(this.lazyLoadingEnabled);

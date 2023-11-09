@@ -33,13 +33,13 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
 
 
 public class ClusterModule extends AbstractModule {
 
     Logger logger = LoggerFactory.getLogger(ClusterModule.class);
 
+    @Override
     protected void configure() {
 
         Matcher<Class> subpacket = Matchers.inSubpackage("com.webank");

@@ -71,6 +71,7 @@ public class ResourceStateHandler implements StateHandler<ErProcessor> {
                 .eq(ProcessorResource::getProcessorId, erProcessor.getId()));
     }
 
+    @Override
     public void asynPostHandle(Context context, ErProcessor data, String preStateParam, String desStateParam) {
         this.clusterResourceManager.countAndUpdateNodeResource(data.getServerNodeId());
     }

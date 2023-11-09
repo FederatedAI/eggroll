@@ -9,6 +9,7 @@ public class AbstractCommandServiceProvider extends CommandServiceGrpc.CommandSe
 
     protected Dispatcher dispatcher;
 
+    @Override
     public void call(Command.CommandRequest request,
                      StreamObserver<Command.CommandResponse> responseObserver) {
         String uri = request.getUri();

@@ -120,6 +120,7 @@ public class FlowProcessorService implements ContainerTrait {
         }
     }
 
+    @Override
     public int getPid() {
         try {
             Field pidField = process.getClass().getDeclaredField("pid");
