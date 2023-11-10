@@ -24,6 +24,7 @@ public class ServerNodeDao {
         PageHelper.startPage(serverNodeQO.getPageNum(), serverNodeQO.getPageSize(),true);
 
         QueryWrapper<ServerNode> queryWrapper = new QueryWrapper<>();
+        queryWrapper.orderByDesc("created_at");
         boolean hasServerNodeId = StringUtils.isNotBlank(serverNodeQO.getServerNodeId());
         boolean hasName = StringUtils.isNotBlank(serverNodeQO.getName());
         boolean hasServerClusterId = StringUtils.isNotBlank(serverNodeQO.getServerClusterId());
