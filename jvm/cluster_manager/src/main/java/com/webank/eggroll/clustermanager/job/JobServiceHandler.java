@@ -9,6 +9,7 @@ import com.eggroll.core.exceptions.ErSessionException;
 import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.*;
 import com.eggroll.core.utils.JsonUtil;
+import com.eggroll.core.utils.LockUtils;
 import com.google.gson.Gson;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -52,9 +53,8 @@ public class JobServiceHandler {
     SessionStateMachine sessionStateMachine;
 
     public void killJob(Context context, String sessionId, String statusReason) {
-        log.info("killing job {}", sessionId);
+        LockUtils.lock(clusterResourceManager.getSessionLockCache(), sessionId);
         try {
-            clusterResourceManager.lockSession(sessionId);
             log.info("start kill job {}", sessionId);
             if (sessionMainService.getById(sessionId) == null) {
                 log.error("can not found session {} ", sessionId);
@@ -97,7 +97,7 @@ public class JobServiceHandler {
                 }
             });
         } finally {
-            clusterResourceManager.unlockSession(sessionId);
+            LockUtils.unLock(clusterResourceManager.getSessionLockCache(), sessionId);
         }
     }
 
@@ -187,8 +187,8 @@ public class JobServiceHandler {
             return new SubmitJobResponse();
         }
 
+        LockUtils.lock(clusterResourceManager.getSessionLockCache(), sessionId);
         try {
-            clusterResourceManager.lockSession(sessionId);
             dispatchedProcessorList.stream().collect(Collectors.groupingBy(MutablePair::getRight)).forEach((node, mutablePairList) -> {
                 NodeManagerClient nodeManagerClient = new NodeManagerClient(node.getEndpoint());
 
@@ -236,7 +236,7 @@ public class JobServiceHandler {
             killJob(new Context(), sessionId, StatusReason.EGGROLL_ERROR.name());
             throw e;
         } finally {
-            clusterResourceManager.unlockSession(sessionId);
+            LockUtils.unLock(clusterResourceManager.getSessionLockCache(), sessionId);
         }
 
     }
@@ -302,9 +302,9 @@ public class JobServiceHandler {
         log.info("submitted resource request: " + resourceApplication + ", " + resourceApplication.hashCode());
         log.info("dispatchedProcessor: " + JsonUtil.object2Json(dispatchedProcessorList));
 
+        // 锁不能移到分配资源之前，会造成死锁
+        LockUtils.lock(clusterResourceManager.getSessionLockCache(), sessionId);
         try {
-            //锁不能移到分配资源之前，会造成死锁
-            clusterResourceManager.lockSession(sessionId);
             final ErSessionMeta sessionMain = sessionMainService.getSessionMain(resourceApplication.getSessionId());
             if (sessionMain.getStatus().equals(SessionStatus.NEW.name())) {
                 ErSessionMeta registeredSessionMeta = sessionMainService.getSession(submitJobRequest.getSessionId());
@@ -415,7 +415,7 @@ public class JobServiceHandler {
             killJob(new Context(), sessionId, StatusReason.EGGROLL_ERROR.name());
             throw e;
         } finally {
-            clusterResourceManager.unlockSession(sessionId);
+            LockUtils.unLock(clusterResourceManager.getSessionLockCache(), sessionId);
         }
     }
 

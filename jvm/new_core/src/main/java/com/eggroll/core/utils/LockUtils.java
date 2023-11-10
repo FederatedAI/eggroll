@@ -1,45 +1,41 @@
 package com.eggroll.core.utils;
 
+import com.google.common.cache.Cache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class LockUtils {
 
     static Logger logger = LoggerFactory.getLogger(LockUtils.class);
 
-    public static <T> void lock(ConcurrentHashMap<T, ReentrantLock> lockMap, T key) {
-        if (lockMap == null) {
-            throw new RuntimeException("lockMap is null");
+    public static <T> void lock(Cache<T, ReentrantLock> lockCache, T key) {
+        if (lockCache == null) {
+            throw new RuntimeException("lockCache is null");
+        }
+        if (key == null) {
+            throw new RuntimeException("lockCache key is null");
         }
         ReentrantLock lock;
-        if (!lockMap.containsKey(key)) {
-            lockMap.putIfAbsent(key, new ReentrantLock());
+        if (lockCache.getIfPresent(key) == null) {
+            lockCache.put(key,new ReentrantLock());
         }
-        lock = lockMap.get(key);
-//        logger.info("lock key {}",key);
+        lock = lockCache.getIfPresent(key);
         lock.lock();
     }
 
-    public static <T> void unLock(ConcurrentHashMap<T, ReentrantLock> lockMap, T key) {
-        if (lockMap == null) {
-            throw new RuntimeException("lockMap is null");
+    public static <T> void unLock(Cache<T, ReentrantLock> lockCache, T key) {
+        if (lockCache == null) {
+            throw new RuntimeException("lockCache is null");
         }
-//        logger.info("unlock key {}",key);
-        ReentrantLock lock = lockMap.get(key);
+        if (key == null) {
+            throw new RuntimeException("lockCache key is null");
+        }
+        ReentrantLock lock = lockCache.getIfPresent(key);
         if (lock != null) {
             lock.unlock();
-//            lockMap.remove(key);
         }
     }
-
-    public static void main(String[] args) {
-//        ConcurrentHashMap<Object, ReentrantLock> lockMap = new ConcurrentHashMap<>();
-//        LockUtils.lock(lockMap,String.valueOf(123));
-//        LockUtils.unLock(lockMap,String.valueOf(123));
-    }
-
 
 }

@@ -3,6 +3,8 @@ package com.webank.eggroll.clustermanager.statemachine;
 
 import com.eggroll.core.context.Context;
 import com.eggroll.core.utils.LockUtils;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import org.mybatis.guice.transactional.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +20,13 @@ public abstract class AbstractStateMachine<T> {
 
     Logger logger = LoggerFactory.getLogger(AbstractStateMachine.class);
     public static final String IGNORE = "IGNORE";
-    ConcurrentHashMap<String, ReentrantLock> lockMap = new ConcurrentHashMap<>();
+
+    Cache<String, ReentrantLock> stateLockCache = CacheBuilder.newBuilder()
+            .maximumSize(1000)
+            // 可以设置为session的超时时间
+            .expireAfterWrite(Long.MAX_VALUE, TimeUnit.NANOSECONDS)
+            .build();
+
     ConcurrentHashMap<String, StateHandler<T>> statueChangeHandlerMap = new ConcurrentHashMap<>();
     ThreadPoolExecutor asynThreadPool = new ThreadPoolExecutor(5, 5, 1, TimeUnit.SECONDS, new LinkedBlockingDeque<>(10));
 
@@ -35,25 +43,9 @@ public abstract class AbstractStateMachine<T> {
         }
         statueChangeHandlerMap.put(statusLine, handler);
 
-//        Method[]  methods =  this.getClass().getMethods();
-//        for (Method method : methods) {
-//            State state = method.getDeclaredAnnotation(State.class);
-//            if(state!=null){
-//               for(String  s: state.value()) {
-//                   if(statueChangeHandlerMap.contains(s)){
-//                       throw  new RuntimeException("duplicate state handler "+s);
-//                   }
-//
-//                   statueChangeHandlerMap.put(s,method);
-//               }
-//            }
-//        }
-
     }
 
     abstract public String getLockKey(Context context, T t);
-    //abstract  protected T  doChangeStatus(Context context ,T t, String preStateParam, String desStateParam);
-//    abstract  public T prepare(T t);
 
     public T changeStatus(Context context, T t, String preStateParam, String desStateParam) {
         return changeStatus(context, t, preStateParam, desStateParam, null);
@@ -64,7 +56,6 @@ public abstract class AbstractStateMachine<T> {
         String statusLine = buildStateChangeLine(context, t, preStateParam, desStateParam);
 
         StateHandler<T> handler = statueChangeHandlerMap.get(statusLine);
-        // logger.info("========status line {} {}",statusLine,handler);
         if (handler == null) {
             handler = statueChangeHandlerMap.get(IGNORE);
         }
@@ -72,10 +63,9 @@ public abstract class AbstractStateMachine<T> {
             logger.error("wrong status line {} ", statusLine);
             throw new RuntimeException("no status handler found for " + statusLine);
         }
-        // logger.info("choose state handler {} to work",handler);
         String lockKey = getLockKey(context, t);
         try {
-            LockUtils.lock(lockMap, lockKey);
+            LockUtils.lock(stateLockCache, lockKey);
             T result = handler.prepare(context, t, preStateParam, desStateParam);
             if (!handler.isBreak(context)) {
                 result = transactionHandle(context, handler, result, preStateParam, desStateParam, callback);
@@ -92,7 +82,7 @@ public abstract class AbstractStateMachine<T> {
             e.printStackTrace();
             throw new RuntimeException(e);
         } finally {
-            LockUtils.unLock(lockMap, lockKey);
+            LockUtils.unLock(stateLockCache, lockKey);
         }
     }
 
