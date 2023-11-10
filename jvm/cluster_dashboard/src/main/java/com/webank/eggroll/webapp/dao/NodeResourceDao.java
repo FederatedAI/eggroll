@@ -6,7 +6,9 @@ import com.github.pagehelper.PageInfo;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.impl.NodeResourceService;
+import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.entity.NodeResource;
+import com.webank.eggroll.clustermanager.entity.ServerNode;
 import com.webank.eggroll.webapp.queryobject.NodeResourceQO;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -22,10 +24,13 @@ public class NodeResourceDao {
     Logger logger = LoggerFactory.getLogger(NodeResourceDao.class);
 
     @Inject
+    ServerNodeService serverNodeService;
+
+    @Inject
     NodeResourceService nodeResourceService;
 
     public PageInfo<NodeResource> queryData(NodeResourceQO nodeResourceQO) {
-        PageHelper.startPage(nodeResourceQO.getPageNum(), nodeResourceQO.getPageSize(),true);
+        PageHelper.startPage(nodeResourceQO.getPageNum(), nodeResourceQO.getPageSize(), true);
 
         QueryWrapper<NodeResource> queryWrapper = new QueryWrapper<>();
         if (StringUtils.isNotBlank(nodeResourceQO.getResourceId())
@@ -45,41 +50,52 @@ public class NodeResourceDao {
     }
 
     // 查询cpu剩余资源数据
-    public Map<String,Long> queryCpuResources() {
+    public Map<String, Long> queryCpuResources() {
         QueryWrapper<NodeResource> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("resource_type", "VCPU_CORE");
-//        queryWrapper.eq("status", "available");
         List<NodeResource> nodeResourceList = this.nodeResourceService.list(queryWrapper);
-        if (nodeResourceList == null || nodeResourceList.size() == 0) {
+        List<ServerNode> serverNodeList = this.serverNodeService.list();
+        if (nodeResourceList == null || nodeResourceList.isEmpty() || serverNodeList == null || serverNodeList.isEmpty()) {
             return null;
         }
+
         Long cpuResource = 0L;
-        Map<String,Long> resourcesMap  = new HashMap<>();
-        for (NodeResource nodeResource : nodeResourceList) {
-            String key = String.valueOf(nodeResource.getServerNodeId());
-            if (!resourcesMap.containsKey(key)) {
-                cpuResource = nodeResource.getTotal() - nodeResource.getUsed();
-                resourcesMap.put(key,cpuResource);
+        Map<String, Long> resourcesMap = new HashMap<>();
+        for (ServerNode serverNode : serverNodeList) {
+            for (NodeResource nodeResource : nodeResourceList) {
+                if (serverNode.getServerNodeId().equals(nodeResource.getServerNodeId())) {
+//                    String key = String.valueOf(nodeResource.getServerNodeId());
+                    String ip = serverNode.getHost();
+                    if (!resourcesMap.containsKey(ip)) {
+                        cpuResource = nodeResource.getTotal() - nodeResource.getUsed();
+                        resourcesMap.put(ip, cpuResource);
+                    }
+                }
             }
         }
         return resourcesMap;
     }
 
     // 查询GPU剩余资源数据
-    public Map<String,Long> queryGpuResources() {
+    public Map<String, Long> queryGpuResources() {
         QueryWrapper<NodeResource> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("resource_type", "VGPU_CORE");
         List<NodeResource> nodeResourceList = this.nodeResourceService.list(queryWrapper);
-        if (nodeResourceList == null || nodeResourceList.size() == 0) {
+        List<ServerNode> serverNodeList = this.serverNodeService.list();
+        if (nodeResourceList == null || nodeResourceList.isEmpty() || serverNodeList == null || serverNodeList.isEmpty()) {
             return null;
         }
         Long gpuResource = 0L;
         Map<String, Long> resourcesMap = new HashMap<>();
-        for (NodeResource nodeResource : nodeResourceList) {
-            String key = String.valueOf(nodeResource.getServerNodeId());
-            if (!resourcesMap.containsKey(key)) {
-                gpuResource = nodeResource.getTotal() - nodeResource.getUsed();
-                resourcesMap.put(key, gpuResource);
+        for (ServerNode serverNode : serverNodeList) {
+            for (NodeResource nodeResource : nodeResourceList) {
+                if (serverNode.getServerNodeId().equals(nodeResource.getServerNodeId())) {
+                    String ip = serverNode.getHost();
+                    if (!resourcesMap.containsKey(ip)) {
+                        gpuResource = nodeResource.getTotal() - nodeResource.getUsed();
+                        resourcesMap.put(ip, gpuResource);
+                    }
+                }
             }
         }
         return resourcesMap;
