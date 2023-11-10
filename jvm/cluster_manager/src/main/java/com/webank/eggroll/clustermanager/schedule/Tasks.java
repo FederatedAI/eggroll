@@ -221,7 +221,7 @@ public class Tasks implements Provider<Configuration>, ConfigurationSettingListe
     public void lockClean() {
         log.info("lock clean thread , prepare to run");
         long now = System.currentTimeMillis();
-        clusterResourceManager.getSessionLockMap().forEach((k, v) -> {
+        clusterResourceManager.getSessionLockCache().asMap().forEach((k, v) -> {
             try {
                 ErSessionMeta es = sessionMainService.getSessionMain(k);
                 if (es.getUpdateTime() != null) {
@@ -231,12 +231,11 @@ public class Tasks implements Provider<Configuration>, ConfigurationSettingListe
                             || SessionStatus.ERROR.name().equals(es.getStatus())
                             || SessionStatus.CLOSED.name().equals(es.getStatus())
                             || SessionStatus.FINISHED.name().equals(es.getStatus()))) {
-                        clusterResourceManager.getSessionLockMap().remove(es.getId());
+                        clusterResourceManager.getSessionLockCache().invalidate(es.getId());
                     }
                 }
             } catch (Throwable e) {
                 log.error("lock clean error: " + e.getMessage());
-                // e.printStackTrace();
             }
         });
     }
