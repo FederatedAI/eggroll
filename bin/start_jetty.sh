@@ -140,7 +140,7 @@ start() {
 		mklogsdir
 		export EGGROLL_LOG_FILE=${module}
 		export module=${module}
-    cmd="java -server ${jvm_options} -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.xml -Dmodule=${module} -cp \"${EGGROLL_HOME}/lib/cluster_dashboard-3.0.0.jar\" ${main_class} -p $port -s ${processor_tag} -c ${EGGROLL_HOME}/conf/eggroll.properties"
+    cmd="java -server ${jvm_options} -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.xml -Dmodule=${module} -cp ${EGGROLL_HOME}/lib/*: ${main_class} -p $port -s ${processor_tag} -c ${EGGROLL_HOME}/conf/eggroll.properties"
 
 		echo $cmd
 		if [ $start_mode = 0 ];then

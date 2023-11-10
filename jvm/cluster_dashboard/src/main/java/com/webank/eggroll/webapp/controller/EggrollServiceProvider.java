@@ -170,7 +170,7 @@ public class EggrollServiceProvider {
         return nodeResourceDao.queryCpuResources();
     }
 
-    @ApiMethod("/eggroll/GpuLineChart")
+    @ApiMethod("/eggroll/gpuLineChart")
     public Object getGpuLineChart(HttpServletRequest req) throws IOException {
         // 查询gpu资源的折线图数据，返回一个map类型{节点，剩余gpu数量}
         return nodeResourceDao.queryGpuResources();
