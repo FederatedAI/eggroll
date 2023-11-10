@@ -12,6 +12,8 @@ import com.eggroll.core.pojo.*;
 import com.eggroll.core.postprocessor.ApplicationStartedRunner;
 import com.eggroll.core.utils.JsonUtil;
 import com.eggroll.core.utils.LockUtils;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.webank.eggroll.clustermanager.dao.impl.NodeResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
@@ -31,6 +33,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
@@ -63,7 +66,11 @@ public class ClusterManagerService implements ApplicationStartedRunner {
 
     Map<Long, ErNodeHeartbeat> nodeHeartbeatMap = new ConcurrentHashMap<>();
     public static Map<Long, ErProcessor> residualHeartbeatMap = new ConcurrentHashMap<>();
-    ConcurrentHashMap<Long, ReentrantLock> lockMap = new ConcurrentHashMap<>();
+    Cache<Long, ReentrantLock> heartbeatLockCache = CacheBuilder.newBuilder()
+            .maximumSize(100)
+            // 下次心跳就多没有上来
+            .expireAfterAccess(20, TimeUnit.SECONDS)
+            .build();
 
     public void addResidualHeartbeat(ErProcessor erProcessor) {
         residualHeartbeatMap.put(erProcessor.getId(), erProcessor);
@@ -153,8 +160,8 @@ public class ClusterManagerService implements ApplicationStartedRunner {
 
     public ErNodeHeartbeat nodeHeartbeat(Context context, ErNodeHeartbeat nodeHeartbeat) {
         ErServerNode serverNode = nodeHeartbeat.getNode();
+        LockUtils.lock(heartbeatLockCache, serverNode.getId());
         try {
-            LockUtils.lock(lockMap, serverNode.getId());
             if (!Dict.LOSS.equals(serverNode.getStatus())) {
                 if (serverNode.getId() == -1) {
                     ServerNode existNode = serverNodeService.getByEndPoint(serverNode.getEndpoint());
@@ -191,7 +198,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
             nodeHeartbeat.setNode(serverNode);
 
         } finally {
-            LockUtils.unLock(lockMap, serverNode.getId());
+            LockUtils.unLock(heartbeatLockCache, serverNode.getId());
         }
         return nodeHeartbeat;
     }

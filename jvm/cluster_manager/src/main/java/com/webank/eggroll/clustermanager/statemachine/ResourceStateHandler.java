@@ -5,6 +5,8 @@ import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErResource;
 import com.eggroll.core.utils.LockUtils;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.cluster.ClusterResourceManager;
@@ -14,7 +16,7 @@ import com.webank.eggroll.clustermanager.entity.ProcessorResource;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 
@@ -30,7 +32,10 @@ public class ResourceStateHandler implements StateHandler<ErProcessor> {
     @Inject
     ClusterResourceManager clusterResourceManager;
 
-    public static ConcurrentHashMap<Long, ReentrantLock> nodeResourceLockMap = new ConcurrentHashMap<>();
+    private static Cache<Long, ReentrantLock> nodeResourceLockCache = CacheBuilder.newBuilder()
+            .maximumSize(1000)
+            .expireAfterAccess(Long.MAX_VALUE, TimeUnit.NANOSECONDS)
+            .build();
 
     @Override
     public ErProcessor prepare(Context context, ErProcessor data, String preStateParam, String desStateParam) {
@@ -77,43 +82,43 @@ public class ResourceStateHandler implements StateHandler<ErProcessor> {
     }
 
     public void preAllocateResource(ErProcessor erProcessor) {
+        LockUtils.lock(nodeResourceLockCache, erProcessor.getServerNodeId());
         try {
-            LockUtils.lock(nodeResourceLockMap, erProcessor.getServerNodeId());
             nodeResourceService.preAllocateResource(erProcessor);
             processorResourceService.preAllocateResource(erProcessor);
         } finally {
-            LockUtils.unLock(nodeResourceLockMap, erProcessor.getServerNodeId());
+            LockUtils.unLock(nodeResourceLockCache, erProcessor.getServerNodeId());
         }
     }
 
     public void preAllocateFailedResource(ErProcessor erProcessor) {
+        LockUtils.lock(nodeResourceLockCache, erProcessor.getServerNodeId());
         try {
-            LockUtils.lock(nodeResourceLockMap, erProcessor.getServerNodeId());
             nodeResourceService.preAllocateFailed(erProcessor);
             processorResourceService.preAllocateFailed(erProcessor);
         } finally {
-            LockUtils.unLock(nodeResourceLockMap, erProcessor.getServerNodeId());
+            LockUtils.unLock(nodeResourceLockCache, erProcessor.getServerNodeId());
         }
     }
 
 
     public void allocatedResource(ErProcessor erProcessor) {
+        LockUtils.lock(nodeResourceLockCache, erProcessor.getServerNodeId());
         try {
-            LockUtils.lock(nodeResourceLockMap, erProcessor.getServerNodeId());
             nodeResourceService.allocatedResource(erProcessor);
             processorResourceService.allocatedResource(erProcessor);
         } finally {
-            LockUtils.unLock(nodeResourceLockMap, erProcessor.getServerNodeId());
+            LockUtils.unLock(nodeResourceLockCache, erProcessor.getServerNodeId());
         }
     }
 
     public void returnResource(ErProcessor erProcessor) {
+        LockUtils.lock(nodeResourceLockCache, erProcessor.getServerNodeId());
         try {
-            LockUtils.lock(nodeResourceLockMap, erProcessor.getServerNodeId());
             nodeResourceService.returnResource(erProcessor);
             processorResourceService.returnResource(erProcessor);
         } finally {
-            LockUtils.unLock(nodeResourceLockMap, erProcessor.getServerNodeId());
+            LockUtils.unLock(nodeResourceLockCache, erProcessor.getServerNodeId());
         }
     }
 

@@ -11,6 +11,8 @@ import com.eggroll.core.pojo.*;
 import com.eggroll.core.postprocessor.ApplicationStartedRunner;
 import com.eggroll.core.utils.JsonUtil;
 import com.eggroll.core.utils.LockUtils;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.inject.Inject;
@@ -29,9 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
@@ -42,9 +42,14 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
 
     Logger log = LoggerFactory.getLogger(ClusterResourceManager.class);
 
-    private ConcurrentHashMap<String, ReentrantLock> sessionLockMap = new ConcurrentHashMap<>();
-//    private Map<String, Long> killJobMap = new ConcurrentHashMap<>();
-    private FifoBroker<ResourceApplication> applicationQueue= new FifoBroker<>();
+
+    private Cache<String, ReentrantLock> sessionLockCache = CacheBuilder.newBuilder()
+            .maximumSize(100)
+            // 不设置过期，由定时任务判断状态再去清理
+            .expireAfterWrite(Long.MAX_VALUE, TimeUnit.NANOSECONDS)
+            .build();
+
+    private FifoBroker<ResourceApplication> applicationQueue = new FifoBroker<>();
     @Inject
     SessionMainService sessionMainService;
     @Inject
@@ -167,7 +172,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
         while (true) {
             log.info("lock clean thread , prepare to run");
             long now = System.currentTimeMillis();
-            sessionLockMap.forEach((k, v) -> {
+            sessionLockCache.asMap().forEach((k, v) -> {
                 try {
                     ErSessionMeta es = sessionMainService.getSessionMain(k);
                     if (es.getUpdateTime() != null) {
@@ -177,12 +182,11 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                                 || SessionStatus.ERROR.name().equals(es.getStatus())
                                 || SessionStatus.CLOSED.name().equals(es.getStatus())
                                 || SessionStatus.FINISHED.name().equals(es.getStatus()))) {
-                            sessionLockMap.remove(es.getId());
+                            sessionLockCache.invalidate(es.getId());
                         }
                     }
                 } catch (Throwable e) {
                     log.error("lock clean error: " + e.getMessage());
-                    // e.printStackTrace();
                 }
             });
             try {
@@ -215,10 +219,9 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
             while (resourceDispartcherFlag) {
                 try {
                     if (resourceApplication != null) {
-//                        long now = System.currentTimeMillis();
                         List<ErServerNode> serverNodes = null;
+                        LockUtils.lock(sessionLockCache, resourceApplication.getSessionId());
                         try {
-                            lockSession(resourceApplication.getSessionId());
                             final ErSessionMeta sessionMain = sessionMainService.getSessionMain(resourceApplication.getSessionId());
                             if (!sessionMain.getStatus().equals(SessionStatus.WAITING_RESOURCE.name())) {
                                 log.error("session " + resourceApplication.getSessionId() + " is already canceled, drop it");
@@ -251,7 +254,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                                         resourceDispartcherFlag = false;
                                         continue;
                                     case Dict.WAITING:
-                                        unlockSession(resourceApplication.getSessionId());
+                                        LockUtils.unLock(sessionLockCache, resourceApplication.getSessionId());
                                         Thread.sleep(MetaInfo.EGGROLL_RESOURCE_DISPATCH_INTERVAL);
                                         log.info("resource is not enough, waiting next loop");
                                         continue;
@@ -292,9 +295,8 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         } finally {
-                            unlockSession(resourceApplication.getSessionId());
+                            LockUtils.unLock(sessionLockCache, resourceApplication.getSessionId());
                         }
-//                    ErSessionMeta registeredSessionMeta = sessionMainService.getSession(resourceApplication.getSessionId());
                         Map<Long, List<ErServerNode>> serverNodeMap = serverNodes.stream().collect(Collectors.groupingBy(ErServerNode::getId));
                         resourceApplication.getResourceDispatch().clear();
                         for (ErProcessor processor : erSessionMeta.getProcessors()) {
@@ -353,11 +355,6 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                 });
             } else {
                 List<ErProcessor> processors = resourceApplication.getProcessors();
-//                    ErServerNode erServerNode = erServerNodes.stream().reduce((x, y) -> {
-//                                x.getResources().addAll(y.getResources());
-//                                return x;
-//                            }
-//                    ).orElse(null);
                 Map<String, Long> requestResourceMap = new HashMap<>();
                 List<ErResource> erResourceList = new ArrayList<>();
                 for (ErProcessor processor : processors) {
@@ -392,63 +389,6 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
         return result;
     }
 
-    //    public ResourceApplication remainMostFirstDispatch(List<ErServerNode> serverNodes, ResourceApplication resourceApplication) {
-//        List<ErProcessor> requiredProcessors = resourceApplication.getProcessors();
-//        List<ErServerNode> sortedNodes = serverNodes.stream().sorted(Comparator.comparingLong(node -> getFirstUnAllocatedResource(node, resourceApplication))).collect(Collectors.toList());
-//        List<MutablePair<ErServerNode, ErResource>> nodeResourceTupes = new ArrayList<>();
-//        for (ErServerNode sortedNode : sortedNodes) {
-//            nodeResourceTupes.add(new MutablePair<>(sortedNode, sortedNode.getResources().get(0)));
-//        }
-//        Map<ErServerNode, Long> sortMap = new HashMap<>();
-//        for (ErServerNode node : sortedNodes) {
-//            sortMap.put(node, getFirstUnAllocatedResource(node, resourceApplication));
-//        }
-//        Map<ErServerNode, List<ErProcessor>> nodeToProcessors = new HashMap<>();
-//
-//        for (int index = 0; index < requiredProcessors.size(); index++) {
-//            ErProcessor requiredProcessor = requiredProcessors.get(index);
-//            ErServerNode node = nodeResourceTupes.get(0).getKey();
-//
-//            int nextGpuIndex = -1;
-//            List<ErResource> newResources = new ArrayList<>();
-//            for (ErResource r : requiredProcessor.getResources()) {
-//                if (Dict.VGPU_CORE.equals(r.getResourceType())) {
-//                    List<ErResource> gpuResourcesInNodeArray = node.getResources().stream()
-//                            .filter(res -> Dict.VGPU_CORE.equals(res.getResourceType()))
-//                            .collect(Collectors.toList());
-//                    if (!gpuResourcesInNodeArray.isEmpty()) {
-//                        ErResource gpuResourcesInNode = gpuResourcesInNodeArray.get(0);
-//
-//                        List<String> extentionCache = new ArrayList<>();
-//                        if (gpuResourcesInNode.getExtention() != null) {
-//                            extentionCache = Arrays.asList(gpuResourcesInNode.getExtention().split(","));
-//                        }
-//                        nextGpuIndex = getNextGpuIndex(gpuResourcesInNode.getTotal(), extentionCache);
-//                        extentionCache.add(String.valueOf(nextGpuIndex));
-//                        r.setExtention(String.valueOf(nextGpuIndex));
-//                    }
-//                }
-//                newResources.add(r);
-//            }
-//            String host = node.getEndpoint().getHost();
-//            requiredProcessor.setServerNodeId(node.getId());
-//            requiredProcessor.setCommandEndpoint(new ErEndpoint(host, 0));
-//            requiredProcessor.setResources(newResources);
-//            Map<String, String> optionsMap = new HashMap<>();
-//            optionsMap.put("cudaVisibleDevices", nextGpuIndex + "");
-//            requiredProcessor.setOptions(optionsMap);
-//            nodeToProcessors.computeIfAbsent(node, k -> new ArrayList<>()).add(requiredProcessor);
-//        }
-//
-//        nodeToProcessors.forEach((node, processors) -> {
-//            for (ErProcessor processor : processors) {
-//                resourceApplication.getResourceDispatch().add(new MutablePair<>(processor, node));
-//            }
-//        });
-//
-//        return resourceApplication;
-//
-//    }
     private void remainMostFirstDispatch(List<ErServerNode> serverNodes, ResourceApplication resourceApplication) throws InvocationTargetException, IllegalAccessException {
         List<ErProcessor> requiredProcessors = resourceApplication.getProcessors();
         List<MutablePair<ErServerNode, Long>> nodeResourceTupes = new ArrayList<>();
@@ -677,7 +617,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
         erSessionMeta.setId(resourceRequest.getSessionId());
         erSessionMeta.setName(resourceRequest.getSessionName());
         erSessionMeta.setStatus(SessionStatus.WAITING_RESOURCE.name());
-        sessionStateMachine.changeStatus(new Context(),erSessionMeta,null,SessionStatus.WAITING_RESOURCE.name());
+        sessionStateMachine.changeStatus(new Context(), erSessionMeta, null, SessionStatus.WAITING_RESOURCE.name());
         applicationQueue.getBroker().put(resourceRequest);
     }
 
@@ -686,8 +626,8 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
         List<ErProcessor> processors = resourceApplication.getProcessors();
         Integer totalProcCount = CollectionUtils.isEmpty(processors) ? 0 : processors.size();
 
+        LockUtils.lock(sessionLockCache, sessionId);
         try {
-            lockSession(sessionId);
             try {
                 ErSessionMeta session = sessionMainService.getSessionMain(sessionId);
                 if (null == session) {
@@ -759,30 +699,9 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            unlockSession(sessionId);
+            LockUtils.unLock(sessionLockCache, sessionId);
         }
         return null;
-    }
-
-
-    public void lockSession(String sessionId) {
-        LockUtils.lock(sessionLockMap, sessionId);
-//        ReentrantLock lock = sessionLockMap.get(sessionId);
-//        if (lock == null) {
-//            sessionLockMap.putIfAbsent(sessionId, new ReentrantLock());
-//            lock = sessionLockMap.get(sessionId);
-//        }
-////        log.debug("lock session {}", sessionId);
-//        lock.lock();
-    }
-
-    public void unlockSession(String sessionId) {
-        LockUtils.unLock(sessionLockMap, sessionId);
-//        ReentrantLock lock = sessionLockMap.get(sessionId);
-//        if (lock != null) {
-////            log.info("unlock session {}", sessionId);
-//            lock.unlock();
-//        }
     }
 
     @Override
