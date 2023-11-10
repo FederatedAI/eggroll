@@ -68,8 +68,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
     public static Map<Long, ErProcessor> residualHeartbeatMap = new ConcurrentHashMap<>();
     Cache<Long, ReentrantLock> heartbeatLockCache = CacheBuilder.newBuilder()
             .maximumSize(100)
-            // 下次心跳就多没有上来
-            .expireAfterAccess(20, TimeUnit.SECONDS)
+            .expireAfterAccess(MetaInfo.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL * 5, TimeUnit.SECONDS)
             .build();
 
     public void addResidualHeartbeat(ErProcessor erProcessor) {

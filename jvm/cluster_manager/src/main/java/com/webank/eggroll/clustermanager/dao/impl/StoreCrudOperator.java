@@ -9,6 +9,8 @@ import com.eggroll.core.exceptions.CrudException;
 import com.eggroll.core.pojo.*;
 import com.eggroll.core.utils.JsonUtil;
 import com.eggroll.core.utils.LockUtils;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.entity.ServerNode;
@@ -26,6 +28,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
@@ -43,7 +46,11 @@ public class StoreCrudOperator {
     StoreOptionService storeOptionService;
 
     private final Map<Long, Object> nodeIdToNode = new ConcurrentHashMap<>();
-    public ConcurrentHashMap<String, ReentrantLock> storeLockMap = new ConcurrentHashMap<>();
+    Cache<String, ReentrantLock> storeLockCache = CacheBuilder.newBuilder()
+            .maximumSize(1024)
+            .expireAfterAccess(Long.MAX_VALUE, TimeUnit.NANOSECONDS)
+            .build();
+
 
     public ErStore doGetStore(ErStore input) {
         Map<String, String> inputOptions = input.getOptions();
@@ -147,7 +154,7 @@ public class StoreCrudOperator {
         ErStore inputWithoutType = ObjectUtils.clone(input);
         inputWithoutType.getStoreLocator().setStoreType(StringConstants.EMPTY);
         try {
-            LockUtils.lock(storeLockMap, input.getStoreLocator().buildKey());
+            LockUtils.lock(storeLockCache, input.getStoreLocator().buildKey());
             ErStore existing = doGetStore(inputWithoutType);
             if (existing != null) {
                 if (!existing.getStoreLocator().getStoreType().equals(inputStoreType)) {
@@ -161,7 +168,7 @@ public class StoreCrudOperator {
                 return doCreateStore(input);
             }
         } finally {
-            LockUtils.unLock(storeLockMap, input.getStoreLocator().buildKey());
+            LockUtils.unLock(storeLockCache, input.getStoreLocator().buildKey());
         }
     }
 
