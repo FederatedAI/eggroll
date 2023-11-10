@@ -33,6 +33,7 @@ public class NodeResourceDao {
         PageHelper.startPage(nodeResourceQO.getPageNum(), nodeResourceQO.getPageSize(), true);
 
         QueryWrapper<NodeResource> queryWrapper = new QueryWrapper<>();
+        queryWrapper.orderByDesc("created_at");
         if (StringUtils.isNotBlank(nodeResourceQO.getResourceId())
                 || StringUtils.isNotBlank(nodeResourceQO.getServerNodeId())
                 || StringUtils.isNotBlank(nodeResourceQO.getStatus())

@@ -24,7 +24,7 @@ public class SessionProcessorDao {
     public PageInfo<SessionProcessor> queryData(SessionProcessorQO sessionProcessorQO) {
         PageHelper.startPage(sessionProcessorQO.getPageNum(), sessionProcessorQO.getPageSize(), true);
         QueryWrapper<SessionProcessor> queryWrapper = new QueryWrapper<>();
-
+        queryWrapper.orderByDesc("created_at");
         if (StringUtils.isNotBlank(sessionProcessorQO.getSessionId())
                 || StringUtils.isNotBlank(sessionProcessorQO.getStatus())
                 || StringUtils.isNotBlank(sessionProcessorQO.getCreatedAt())

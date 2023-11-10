@@ -30,6 +30,7 @@ public class ProcessorResourceDao {
         PageHelper.startPage(processorResourceQO.getPageNum(), processorResourceQO.getPageSize(),true);
 
         QueryWrapper<ProcessorResource> queryWrapper = new QueryWrapper<>();
+        queryWrapper.orderByDesc("created_at");
         // 保存非空检查结果到变量中
         boolean hasProcessorId = StringUtils.isNotBlank(processorResourceQO.getProcessorId());
         boolean hasSessionId = StringUtils.isNotBlank(processorResourceQO.getSessionId());

@@ -37,7 +37,8 @@ public class SessionMainDao {
     public PageInfo<SessionMain> queryData(SessionMainQO sessionMainQO) {// 查询所有数据，包含分页和模糊查询
         PageHelper.startPage(sessionMainQO.getPageNum(), sessionMainQO.getPageSize(),true);
         QueryWrapper<SessionMain> queryWrapper = new QueryWrapper<>();
-
+        // 添加默认创建时间倒序排序
+        queryWrapper.orderByDesc("created_at");
         boolean hasSessionId = StringUtils.isNotBlank(sessionMainQO.getSessionId());
         boolean hasName = StringUtils.isNotBlank(sessionMainQO.getName());
         boolean createdAt = (sessionMainQO.getCreatedAt() != null);
@@ -60,7 +61,8 @@ public class SessionMainDao {
         PageHelper.startPage(sessionMainQO.getPageNum(), sessionMainQO.getPageSize(),true);
         QueryWrapper<SessionMain> queryWrapper = new QueryWrapper<>();
         queryWrapper.in("status", "NEW", "ACTIVATED", "CLOSED", "KILLED")  // 状态为NEW或ACTIVATED
-                .orderByDesc("updated_at")           // 按照 updated_at 降序排序
+                .orderByDesc("created_at")
+                // 按照 updated_at 降序排序
                 .last("LIMIT " + topCount);          // 取前 topCount 条数据");
         List<SessionMain> list = this.sessionMainService.list(queryWrapper);
         PageInfo<SessionMain> result = new PageInfo<>(list);
