@@ -108,9 +108,7 @@ class _BatchStreamStatus:
         if finished:
             TransferService.remove_broker(tag)
             #del cls._recorder[tag]
-        else:
-            L.info(f"wait_finish time error")
-        raise TimeoutError("imeout in P")
+
         return BSS(
                 tag=bss._tag,
                 is_finished=finished,

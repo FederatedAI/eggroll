@@ -78,7 +78,7 @@ public class Context {
             stringBuffer.append("code:").append(this.getReturnCode()).append(SPLIT);
         }
         final long cost = System.currentTimeMillis() - startTimestamp;
-        stringBuffer.append("cost:").append(cost > 20 ? "WARNING<" + cost + ">" : cost).append(SPLIT);
+        stringBuffer.append("cost:").append(cost > 5000 ? "WARNING<" + cost + ">" : cost).append(SPLIT);
         if (this.getReturnMsg() != null) {
             stringBuffer.append("msg:").append(this.getReturnMsg());
         }
