@@ -187,7 +187,6 @@ public class StoreCrudOperator {
         newStoreLocator.setStatus(Dict.NORMAL);
         boolean addStoreLocatorFlag = storeLocatorService.save(newStoreLocator);
         if (!addStoreLocatorFlag) {
-
             throw new CrudException("Illegal rows affected returned when creating store locator: 0");
         }
 
@@ -202,6 +201,9 @@ public class StoreCrudOperator {
         boolean isPartitionsSpecified = specifiedPartitions.size() > 0;
         if (newTotalPartitions <= 0) {
             newTotalPartitions = nodesCount << 2;
+        }
+        if(nodesCount == 0){
+            throw new RuntimeException("no health server node");
         }
         ArrayList<Long> serverNodeIds = new ArrayList<>();
         for (int i = 0; i < newTotalPartitions; i++) {
