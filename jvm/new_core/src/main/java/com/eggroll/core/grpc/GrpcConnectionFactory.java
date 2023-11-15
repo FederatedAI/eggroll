@@ -48,7 +48,6 @@ public class GrpcConnectionFactory {
         if (usePooled) {
             if (managedChannelPool.get(endpoint.toString()) != null) {
                 ManagedChannel targetChannel = managedChannelPool.get(endpoint.toString());
-                // logger.info("channel  is shutdown : {} isTerminated {}",targetChannel.isShutdown() ,targetChannel.isTerminated() ,targetChannel.getState(true));
                 return managedChannelPool.get(endpoint.toString());
             } else {
                 ManagedChannel managedChannel = createManagedChannel(endpoint, buildDefaultGrpcChannelInfo());
@@ -94,17 +93,7 @@ public class GrpcConnectionFactory {
                     .enableRetry()
                     .retryBufferSize(channelInfo.getRetryBufferSize())
                     .maxRetryAttempts(channelInfo.getMaxRetryAttemps());
-//            if (routerInfo.isUseSSL() && NegotiationType.TLS.name().equals(routerInfo.getNegotiationType()) && StringUtils.isNotBlank(routerInfo.getCertChainFile()) && StringUtils.isNotBlank(routerInfo.getPrivateKeyFile()) && StringUtils.isNotBlank(routerInfo.getCaFile())) {
-//                SslContextBuilder sslContextBuilder = GrpcSslContexts.forClient()
-//                        .keyManager(new File(routerInfo.getCertChainFile()), new File(routerInfo.getPrivateKeyFile()))
-//                        .trustManager(new File(routerInfo.getCaFile()))
-//                        .sessionTimeout(3600 << 4)
-//                        .sessionCacheSize(65536);
-//
-//                channelBuilder.sslContext(sslContextBuilder.build()).useTransportSecurity().overrideAuthority(routerInfo.getHost());
-//            } else {
             channelBuilder.usePlaintext();
-            // }
             return channelBuilder.build();
         } catch (Exception e) {
 

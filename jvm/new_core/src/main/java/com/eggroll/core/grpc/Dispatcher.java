@@ -66,8 +66,6 @@ public class Dispatcher {
                 }
                 return new byte[0];
             } catch (Exception e) {
-//                e.printStackTrace();
-//                throw new RuntimeException(e);
                 ExceptionInfo exceptionInfo = ErrorMessageUtil.handleExceptionExceptionInfo(context, e);
                 context.setReturnCode(exceptionInfo.getCode());
                 context.setReturnMsg(exceptionInfo.getMessage());

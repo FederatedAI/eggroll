@@ -33,10 +33,6 @@ public class ErEndpoint implements RpcMessage {
         return host + ":" + port;
     }
 
-    //        public boolean isValid() {
-//            return !StringUtils.isBlank(host) && port > 0;
-//        }
-//
     public Meta.Endpoint toProto() {
         Meta.Endpoint.Builder builder = Meta.Endpoint.newBuilder()
                 .setHost(host)

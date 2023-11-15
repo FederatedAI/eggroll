@@ -34,7 +34,12 @@ public class SessionMainDao {
     }
 
 
-    public PageInfo<SessionMain> queryData(SessionMainQO sessionMainQO) {// 查询所有数据，包含分页和模糊查询
+    /**
+     * 查询所有数据，包含分页和模糊查询
+     * @param sessionMainQO
+     * @return
+     */
+    public PageInfo<SessionMain> queryData(SessionMainQO sessionMainQO) {
         PageHelper.startPage(sessionMainQO.getPageNum(), sessionMainQO.getPageSize(),true);
         QueryWrapper<SessionMain> queryWrapper = new QueryWrapper<>();
         // 添加默认创建时间倒序排序

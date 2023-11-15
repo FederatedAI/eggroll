@@ -218,14 +218,6 @@ public abstract class Shell {
 
 
     public static String[] getSignalKillCommand(int code, String pid) {
-        // Code == 0 means check alive
-//    if (Shell.WINDOWS) {
-//      if (0 == code) {
-//        return new String[] {Shell.getWinUtilsPath(), "task", "isAlive", pid };
-//      } else {
-//        return new String[] {Shell.getWinUtilsPath(), "task", "kill", pid };
-//      }
-//    }
 
         // Use the bash-builtin instead of the Unix kill command (usually
         // /bin/kill) as the bash-builtin supports "--" in all Hadoop supported

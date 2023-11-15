@@ -135,7 +135,6 @@ public class Tasks implements Provider<Configuration>, ConfigurationSettingListe
     @Schedule(cron = "0/10 * * * * ?")
     public void checkRedidualProcessor() {
         try {
-            log.info("check redidual processor, size {}", ClusterManagerService.residualHeartbeatMap.size());
             Context context = new Context();
             ClusterManagerService.residualHeartbeatMap.forEach((k, v) -> {
                 try {
@@ -217,28 +216,6 @@ public class Tasks implements Provider<Configuration>, ConfigurationSettingListe
         }
     }
 
-    //    @Schedule(cron = "0 0 0 0 1 ?")
-    public void lockClean() {
-        log.info("lock clean thread , prepare to run");
-        long now = System.currentTimeMillis();
-        clusterResourceManager.getSessionLockCache().asMap().forEach((k, v) -> {
-            try {
-                ErSessionMeta es = sessionMainService.getSessionMain(k);
-                if (es.getUpdateTime() != null) {
-                    long updateTime = es.getUpdateTime().getTime();
-                    if (now - updateTime > MetaInfo.EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL
-                            && (SessionStatus.KILLED.name().equals(es.getStatus())
-                            || SessionStatus.ERROR.name().equals(es.getStatus())
-                            || SessionStatus.CLOSED.name().equals(es.getStatus())
-                            || SessionStatus.FINISHED.name().equals(es.getStatus()))) {
-                        clusterResourceManager.getSessionLockCache().invalidate(es.getId());
-                    }
-                }
-            } catch (Throwable e) {
-                log.error("lock clean error: " + e.getMessage());
-            }
-        });
-    }
 
     @Override
     public Configuration get() {

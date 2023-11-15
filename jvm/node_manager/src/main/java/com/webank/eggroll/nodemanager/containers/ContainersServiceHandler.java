@@ -90,24 +90,6 @@ public class ContainersServiceHandler {
         }
     }
 
-    /**
-     * 每提交一次大模型任务就重新加载一次外部配置文件
-     * @param startDeepspeedContainerRequest
-     * @return
-     */
-//    private void initExtendEnvConf() {
-//        logger.info("=============initDeepExtendConfig==============");
-//        String confName = "node-extend-env.properties";
-//        String eggrollHome = System.getenv("EGGROLL_HOME");
-//        if (eggrollHome == null) {
-//            logger.error("EGGROLL_HOME not set");
-//            return;
-//        }
-//        String extendConfPath = eggrollHome + "/bin/gpu/" + confName;
-//        logger.info("load extend config file {}", extendConfPath);
-//        Properties extendPro = PropertiesUtil.getProperties(extendConfPath);
-//        ExtendEnvConf.initToMap(extendPro);
-//    }
 
     private StartContainersResponse startDeepspeedContainers(StartDeepspeedContainerRequest startDeepspeedContainerRequest) {
         String sessionId = startDeepspeedContainerRequest.getSessionId();

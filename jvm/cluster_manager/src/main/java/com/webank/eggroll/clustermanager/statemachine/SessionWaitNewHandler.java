@@ -39,10 +39,6 @@ public class SessionWaitNewHandler extends AbstractSessionStateHandler {
     public ErSessionMeta handle(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam) {
         logger.info("session create handle begin");
         erSessionMeta.setStatus(SessionStatus.NEW.name());
-//        ErSessionMeta sessionInDb = sessionMainService.getSession(erSessionMeta.getId(), true, true, false);
-//        if (sessionInDb != null)
-//            return sessionInDb;
-//        // TODO: 2023/8/3
         List<ErServerNode> serverNodeList = (List<ErServerNode>) context.getData(Dict.SERVER_NODES);
         if (CollectionUtils.isEmpty(serverNodeList)) {
             throw new RuntimeException("no health server node");

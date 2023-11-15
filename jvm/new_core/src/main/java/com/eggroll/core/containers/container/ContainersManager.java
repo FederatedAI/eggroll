@@ -59,7 +59,6 @@ public class ContainersManager {
     public void startContainer(Long containerId) {
         ContainerLifecycleHandler handler = handlers.get(containerId);
         if (handler != null) {
-//            executor.execute(handler::startContainer);
             handler.startContainer();
         }
     }

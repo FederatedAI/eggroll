@@ -65,7 +65,6 @@ public class NodeResourceDao {
         for (ServerNode serverNode : serverNodeList) {
             for (NodeResource nodeResource : nodeResourceList) {
                 if (serverNode.getServerNodeId().equals(nodeResource.getServerNodeId())) {
-//                    String key = String.valueOf(nodeResource.getServerNodeId());
                     String ip = serverNode.getHost();
                     if (!resourcesMap.containsKey(ip)) {
                         cpuResource = nodeResource.getTotal() - nodeResource.getUsed();

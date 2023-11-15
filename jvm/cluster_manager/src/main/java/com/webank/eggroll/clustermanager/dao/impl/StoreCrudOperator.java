@@ -129,7 +129,6 @@ public class StoreCrudOperator {
             }
         }
 
-        // process output partitions
         List<ErPartition> outputPartitions = new ArrayList<>();
         for (StorePartition p : storePartitionResult) {
 

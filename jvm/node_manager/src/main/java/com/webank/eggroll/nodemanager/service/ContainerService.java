@@ -25,16 +25,13 @@ public class ContainerService {
 
     public ErSessionMeta operateContainers(Context context, ErSessionMeta sessionMeta, String opType) {
         context.setSessionId(sessionMeta.getId());
-
         List<ErProcessor> processors = sessionMeta.getProcessors();
         List<Long> pids = processors.stream().map(ErProcessor::getId).collect(Collectors.toList());
         String sessionId = sessionMeta.getId();
-        logger.info("receive sessionId {}, processors {}", sessionId, processors);
         context.putLogData("sessionId", sessionId);
         context.putLogData("pids", pids.toString());
-//        RuntimeErConf runtimeErConf = new RuntimeErConf(sessionMeta);
+        logger.info("{} sessionContainers, sessionId: {}, pids: {}",sessionId,pids.toString());
         Long myServerNodeId = NodeManagerMeta.serverNodeId;
-        logger.info("operateContainers param opType: {}, myServerNodeId:{}", opType, myServerNodeId);
         for (ErProcessor p : processors) {
             if (p.getServerNodeId().intValue() != myServerNodeId.intValue()) {
                 logger.info("processor servernode {} myServerNode {}", p.getServerNodeId(), myServerNodeId);
@@ -89,7 +86,6 @@ public class ContainerService {
         param.setStartCmd(joiner.toString());
         String standaloneTag = System.getProperty("eggroll.standalone.tag", "");
         logger.info(standaloneTag + joiner);
-        logger.info("============runCommand===========: {}", JsonUtil.object2Json(param));
         Thread thread = runCommand(context, param);
         thread.start();
         try {
@@ -119,7 +115,6 @@ public class ContainerService {
                 .add(String.format("\"%s\"", subCmd))
                 .add(String.format("%s-%s", param.getModuleName(), param.getProcessorId()))
                 .toString();
-        logger.info("doStopCmd : {}", doStopCmd);
         param.setStartCmd(doStopCmd);
         Thread thread = runCommand(context, param);
         thread.start();

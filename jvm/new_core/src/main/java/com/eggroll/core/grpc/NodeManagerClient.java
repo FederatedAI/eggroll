@@ -108,36 +108,4 @@ public class NodeManagerClient {
         return response;
     }
 
-    //  def downloadContainers(downloadContainersRequest: DownloadContainersRequest): DownloadContainersResponse =
-//          commandClient.call(ContainerCommands.downloadContainers, downloadContainersRequest)
-
-    //  def checkNodeProcess(processor: ErProcessor): ErProcessor =
-//  commandClient.call[ErProcessor](ResouceCommands.checkNodeProcess, processor)
-
-
-//
-//  def startJobContainers(startContainersRequest: StartContainersRequest): StartContainersResponse = {
-//    commandClient.call(ContainerCommands.startJobContainers, startContainersRequest)
-//  }
-//
-//  def stopJobContainers(stopContainersRequest: StopContainersRequest): StopContainersResponse = {
-//    commandClient.call(ContainerCommands.stopJobContainers, stopContainersRequest)
-//  }
-//
-//  def killJobContainers(killContainersRequest: KillContainersRequest): KillContainersResponse =
-//          commandClient.call(ContainerCommands.killJobContainers, killContainersRequest)
-//
-//  def allocateResource(srcAllocate: ErResourceAllocation): ErResourceAllocation =
-//  commandClient.call[ErResourceAllocation](ResouceCommands.resourceAllocation, srcAllocate)
-//
-//  def queryNodeResource(erServerNode: ErServerNode): ErServerNode =
-//  commandClient.call[ErServerNode](ResouceCommands.queryNodeResource, erServerNode)
-//
-//  def downloadContainers(downloadContainersRequest: DownloadContainersRequest): DownloadContainersResponse =
-//          commandClient.call(ContainerCommands.downloadContainers, downloadContainersRequest)
-//
-//  def checkNodeProcess(processor: ErProcessor): ErProcessor =
-//  commandClient.call[ErProcessor](ResouceCommands.checkNodeProcess, processor)
-
-
 }
