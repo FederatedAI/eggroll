@@ -41,9 +41,9 @@ public class JettyServer {
         MetaInfo.init(environment);
 
         Injector injector = Guice.createInjector(new MyServletModule());
-        Server server = new Server(8083);
+        Server server = new Server(MetaInfo.JETTY_SERVER_PORT);
         SessionHandler sessionHandler = new SessionHandler();
-          DefaultSessionCache sessionCache = new DefaultSessionCache(sessionHandler);
+        DefaultSessionCache sessionCache = new DefaultSessionCache(sessionHandler);
         DefaultSessionIdManager sessionIdManager = new DefaultSessionIdManager(server);
         server.setSessionIdManager(sessionIdManager);
         sessionCache.setSessionDataStore(new NullSessionDataStore());
@@ -71,9 +71,9 @@ public class JettyServer {
         context.setContextPath("/");
         ResourceHandler resourceHandler = new ResourceHandler();
         resourceHandler.setResourceBase(JettyServer.class.getResource("/WEB-INF").toExternalForm());
-        resourceHandler.setWelcomeFiles(new String[] { "index.html" });
+        resourceHandler.setWelcomeFiles(new String[]{"index.html"});
         HandlerCollection handlers = new HandlerCollection();
-        handlers.setHandlers(new Handler[] { resourceHandler, context });
+        handlers.setHandlers(new Handler[]{resourceHandler, context});
         server.setHandler(handlers);
         server.start();
         server.join();
