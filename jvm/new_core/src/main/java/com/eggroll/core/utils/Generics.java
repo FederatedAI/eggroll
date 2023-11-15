@@ -68,15 +68,6 @@ public class Generics {
                 if (rawClass == genericClass) {
                     Type[] types = pType.getActualTypeArguments();
                     return getClasses(types);
-//          Type realType = pType.getActualTypeArguments()[index];
-//          if (realType instanceof Class) {
-//            return (Class) realType;
-//          } else if (realType instanceof ParameterizedType) {
-//            //这里是泛型的泛型
-//            return (Class) ((ParameterizedType) realType).getRawType();
-//          }
-
-
                 } else if (genericClass.isAssignableFrom(rawClass)) {
                     Map<String, Type> map = combine(pType.getActualTypeArguments(), rawClass);
                     return find(rawClass, genericClass, map);
@@ -107,13 +98,6 @@ public class Generics {
                     if (rawClass == genericClass) {
 
                         return getClasses(typeArray);
-//            Type realType = typeArray[index];
-//            if (realType instanceof Class) {
-//              return (Class) realType;
-//            } else if (realType instanceof ParameterizedType) {
-//              //这里是泛型的泛型
-//              return (Class) ((ParameterizedType) realType).getRawType();
-//            }
                     } else if (genericClass.isAssignableFrom(rawClass)) {
                         return find(rawClass, genericClass, combine(typeArray, rawClass));
                     }

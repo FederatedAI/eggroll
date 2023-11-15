@@ -67,13 +67,6 @@ public class Context {
                 stringBuffer.append(k).append(":").append(v).append(SPLIT);
             });
         }
-
-//        if(options!=null){
-//            stringBuffer.append("option:").append(JsonUtil.object2Json(options)).append(SPLIT);
-//        }
-//        if(request!=null){
-//            stringBuffer.append("").append(request.toString()).append(SPLIT);
-//        }
         if (this.getReturnCode() != null) {
             stringBuffer.append("code:").append(this.getReturnCode()).append(SPLIT);
         }

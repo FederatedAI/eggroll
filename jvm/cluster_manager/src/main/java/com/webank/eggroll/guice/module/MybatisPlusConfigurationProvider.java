@@ -181,7 +181,6 @@ public class MybatisPlusConfigurationProvider implements Provider<Configuration>
         configuration.setObjectWrapperFactory(new MybatisMapWrapperFactory());
 
         configuration.setLogImpl(Log4j2Impl.class);
-        // configuration.setLogImpl(StdOutImpl.class);
 
         configuration.setCacheEnabled(MetaInfo.EGGROLL_MYBATIS_cache_enabled);
 

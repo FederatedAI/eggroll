@@ -210,29 +210,6 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
 
     @Transactional
     public void registerWithResource(ErSessionMeta erSessionMeta) {
-//        this.removeById(erSessionMeta.getId());
-//        sessionOptionService.remove(new QueryWrapper<SessionOption>().lambda().eq(SessionOption::getSessionId,erSessionMeta.getId()));
-//        sessionProcessorService.remove(new QueryWrapper<SessionProcessor>().lambda().eq(SessionProcessor::getSessionId,erSessionMeta.getId()));
-
-//        SessionMain sessionMain = new SessionMain();
-//        sessionMain.setSessionId(erSessionMeta.getId());
-//        sessionMain.setName(erSessionMeta.getName());
-//        sessionMain.setStatus(erSessionMeta.getStatus());
-//        sessionMain.setTag(erSessionMeta.getTag());
-//        sessionMain.setTotalProcCount(erSessionMeta.getTotalProcCount());
-//        sessionMain.setActiveProcCount(0);
-//        this.save(sessionMain);
-//
-//        Map<String, String> opts = erSessionMeta.getOptions();
-//        if(opts!=null){
-//            opts.forEach((k,v)->{
-//                SessionOption sessionOption = new SessionOption();
-//                sessionOption.setSessionId(erSessionMeta.getId());
-//                sessionOption.setName(k);
-//                sessionOption.setData(v);
-//                sessionOptionService.save(sessionOption);
-//            });
-//        }
         Context context = new Context();
         context.putData(Dict.KEY_PROCESSOR_TYPE, ProcessorType.DeepSpeed.name());
         sessionStateMachine.changeStatus(context, erSessionMeta, SessionStatus.WAITING_RESOURCE.name(), SessionStatus.NEW.name());

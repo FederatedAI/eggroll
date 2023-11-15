@@ -85,10 +85,7 @@ public class ErrorMessageUtil {
 
     public static ExceptionInfo handleExceptionExceptionInfo(Context context, Throwable e) {
         ExceptionInfo exceptionInfo = new ExceptionInfo();
-//        String selfPartyId = context.getSelfPartyId();
         String message = e.getMessage();
-
-
         if (e instanceof EggRollBaseException) {
             EggRollBaseException baseException = (EggRollBaseException) e;
             exceptionInfo.setCode(baseException.getCode());
