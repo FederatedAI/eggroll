@@ -33,7 +33,7 @@ public class SessionProcessorDao {
                     .like(StringUtils.isNotBlank(sessionProcessorQO.getSessionId()), SessionProcessor::getSessionId, sessionProcessorQO.getSessionId())
                     .and(StringUtils.isNotBlank(sessionProcessorQO.getStatus()), i -> i.like(SessionProcessor::getStatus, sessionProcessorQO.getStatus()))
                     .and(StringUtils.isNotBlank(sessionProcessorQO.getCreatedAt()), i -> i.like(SessionProcessor::getCreatedAt, sessionProcessorQO.getCreatedAt()))
-                    .and(sessionProcessorQO.getPid() != null, i -> i.eq(SessionProcessor::getPid, sessionProcessorQO.getPid()));
+                    .and(sessionProcessorQO.getPid() != null, i -> i.like(SessionProcessor::getPid, sessionProcessorQO.getPid()));
         }
         List<SessionProcessor> list = this.sessionProcessorService.list(queryWrapper);
         PageInfo<SessionProcessor> result = new PageInfo<>(list);
