@@ -72,9 +72,9 @@ public class ServiceImpl<M extends BaseMapper<T>, T> implements IService<T> {
             return false;
         } else {
             TableInfo tableInfo = TableInfoHelper.getTableInfo(this.entityClass);
-            Assert.notNull(tableInfo, "error: can not execute. because can not find cache of TableInfo for entity!", new Object[0]);
+            Assert.notNull(tableInfo, "error: can not execute. because can not find cache of TableInfo for entity!");
             String keyProperty = tableInfo.getKeyProperty();
-            Assert.notEmpty(keyProperty, "error: can not execute. because can not find column for id from entity!", new Object[0]);
+            Assert.notEmpty(keyProperty, "error: can not execute. because can not find column for id from entity!");
             Object idVal = tableInfo.getPropertyValue(entity, tableInfo.getKeyProperty());
             return !StringUtils.checkValNull(idVal) && !Objects.isNull(this.getById((Serializable) idVal)) ? this.updateById(entity) : this.save(entity);
         }
@@ -92,7 +92,7 @@ public class ServiceImpl<M extends BaseMapper<T>, T> implements IService<T> {
 
     @Override
     public Map<String, Object> getMap(Wrapper<T> queryWrapper) {
-        return (Map) SqlHelper.getObject(this.log, this.baseMapper.selectMaps(queryWrapper));
+        return SqlHelper.getObject(this.log, this.baseMapper.selectMaps(queryWrapper));
     }
 
     @Override
@@ -131,7 +131,7 @@ public class ServiceImpl<M extends BaseMapper<T>, T> implements IService<T> {
         TableInfo tableInfo = TableInfoHelper.getTableInfo(this.entityClass);
         if (useFill && tableInfo.isWithLogicDelete() && !this.entityClass.isAssignableFrom(id.getClass())) {
             T instance = tableInfo.newInstance();
-            tableInfo.setPropertyValue(instance, tableInfo.getKeyProperty(), new Object[]{id});
+            tableInfo.setPropertyValue(instance, tableInfo.getKeyProperty(), id);
             return this.removeById(instance);
         } else {
             return SqlHelper.retBool(this.getBaseMapper().deleteById(id));

@@ -15,15 +15,15 @@ import java.util.Map;
 @Data
 public class StartContainersRequest implements RpcMessage {
     Logger log = LoggerFactory.getLogger(StartContainersRequest.class);
-    public String sessionId;
-    public String name;
-    public String jobType;
-    public List<String> commandArguments;
-    public Map<String, String> environmentVariables;
-    public Map<String, byte[]> files;
-    public Map<String, byte[]> zippedFiles;
-    public Map<Long, byte[]> typedExtraConfigs;
-    public Map<String, String> options;
+    private String sessionId;
+    private String name;
+    private String jobType;
+    private List<String> commandArguments;
+    private Map<String, String> environmentVariables;
+    private Map<String, byte[]> files;
+    private Map<String, byte[]> zippedFiles;
+    private Map<Long, byte[]> typedExtraConfigs;
+    private Map<String, String> options;
 
     public StartContainersRequest() {
         this.sessionId = Dict.EMPTY;

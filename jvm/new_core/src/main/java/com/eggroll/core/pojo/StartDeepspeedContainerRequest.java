@@ -11,15 +11,15 @@ import java.util.Map;
 
 @Data
 public class StartDeepspeedContainerRequest {
-    public String sessionId;
-    public String name;
-    public List<String> commandArguments;
-    public Map<String, String> environmentVariables;
-    public Map<String, byte[]> files;
-    public Map<String, byte[]> zippedFiles;
-    public Map<Long, byte[]> typedExtraConfigs;
-    public Map<String, String> options;
-    public Map<Long, DeepspeedContainerConfig> deepspeedConfigs;
+    private String sessionId;
+    private String name;
+    private List<String> commandArguments;
+    private Map<String, String> environmentVariables;
+    private Map<String, byte[]> files;
+    private Map<String, byte[]> zippedFiles;
+    private Map<Long, byte[]> typedExtraConfigs;
+    private Map<String, String> options;
+    private Map<Long, DeepspeedContainerConfig> deepspeedConfigs;
 
     public StartDeepspeedContainerRequest() {
         this.sessionId = Dict.EMPTY;
@@ -35,15 +35,15 @@ public class StartDeepspeedContainerRequest {
 
     public static StartDeepspeedContainerRequest fromStartContainersRequest(StartContainersRequest src) {
         StartDeepspeedContainerRequest dst = new StartDeepspeedContainerRequest();
-        dst.sessionId = src.sessionId;
-        dst.name = src.name;
-        dst.commandArguments = src.commandArguments;
-        dst.environmentVariables = new HashMap<>(src.environmentVariables);
-        dst.files = new HashMap<>(src.files);
-        dst.zippedFiles = new HashMap<>(src.zippedFiles);
-        dst.options = new HashMap<>(src.options);
+        dst.sessionId = src.getSessionId();
+        dst.name = src.getName();
+        dst.commandArguments = src.getCommandArguments();
+        dst.environmentVariables = new HashMap<>(src.getEnvironmentVariables());
+        dst.files = new HashMap<>(src.getFiles());
+        dst.zippedFiles = new HashMap<>(src.getZippedFiles());
+        dst.options = new HashMap<>(src.getOptions());
         dst.deepspeedConfigs = new HashMap<>();
-        src.typedExtraConfigs.forEach((k, v) -> {
+        src.getTypedExtraConfigs().forEach((k, v) -> {
             DeepspeedContainerConfig deepspeedContainerConfig = new DeepspeedContainerConfig();
             deepspeedContainerConfig.deserialize(v);
             dst.deepspeedConfigs.put(k, deepspeedContainerConfig);
@@ -54,21 +54,21 @@ public class StartDeepspeedContainerRequest {
 
     public static StartContainersRequest toStartContainersRequest(StartDeepspeedContainerRequest src) {
         StartContainersRequest dst = new StartContainersRequest();
-        dst.sessionId = src.sessionId;
-        dst.name = src.name;
-        dst.jobType = JobProcessorTypes.DeepSpeed.getName();
-        dst.commandArguments = src.commandArguments;
-        dst.environmentVariables = new HashMap<>(src.environmentVariables);
-        dst.files = new HashMap<>(src.files);
-        dst.zippedFiles = new HashMap<>(src.zippedFiles);
-        dst.options = new HashMap<>(src.options);
-        dst.typedExtraConfigs = new HashMap<>();
+        dst.setSessionId(src.sessionId);
+        dst.setName(src.name);
+        dst.setJobType(JobProcessorTypes.DeepSpeed.getName());
+        dst.setCommandArguments(src.commandArguments);
+        dst.setEnvironmentVariables(new HashMap<>(src.environmentVariables));
+        dst.setFiles(new HashMap<>(src.files));
+        dst.setZippedFiles(new HashMap<>(src.zippedFiles));
+        dst.setOptions(new HashMap<>(src.options));
+        dst.setTypedExtraConfigs(new HashMap<>());
 
         for (Map.Entry<Long, DeepspeedContainerConfig> entry : src.deepspeedConfigs.entrySet()) {
             Long key = entry.getKey();
             DeepspeedContainerConfig value = entry.getValue();
 
-            dst.typedExtraConfigs.put(key, value.serialize());
+            dst.getTypedExtraConfigs().put(key, value.serialize());
         }
         return dst;
     }

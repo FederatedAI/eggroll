@@ -47,7 +47,6 @@ public final class SqlHelper {
 //    }
 
     /**
-     * @deprecated
      */
 //    @Deprecated
 //    public static SqlSessionFactory sqlSessionFactory(Class<?> clazz) {
@@ -97,7 +96,6 @@ public final class SqlHelper {
         }
     }
 
-    /** @deprecated */
 //    @Deprecated
 //    public static boolean executeBatch(Class<?> entityClass, Log log, Consumer<SqlSession> consumer) {
 //        return executeBatch(sqlSessionFactory(entityClass), log, consumer);
@@ -146,7 +144,6 @@ public final class SqlHelper {
 //    }
 
     /**
-     * @deprecated
      */
 //    @Deprecated
 //    public static <E> boolean executeBatch(Class<?> entityClass, Log log, Collection<E> list, int batchSize, BiConsumer<SqlSession, E> consumer) {
