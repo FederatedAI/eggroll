@@ -9,7 +9,7 @@
         <version>3.0.0</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>new_core</artifactId>
+    <artifactId>core</artifactId>
     <version>${eggroll.version}</version>
     <dependencies>
 

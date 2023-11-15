@@ -14,7 +14,7 @@
     <dependencies>
         <dependency>
             <groupId>com.webank.eggroll</groupId>
-            <artifactId>new_core</artifactId>
+            <artifactId>core</artifactId>
             <version>${eggroll.version}</version>
         </dependency>
 

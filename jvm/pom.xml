@@ -453,7 +453,7 @@
 
     <modules>
         <module>cluster_manager</module>
-        <module>new_core</module>
+        <module>core</module>
         <module>node_manager</module>
         <module>cluster_dashboard</module>
     </modules>
