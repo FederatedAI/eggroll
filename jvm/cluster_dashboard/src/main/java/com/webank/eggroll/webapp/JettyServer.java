@@ -9,6 +9,7 @@ import com.google.inject.servlet.GuiceFilter;
 import com.google.inject.servlet.GuiceServletContextListener;
 import com.webank.eggroll.webapp.controller.DispatcherServlet;
 import com.webank.eggroll.webapp.controller.EggrollServiceProvider;
+import com.webank.eggroll.webapp.controller.UserController;
 import com.webank.eggroll.webapp.model.MyServletModule;
 import org.apache.commons.cli.CommandLine;
 import org.eclipse.jetty.server.Handler;
@@ -59,6 +60,8 @@ public class JettyServer {
         // 注册并调用被@ApiMethod注解的方法
         DispatcherServlet apiMethodRegistry = injector.getInstance(DispatcherServlet.class);
         EggrollServiceProvider myService = injector.getInstance(EggrollServiceProvider.class);
+        UserController userController = injector.getInstance(UserController.class);
+        apiMethodRegistry.register(userController);
         apiMethodRegistry.register(myService);
 
 
