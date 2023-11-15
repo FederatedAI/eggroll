@@ -11,12 +11,10 @@ import com.eggroll.core.pojo.ErServerNode;
 import com.eggroll.core.postprocessor.ApplicationStartedRunner;
 import com.eggroll.core.utils.NetUtils;
 import com.google.inject.Singleton;
-import com.webank.eggroll.nodemanager.env.Shell;
 import com.webank.eggroll.nodemanager.env.SysInfoLinux;
 import com.webank.eggroll.nodemanager.meta.NodeManagerMeta;
 import com.webank.eggroll.nodemanager.pojo.ResourceWrapper;
 import com.webank.eggroll.nodemanager.schedule.NodeManagerTask;
-import com.webank.eggroll.nodemanager.utils.GetSystemInfo;
 import org.apache.commons.beanutils.BeanUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +31,7 @@ public class NodeResourceManager implements ApplicationStartedRunner {
     Logger logger = LoggerFactory.getLogger(NodeResourceManager.class);
 
     //    @Inject
-    private SysInfoLinux sysInfo;
+    private final SysInfoLinux sysInfo;
 
     ClusterManagerClient client;
     Long physicalMemorySize;
@@ -69,9 +67,7 @@ public class NodeResourceManager implements ApplicationStartedRunner {
         logger.info("checkResourceIsEnough {} {}", rType, required);
         if (resourceWrapper != null) {
             long left = resourceWrapper.getTotal().get() - resourceWrapper.getAllocated().get();
-            if (required <= left) {
-                return true;
-            }
+            return required <= left;
         }
         return false;
     }
@@ -162,7 +158,7 @@ public class NodeResourceManager implements ApplicationStartedRunner {
     }
 
     @Override
-    public void run(String[] args) throws Exception {
+    public void run(String[] args) {
         NodeManagerMeta.loadNodeManagerMetaFromFile();
         NodeManagerTask.runTask(heartBeatThread);
         NodeManagerTask.runTask(resourceCountThread);
@@ -205,26 +201,22 @@ public class NodeResourceManager implements ApplicationStartedRunner {
         Thread currentGrpcThread = null;
         @Override
         public void run() {
-            Boolean notOver = true;
-            while (notOver) {
+            while (true) {
                 try {
                     seq += 1;
                     if (currentGrpcThread != null && currentGrpcThread.isAlive()) {
                         currentGrpcThread.interrupt();
                     }
-                    currentGrpcThread = new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            ErNodeHeartbeat nodeHeartBeat = tryNodeHeartbeat();
-                            if (nodeHeartBeat != null && nodeHeartBeat.getNode() != null) {
-                                if (NodeManagerMeta.status.equals(Dict.INIT)) {
-                                    if (nodeHeartBeat.getNode().getId() != -1) {
-                                        NodeManagerMeta.serverNodeId = nodeHeartBeat.getNode().getId();
-                                        NodeManagerMeta.clusterId = nodeHeartBeat.getNode().getClusterId();
-                                        NodeManagerMeta.refreshServerNodeMetaIntoFile();
-                                        NodeManagerMeta.status = Dict.HEALTHY;
-                                        logger.info("get node id {} from cluster-manager", NodeManagerMeta.serverNodeId);
-                                    }
+                    currentGrpcThread = new Thread(() -> {
+                        ErNodeHeartbeat nodeHeartBeat = tryNodeHeartbeat();
+                        if (nodeHeartBeat != null && nodeHeartBeat.getNode() != null) {
+                            if (NodeManagerMeta.status.equals(Dict.INIT)) {
+                                if (nodeHeartBeat.getNode().getId() != -1) {
+                                    NodeManagerMeta.serverNodeId = nodeHeartBeat.getNode().getId();
+                                    NodeManagerMeta.clusterId = nodeHeartBeat.getNode().getClusterId();
+                                    NodeManagerMeta.refreshServerNodeMetaIntoFile();
+                                    NodeManagerMeta.status = Dict.HEALTHY;
+                                    logger.info("get node id {} from cluster-manager", NodeManagerMeta.serverNodeId);
                                 }
                             }
                         }

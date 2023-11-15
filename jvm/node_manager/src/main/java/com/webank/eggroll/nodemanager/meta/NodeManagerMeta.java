@@ -57,6 +57,9 @@ public class NodeManagerMeta {
                 logger.info("===========load node manager meta {}============", content);
                 Map<String, Object> map = JsonUtil.json2Object(content, new TypeReference<Map<String, Object>>() {
                 });
+                if(map == null){
+                    return;
+                }
                 String dictHost = String.valueOf( map.get(Dict.KEY_NODE_IP));
                 int dictPort = Integer.parseInt((String) map.get(Dict.KEY_NODE_PORT));
                 if (confNodeHost.equals(dictHost) && dictPort == confNodePort) {
