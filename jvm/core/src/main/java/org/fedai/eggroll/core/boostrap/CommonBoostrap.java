@@ -1,10 +1,10 @@
 package org.fedai.eggroll.core.boostrap;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.lang3.StringUtils;
 import org.fedai.eggroll.core.config.MetaInfo;
 import org.fedai.eggroll.core.utils.CommandArgsUtils;
 import org.fedai.eggroll.core.utils.PropertiesUtil;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

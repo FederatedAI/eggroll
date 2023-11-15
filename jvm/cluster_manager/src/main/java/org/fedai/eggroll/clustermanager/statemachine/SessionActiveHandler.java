@@ -1,13 +1,13 @@
 package org.fedai.eggroll.clustermanager.statemachine;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import org.fedai.eggroll.clustermanager.entity.SessionMain;
 import org.fedai.eggroll.clustermanager.session.DefaultSessionManager;
 import org.fedai.eggroll.core.constant.SessionStatus;
 import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.pojo.ErSessionMeta;
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 
 
 @Singleton

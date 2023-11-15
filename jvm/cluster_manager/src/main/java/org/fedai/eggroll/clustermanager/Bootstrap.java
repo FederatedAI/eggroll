@@ -1,10 +1,10 @@
 package org.fedai.eggroll.clustermanager;
 
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 import org.fedai.eggroll.clustermanager.schedule.Tasks;
 import org.fedai.eggroll.core.boostrap.CommonBoostrap;
 import org.fedai.eggroll.core.postprocessor.ApplicationStartedRunnerUtils;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
 import org.fedai.eggroll.guice.module.ClusterModule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

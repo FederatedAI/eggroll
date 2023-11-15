@@ -1,8 +1,6 @@
 package org.fedai.eggroll.core.containers.container;
 
 
-import lombok.Data;
-
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;

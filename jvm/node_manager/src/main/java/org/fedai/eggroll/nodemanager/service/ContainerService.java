@@ -1,10 +1,10 @@
 package org.fedai.eggroll.nodemanager.service;
 
+import com.google.inject.Singleton;
 import org.fedai.eggroll.core.config.Dict;
 import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.pojo.ErProcessor;
 import org.fedai.eggroll.core.pojo.ErSessionMeta;
-import com.google.inject.Singleton;
 import org.fedai.eggroll.nodemanager.meta.NodeManagerMeta;
 import org.fedai.eggroll.nodemanager.pojo.ContainerParam;
 import org.slf4j.Logger;

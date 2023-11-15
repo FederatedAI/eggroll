@@ -2,14 +2,14 @@ package org.fedai.eggroll.clustermanager.dao.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.google.common.collect.Lists;
+import com.google.inject.Singleton;
+import org.apache.commons.lang3.StringUtils;
 import org.fedai.eggroll.clustermanager.dao.mapper.NodeResourceMapper;
 import org.fedai.eggroll.clustermanager.entity.NodeResource;
 import org.fedai.eggroll.clustermanager.resource.ResourceManager;
 import org.fedai.eggroll.core.pojo.ErProcessor;
 import org.fedai.eggroll.core.pojo.ErResource;
-import com.google.common.collect.Lists;
-import com.google.inject.Singleton;
-import org.apache.commons.lang3.StringUtils;
 import org.mybatis.guice.transactional.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

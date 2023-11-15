@@ -1,10 +1,10 @@
 package org.fedai.eggroll.core.pojo;
 
-import org.fedai.eggroll.core.config.Dict;
-import org.fedai.eggroll.core.constant.StringConstants;
 import com.webank.eggroll.core.meta.Meta;
 import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
+import org.fedai.eggroll.core.config.Dict;
+import org.fedai.eggroll.core.constant.StringConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

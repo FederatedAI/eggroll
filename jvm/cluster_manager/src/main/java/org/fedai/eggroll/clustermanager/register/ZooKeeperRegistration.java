@@ -1,14 +1,14 @@
 package org.fedai.eggroll.clustermanager.register;
 
-import org.fedai.eggroll.core.config.MetaInfo;
-import org.fedai.eggroll.core.utils.JsonUtil;
-import org.fedai.eggroll.core.utils.NetUtils;
 import com.google.inject.Singleton;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.RetryNTimes;
 import org.apache.zookeeper.CreateMode;
+import org.fedai.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.utils.JsonUtil;
+import org.fedai.eggroll.core.utils.NetUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -1,16 +1,10 @@
 package org.fedai.eggroll.clustermanager.grpc;
 
-import org.fedai.eggroll.core.config.MetaInfo;
-import org.fedai.eggroll.core.grpc.ContextPrepareInterceptor;
-import org.fedai.eggroll.core.grpc.ServiceExceptionHandler;
-import org.fedai.eggroll.core.postprocessor.ApplicationStartedRunner;
-import org.fedai.eggroll.core.utils.FileSystemUtils;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import org.fedai.eggroll.clustermanager.extend.ClusterExtendTransferService;
 import io.grpc.BindableService;
 import io.grpc.Server;
 import io.grpc.ServerInterceptors;
@@ -19,6 +13,12 @@ import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts;
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
 import io.grpc.netty.shaded.io.netty.handler.ssl.ClientAuth;
 import io.grpc.netty.shaded.io.netty.handler.ssl.SslContextBuilder;
+import org.fedai.eggroll.clustermanager.extend.ClusterExtendTransferService;
+import org.fedai.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.grpc.ContextPrepareInterceptor;
+import org.fedai.eggroll.core.grpc.ServiceExceptionHandler;
+import org.fedai.eggroll.core.postprocessor.ApplicationStartedRunner;
+import org.fedai.eggroll.core.utils.FileSystemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

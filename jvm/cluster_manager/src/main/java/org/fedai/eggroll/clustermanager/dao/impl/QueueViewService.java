@@ -1,12 +1,12 @@
 package org.fedai.eggroll.clustermanager.dao.impl;
 
 
-import org.fedai.eggroll.core.pojo.FifoBroker;
-import org.fedai.eggroll.core.pojo.QueueViewResponse;
-import org.fedai.eggroll.core.pojo.ResourceApplication;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import org.fedai.eggroll.clustermanager.cluster.ClusterResourceManager;
+import org.fedai.eggroll.core.pojo.FifoBroker;
+import org.fedai.eggroll.core.pojo.QueueViewResponse;
+import org.fedai.eggroll.core.pojo.ResourceApplication;
 
 import java.util.ArrayList;
 

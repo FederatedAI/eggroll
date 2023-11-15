@@ -16,10 +16,10 @@
 
 package org.fedai.eggroll.core.config;
 
-import org.fedai.eggroll.core.exceptions.ConfigErrorException;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.apache.commons.lang3.StringUtils;
+import org.fedai.eggroll.core.exceptions.ConfigErrorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

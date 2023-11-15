@@ -1,5 +1,7 @@
 package org.fedai.eggroll.nodemanager.service;
 
+import com.google.inject.Singleton;
+import org.apache.commons.beanutils.BeanUtils;
 import org.fedai.eggroll.core.config.Dict;
 import org.fedai.eggroll.core.config.MetaInfo;
 import org.fedai.eggroll.core.context.Context;
@@ -10,12 +12,10 @@ import org.fedai.eggroll.core.pojo.ErResource;
 import org.fedai.eggroll.core.pojo.ErServerNode;
 import org.fedai.eggroll.core.postprocessor.ApplicationStartedRunner;
 import org.fedai.eggroll.core.utils.NetUtils;
-import com.google.inject.Singleton;
 import org.fedai.eggroll.nodemanager.env.SysInfoLinux;
 import org.fedai.eggroll.nodemanager.meta.NodeManagerMeta;
 import org.fedai.eggroll.nodemanager.pojo.ResourceWrapper;
 import org.fedai.eggroll.nodemanager.schedule.NodeManagerTask;
-import org.apache.commons.beanutils.BeanUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

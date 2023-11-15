@@ -1,9 +1,9 @@
 package org.fedai.eggroll.core.pojo;
 
-import org.fedai.eggroll.core.config.Dict;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.eggroll.core.resource.Resources;
 import lombok.Data;
+import org.fedai.eggroll.core.config.Dict;
 
 @Data
 public class CheckResourceEnoughRequest implements RpcMessage {

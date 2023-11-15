@@ -1,5 +1,8 @@
 package org.fedai.eggroll.clustermanager.statemachine;
 
+import com.google.common.collect.Lists;
+import com.google.inject.Singleton;
+import org.apache.commons.collections.CollectionUtils;
 import org.fedai.eggroll.clustermanager.entity.SessionMain;
 import org.fedai.eggroll.core.config.Dict;
 import org.fedai.eggroll.core.config.MetaInfo;
@@ -10,9 +13,6 @@ import org.fedai.eggroll.core.pojo.ErEndpoint;
 import org.fedai.eggroll.core.pojo.ErProcessor;
 import org.fedai.eggroll.core.pojo.ErServerNode;
 import org.fedai.eggroll.core.pojo.ErSessionMeta;
-import com.google.common.collect.Lists;
-import com.google.inject.Singleton;
-import org.apache.commons.collections.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

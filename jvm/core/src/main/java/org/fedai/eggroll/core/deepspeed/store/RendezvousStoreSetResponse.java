@@ -1,8 +1,8 @@
 package org.fedai.eggroll.core.deepspeed.store;
 
-import org.fedai.eggroll.core.pojo.RpcMessage;
 import com.webank.eggroll.core.meta.Deepspeed;
 import lombok.Data;
+import org.fedai.eggroll.core.pojo.RpcMessage;
 
 @Data
 public class RendezvousStoreSetResponse implements RpcMessage {

@@ -1,5 +1,7 @@
 package org.fedai.eggroll.clustermanager.statemachine;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import org.fedai.eggroll.clustermanager.dao.impl.SessionMainService;
 import org.fedai.eggroll.clustermanager.session.DefaultSessionManager;
 import org.fedai.eggroll.core.config.MetaInfo;
@@ -7,8 +9,6 @@ import org.fedai.eggroll.core.constant.SessionStatus;
 import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.exceptions.ErSessionException;
 import org.fedai.eggroll.core.pojo.ErSessionMeta;
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 
 @Singleton
 public class SessionRepeatedCreateHandler extends AbstractSessionStateHandler {

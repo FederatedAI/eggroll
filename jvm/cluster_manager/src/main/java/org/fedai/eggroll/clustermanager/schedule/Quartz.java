@@ -1,16 +1,14 @@
 package org.fedai.eggroll.clustermanager.schedule;
 
-import javax.inject.Singleton;
-
-
-import org.fedai.eggroll.core.postprocessor.ApplicationStartedRunner;
 import lombok.extern.slf4j.Slf4j;
+import org.fedai.eggroll.core.postprocessor.ApplicationStartedRunner;
 import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.triggers.CronTriggerImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Singleton;
 import java.text.ParseException;
 import java.util.concurrent.ConcurrentHashMap;
 

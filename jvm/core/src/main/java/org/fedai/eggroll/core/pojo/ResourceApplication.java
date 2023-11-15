@@ -1,13 +1,11 @@
 package org.fedai.eggroll.core.pojo;
 
 
+import lombok.Data;
+import org.apache.commons.lang3.tuple.MutablePair;
 import org.fedai.eggroll.core.config.Dict;
 import org.fedai.eggroll.core.constant.StringConstants;
 import org.fedai.eggroll.core.exceptions.ErSessionException;
-
-
-import lombok.Data;
-import org.apache.commons.lang3.tuple.MutablePair;
 
 import java.util.ArrayList;
 import java.util.HashMap;

@@ -1,14 +1,14 @@
 package org.fedai.eggroll.core.grpc;
 
+import com.google.protobuf.ByteString;
+import com.webank.eggroll.core.command.Command;
+import com.webank.eggroll.core.command.CommandServiceGrpc;
+import lombok.extern.slf4j.Slf4j;
 import org.fedai.eggroll.core.config.MetaInfo;
 import org.fedai.eggroll.core.constant.ActionType;
 import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.flow.FlowLogUtil;
 import org.fedai.eggroll.core.pojo.ErEndpoint;
-import com.google.protobuf.ByteString;
-import com.webank.eggroll.core.command.Command;
-import com.webank.eggroll.core.command.CommandServiceGrpc;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class CommandClient {

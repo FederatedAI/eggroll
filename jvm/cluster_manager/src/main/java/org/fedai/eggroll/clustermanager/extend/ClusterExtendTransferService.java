@@ -1,19 +1,19 @@
 package org.fedai.eggroll.clustermanager.extend;
 
-import org.fedai.eggroll.clustermanager.entity.SessionRanks;
-import org.fedai.eggroll.core.exceptions.RankNotExistException;
-import org.fedai.eggroll.core.grpc.GrpcConnectionFactory;
-import org.fedai.eggroll.core.pojo.ErEndpoint;
-import org.fedai.eggroll.core.pojo.ErServerNode;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import org.fedai.eggroll.clustermanager.dao.impl.ServerNodeService;
-import org.fedai.eggroll.clustermanager.dao.impl.SessionRanksService;
 import com.webank.eggroll.core.transfer.Extend;
 import com.webank.eggroll.core.transfer.ExtendTransferServerGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.StringUtils;
+import org.fedai.eggroll.clustermanager.dao.impl.ServerNodeService;
+import org.fedai.eggroll.clustermanager.dao.impl.SessionRanksService;
+import org.fedai.eggroll.clustermanager.entity.SessionRanks;
+import org.fedai.eggroll.core.exceptions.RankNotExistException;
+import org.fedai.eggroll.core.grpc.GrpcConnectionFactory;
+import org.fedai.eggroll.core.pojo.ErEndpoint;
+import org.fedai.eggroll.core.pojo.ErServerNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

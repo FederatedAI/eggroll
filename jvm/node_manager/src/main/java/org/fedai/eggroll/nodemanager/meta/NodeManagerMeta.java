@@ -1,13 +1,13 @@
 package org.fedai.eggroll.nodemanager.meta;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.google.gson.Gson;
 import org.fedai.eggroll.core.config.Dict;
 import org.fedai.eggroll.core.config.MetaInfo;
 import org.fedai.eggroll.core.constant.StringConstants;
 import org.fedai.eggroll.core.utils.FileSystemUtils;
 import org.fedai.eggroll.core.utils.JsonUtil;
 import org.fedai.eggroll.core.utils.NetUtils;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.google.gson.Gson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

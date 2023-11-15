@@ -1,12 +1,6 @@
 package org.fedai.eggroll.guice.module;
 
 import com.baomidou.mybatisplus.core.toolkit.reflect.GenericTypeUtils;
-import org.fedai.eggroll.clustermanager.schedule.Quartz;
-import org.fedai.eggroll.clustermanager.schedule.Schedule;
-import org.fedai.eggroll.clustermanager.schedule.ScheduleInfo;
-import org.fedai.eggroll.clustermanager.session.DefaultSessionManager;
-import org.fedai.eggroll.clustermanager.session.SessionManager;
-import org.fedai.eggroll.core.config.MetaInfo;
 import com.github.pagehelper.PageInterceptor;
 import com.google.inject.AbstractModule;
 import com.google.inject.Key;
@@ -15,10 +9,17 @@ import com.google.inject.matcher.Matchers;
 import com.google.inject.name.Names;
 import com.google.inject.spi.ProvisionListener;
 import org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory;
+import org.fedai.eggroll.clustermanager.schedule.Quartz;
+import org.fedai.eggroll.clustermanager.schedule.Schedule;
+import org.fedai.eggroll.clustermanager.schedule.ScheduleInfo;
+import org.fedai.eggroll.clustermanager.session.DefaultSessionManager;
+import org.fedai.eggroll.clustermanager.session.SessionManager;
+import org.fedai.eggroll.core.config.MetaInfo;
 import org.mybatis.guice.MyBatisModule;
 import org.mybatis.guice.datasource.hikaricp.HikariCPProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;

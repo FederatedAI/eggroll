@@ -1,5 +1,6 @@
 package org.fedai.eggroll.nodemanager.containers;
 
+import com.google.inject.Singleton;
 import org.fedai.eggroll.core.config.MetaInfo;
 import org.fedai.eggroll.core.constant.ProcessorStatus;
 import org.fedai.eggroll.core.containers.container.ContainerTrait;
@@ -9,7 +10,6 @@ import org.fedai.eggroll.core.grpc.ClusterManagerClient;
 import org.fedai.eggroll.core.pojo.ErEndpoint;
 import org.fedai.eggroll.core.pojo.ErProcessor;
 import org.fedai.eggroll.core.pojo.StartFlowContainersRequest;
-import com.google.inject.Singleton;
 import org.fedai.eggroll.nodemanager.meta.NodeManagerMeta;
 import org.fedai.eggroll.nodemanager.service.FlowProcessorService;
 import org.slf4j.Logger;

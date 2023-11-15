@@ -1,8 +1,8 @@
 package org.fedai.eggroll.nodemanager.pojo;
 
+import lombok.Data;
 import org.fedai.eggroll.core.config.MetaInfo;
 import org.fedai.eggroll.nodemanager.meta.NodeManagerMeta;
-import lombok.Data;
 
 @Data
 public class ContainerParam {

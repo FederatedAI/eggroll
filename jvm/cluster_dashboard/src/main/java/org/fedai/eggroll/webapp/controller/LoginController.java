@@ -1,11 +1,11 @@
 package org.fedai.eggroll.webapp.controller;
 
-import org.fedai.eggroll.core.config.MetaInfo;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.webapp.entity.UserInfo;
-import org.fedai.eggroll.webapp.global.ErrorCode;
+import org.fedai.eggroll.core.config.MetaInfo;
 import org.fedai.eggroll.webapp.dao.service.LoginService;
+import org.fedai.eggroll.webapp.global.ErrorCode;
 import org.fedai.eggroll.webapp.utils.JsonFormatUtil;
 
 import javax.servlet.http.HttpServlet;

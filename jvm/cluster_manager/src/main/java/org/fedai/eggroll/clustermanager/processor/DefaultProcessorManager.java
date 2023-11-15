@@ -1,16 +1,14 @@
 package org.fedai.eggroll.clustermanager.processor;
 
-import org.fedai.eggroll.core.context.Context;
-import org.fedai.eggroll.core.pojo.ErProcessor;
-import org.fedai.eggroll.core.utils.CacheUtil;
 import com.google.common.cache.Cache;
-
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import org.fedai.eggroll.clustermanager.statemachine.ProcessorStateMachine;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.pojo.ErProcessor;
+import org.fedai.eggroll.core.utils.CacheUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 import java.util.concurrent.TimeUnit;
 

@@ -1,15 +1,9 @@
 package org.fedai.eggroll.webapp;
 
-import org.fedai.eggroll.core.config.MetaInfo;
-import org.fedai.eggroll.core.utils.CommandArgsUtils;
-import org.fedai.eggroll.core.utils.PropertiesUtil;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.servlet.GuiceFilter;
 import com.google.inject.servlet.GuiceServletContextListener;
-import org.fedai.eggroll.webapp.controller.DispatcherServlet;
-import org.fedai.eggroll.webapp.controller.EggrollServiceProvider;
-import org.fedai.eggroll.webapp.model.MyServletModule;
 import org.apache.commons.cli.CommandLine;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
@@ -21,6 +15,12 @@ import org.eclipse.jetty.server.session.NullSessionDataStore;
 import org.eclipse.jetty.server.session.SessionHandler;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.fedai.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.utils.CommandArgsUtils;
+import org.fedai.eggroll.core.utils.PropertiesUtil;
+import org.fedai.eggroll.webapp.controller.DispatcherServlet;
+import org.fedai.eggroll.webapp.controller.EggrollServiceProvider;
+import org.fedai.eggroll.webapp.model.MyServletModule;
 
 import javax.servlet.DispatcherType;
 import java.io.File;

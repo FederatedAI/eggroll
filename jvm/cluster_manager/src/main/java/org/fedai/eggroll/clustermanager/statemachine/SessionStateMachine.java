@@ -1,13 +1,12 @@
 package org.fedai.eggroll.clustermanager.statemachine;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+import org.apache.commons.lang3.StringUtils;
 import org.fedai.eggroll.clustermanager.dao.impl.SessionMainService;
 import org.fedai.eggroll.core.config.Dict;
 import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.pojo.ErSessionMeta;
-
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
-import org.apache.commons.lang3.StringUtils;
 
 
 @Singleton

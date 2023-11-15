@@ -1,7 +1,6 @@
 package org.fedai.eggroll.core.pojo;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.webank.eggroll.core.meta.Containers;
 import com.webank.eggroll.core.meta.DeepspeedDownload;
 import lombok.Data;
 import org.apache.commons.lang3.StringUtils;

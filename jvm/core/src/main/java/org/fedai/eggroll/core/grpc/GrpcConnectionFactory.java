@@ -17,10 +17,10 @@
 package org.fedai.eggroll.core.grpc;
 
 
-import org.fedai.eggroll.core.config.MetaInfo;
-import org.fedai.eggroll.core.pojo.ErEndpoint;
 import io.grpc.ManagedChannel;
 import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
+import org.fedai.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.pojo.ErEndpoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

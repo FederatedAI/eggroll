@@ -2,7 +2,6 @@ package org.fedai.eggroll.core.pojo;
 
 import com.webank.eggroll.core.meta.Containers;
 import com.webank.eggroll.core.meta.Deepspeed;
-import com.webank.eggroll.core.meta.Meta;
 import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

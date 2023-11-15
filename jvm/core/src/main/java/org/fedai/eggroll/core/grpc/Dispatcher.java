@@ -1,5 +1,8 @@
 package org.fedai.eggroll.core.grpc;
 
+import com.google.protobuf.ByteString;
+import com.webank.eggroll.core.command.Command;
+import io.grpc.stub.StreamObserver;
 import org.fedai.eggroll.core.config.MetaInfo;
 import org.fedai.eggroll.core.constant.ActionType;
 import org.fedai.eggroll.core.context.Context;
@@ -10,9 +13,6 @@ import org.fedai.eggroll.core.flow.FlowLogUtil;
 import org.fedai.eggroll.core.invoke.InvokeInfo;
 import org.fedai.eggroll.core.pojo.RpcMessage;
 import org.fedai.eggroll.core.utils.JsonUtil;
-import com.google.protobuf.ByteString;
-import com.webank.eggroll.core.command.Command;
-import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

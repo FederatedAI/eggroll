@@ -3,12 +3,12 @@ package org.fedai.eggroll.clustermanager.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import org.fedai.eggroll.core.pojo.ErEndpoint;
-import org.fedai.eggroll.core.pojo.ErProcessor;
-import org.fedai.eggroll.core.utils.JsonUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
+import org.fedai.eggroll.core.pojo.ErEndpoint;
+import org.fedai.eggroll.core.pojo.ErProcessor;
+import org.fedai.eggroll.core.utils.JsonUtil;
 
 import java.util.Date;
 import java.util.Map;

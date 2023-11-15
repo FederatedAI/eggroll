@@ -1,18 +1,18 @@
 package org.fedai.eggroll.nodemanager;
 
+import com.google.common.collect.Lists;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import org.apache.commons.cli.CommandLine;
 import org.fedai.eggroll.core.boostrap.CommonBoostrap;
 import org.fedai.eggroll.core.config.Dict;
 import org.fedai.eggroll.core.config.ExtendEnvConf;
 import org.fedai.eggroll.core.postprocessor.ApplicationStartedRunnerUtils;
 import org.fedai.eggroll.core.utils.CommandArgsUtils;
 import org.fedai.eggroll.core.utils.PropertiesUtil;
-import com.google.common.collect.Lists;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
 import org.fedai.eggroll.guice.module.NodeModule;
 import org.fedai.eggroll.nodemanager.meta.NodeManagerMeta;
 import org.fedai.eggroll.nodemanager.service.NodeResourceManager;
-import org.apache.commons.cli.CommandLine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

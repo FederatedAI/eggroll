@@ -1,12 +1,12 @@
 package org.fedai.eggroll.clustermanager.statemachine;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import org.fedai.eggroll.clustermanager.dao.impl.SessionProcessorService;
 import org.fedai.eggroll.clustermanager.entity.SessionProcessor;
 import org.fedai.eggroll.core.constant.ResourceStatus;
 import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.pojo.ErProcessor;
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 
 
 @Singleton
