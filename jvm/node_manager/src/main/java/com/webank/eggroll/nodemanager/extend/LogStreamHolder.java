@@ -54,10 +54,9 @@ public class LogStreamHolder {
                 int batchSize = 10;
 
                 while (true) {
-                    if (status.equals("stop")) {
+                    if ("stop".equals(status)) {
                         break;
                     }
-
                     List<String> logBuffer = new ArrayList<>();
                     String line = bufferedReader.readLine();
                     if (line != null) {

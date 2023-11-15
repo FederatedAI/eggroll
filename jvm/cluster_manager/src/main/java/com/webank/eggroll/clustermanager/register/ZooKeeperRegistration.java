@@ -69,19 +69,6 @@ public class ZooKeeperRegistration {
                         .withMode(CreateMode.EPHEMERAL)
                         .forPath(path, JsonUtil.object2Json(content).getBytes());
             }
-
-            // 注册一个监听器，用于在进程退出时删除节点
-//            Runtime.getRuntime().addShutdownHook(new Thread() {
-//                public void run() {
-//                    try {
-//                        client.delete().deletingChildrenIfNeeded().forPath(path);
-//                        client.close();
-//                    } catch (Exception e) {
-//                        e.printStackTrace();
-//                    }
-//                }
-//            });
-
         } catch (Exception e) {
             logger.error("connect to zookeeper failed: {}", e.getMessage());
         }

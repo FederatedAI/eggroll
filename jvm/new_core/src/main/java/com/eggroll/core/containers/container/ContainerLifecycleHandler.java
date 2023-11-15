@@ -24,7 +24,7 @@ public class ContainerLifecycleHandler {
                                      ExecutorService executor) {
         this.container = container;
         this.callbacks = callbacks;
-        this.executor = executor; //Executors.newSingleThreadExecutor();
+        this.executor = executor;
         setStatus(ContainerStatus.Pending, Optional.empty());
     }
 

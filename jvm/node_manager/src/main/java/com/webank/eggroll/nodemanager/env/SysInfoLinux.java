@@ -505,7 +505,7 @@ public class SysInfoLinux extends SysInfo {
                     assert mat.groupCount() >= 16;
 
                     // ignore loopback interfaces
-                    if (mat.group(1).equals("lo")) {
+                    if ("lo".equals(mat.group(1))) {
                         str = in.readLine();
                         continue;
                     }
@@ -770,34 +770,6 @@ public class SysInfoLinux extends SysInfo {
      */
     public static void main(String[] args) {
         SysInfoLinux plugin = new SysInfoLinux();
-//    System.out.println("Physical memory Size (bytes) : "
-//        + plugin.getPhysicalMemorySize());
-//    System.out.println("Total Virtual memory Size (bytes) : "
-//        + plugin.getVirtualMemorySize());
-//    System.out.println("Available Physical memory Size (bytes) : "
-//        + plugin.getAvailablePhysicalMemorySize());
-//    System.out.println("Total Available Virtual memory Size (bytes) : "
-//        + plugin.getAvailableVirtualMemorySize());
-//    System.out.println("Number of Processors : " + plugin.getNumProcessors());
-//    System.out.println("CPU frequency (kHz) : " + plugin.getCpuFrequency());
-//    System.out.println("Cumulative CPU time (ms) : " +
-//            plugin.getCumulativeCpuTime());
-//    System.out.println("Total network read (bytes) : "
-//            + plugin.getNetworkBytesRead());
-//    System.out.println("Total network written (bytes) : "
-//            + plugin.getNetworkBytesWritten());
-//    System.out.println("Total storage read (bytes) : "
-//            + plugin.getStorageBytesRead());
-//    System.out.println("Total storage written (bytes) : "
-//            + plugin.getStorageBytesWritten());
-//    try {
-//      // Sleep so we can compute the CPU usage
-//      Thread.sleep(500L);
-//    } catch (InterruptedException e) {
-//      // do nothing
-//    }
-//    System.out.println("CPU usage % : " + plugin.getCpuUsagePercentage());
-
         plugin.getProcess(1000);
     }
 

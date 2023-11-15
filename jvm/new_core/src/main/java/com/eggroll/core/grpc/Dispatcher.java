@@ -47,8 +47,6 @@ public class Dispatcher {
         context.setUri(uri);
         try {
             InvokeInfo invokeInfo = uriMap.get(uri);
-
-//            logger.info("request {} invoke {}", uri, invokeInfo);
             if (invokeInfo == null) {
                 logger.info("uri map {}", uriMap);
                 throw new RuntimeException("invalid request : " + uri);

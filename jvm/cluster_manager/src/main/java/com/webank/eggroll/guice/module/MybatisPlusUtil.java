@@ -32,7 +32,6 @@ public class MybatisPlusUtil implements IGenericTypeResolver {
 
         for (int var6 = 0; var6 < var5; ++var6) {
             Type type = var4[var6];
-            // System.err.println(type);
             if (type instanceof ParameterizedType) {
                 Type[] typeArray = ((ParameterizedType) type).getActualTypeArguments();
                 if (ArrayUtils.isNotEmpty(typeArray)) {

@@ -30,40 +30,31 @@ public class RendezvousStoreService {
     }
 
     public RendezvousStoreDestroyResponse destroy(Context context, RendezvousStoreDestroyRequest rendezvousStoreDestroyRequest) {
-//        System.out.println("destroy: " + rendezvousStoreDestroyRequest);
         boolean success = destroyStore(rendezvousStoreDestroyRequest.getPrefix());
         RendezvousStoreDestroyResponse result = new RendezvousStoreDestroyResponse();
         result.setSuccess(success);
-//        System.out.println("destroy: " + rendezvousStoreDestroyRequest + " done, success: " + success);
         return result;
     }
 
     public RendezvousStoreSetResponse set(Context context, RendezvousStoreSetRequest request) {
         WaitableMapStore store = getStore(request.getPrefix());
-//        System.out.println("set: " + request + " to store " + store);
         store.set(new String(request.getKey()), request.getValue());
-//        System.out.println("set: " + request + " done");
         return new RendezvousStoreSetResponse();
     }
 
     public RendezvousStoreGetResponse get(Context context, RendezvousStoreGetRequest request) throws InterruptedException {
-//        System.out.println("get: " + request + " to store " + stores);
         WaitableMapStore store = getStore(request.getPrefix());
         byte[] value = store.get(new String(request.getKey()), request.getTimeout());
         if (value != null) {
-//            System.out.println("get: " + request + " done");
             return new RendezvousStoreGetResponse(value, false);
         } else {
-//            System.out.println("get: " + request + " timeout");
             return new RendezvousStoreGetResponse(new byte[0], true);
         }
     }
 
     public RendezvousStoreAddResponse add(Context context, RendezvousStoreAddRequest request) {
-//        System.out.println("add: " + request + " to store " + stores);
         WaitableMapStore store = getStore(request.getPrefix());
         final long amount = store.add(new String(request.getKey()), request.getAmount());
-//        System.out.println("add: " + request + " done");
         return new RendezvousStoreAddResponse(amount);
     }
 }

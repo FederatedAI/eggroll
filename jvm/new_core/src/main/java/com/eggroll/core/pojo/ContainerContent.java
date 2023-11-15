@@ -53,7 +53,6 @@ public class ContainerContent implements RpcMessage {
     public void deserialize(byte[] data) {
         try {
             Containers.ContainerContent src = Containers.ContainerContent.parseFrom(data);
-//                this.rank = src.getRank();
             this.content = src.getContent().toByteArray();
             this.compressMethod = src.getCompressMethod();
         } catch (Exception e) {
