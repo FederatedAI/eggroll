@@ -1,10 +1,10 @@
 package com.webank.eggroll.nodemanager.processor;
 
-import com.eggroll.core.containers.meta.KillContainersResponse;
-import com.eggroll.core.containers.meta.StartContainersResponse;
-import com.eggroll.core.containers.meta.StopContainersResponse;
-import com.eggroll.core.context.Context;
-import com.eggroll.core.pojo.*;
+import org.fedai.eggroll.core.containers.meta.KillContainersResponse;
+import org.fedai.eggroll.core.containers.meta.StartContainersResponse;
+import org.fedai.eggroll.core.containers.meta.StopContainersResponse;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.pojo.*;
 
 public interface ProcessorManager {
     ErSessionMeta startContainers(Context context, ErSessionMeta sessionMeta);

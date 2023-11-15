@@ -1,10 +1,10 @@
 package com.webank.eggroll.clustermanager.grpc;
 
-import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.grpc.ContextPrepareInterceptor;
-import com.eggroll.core.grpc.ServiceExceptionHandler;
-import com.eggroll.core.postprocessor.ApplicationStartedRunner;
-import com.eggroll.core.utils.FileSystemUtils;
+import org.fedai.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.grpc.ContextPrepareInterceptor;
+import org.fedai.eggroll.core.grpc.ServiceExceptionHandler;
+import org.fedai.eggroll.core.postprocessor.ApplicationStartedRunner;
+import org.fedai.eggroll.core.utils.FileSystemUtils;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;

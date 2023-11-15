@@ -1,22 +1,18 @@
 package com.webank.eggroll.clustermanager.job;
 
 
-import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.context.Context;
-import com.eggroll.core.grpc.CommandClient;
-import com.eggroll.core.pojo.*;
-import com.eggroll.core.utils.NetUtils;
+import org.fedai.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.grpc.CommandClient;
+import org.fedai.eggroll.core.pojo.*;
+import org.fedai.eggroll.core.utils.NetUtils;
 import com.google.inject.Inject;
-import org.apache.commons.collections.CollectionUtils;
 import org.junit.Test;
 
-import javax.sound.midi.Soundbank;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-
-import static com.eggroll.core.grpc.CommandUri.*;
 
 public class TestJobServiceHandler {
 

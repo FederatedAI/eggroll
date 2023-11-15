@@ -1,10 +1,10 @@
 package com.webank.eggroll.clustermanager.store;
 
-import com.eggroll.core.context.Context;
-import com.eggroll.core.grpc.ClusterManagerClient;
-import com.eggroll.core.pojo.ErEndpoint;
-import com.eggroll.core.pojo.ErStore;
-import com.eggroll.core.pojo.ErStoreLocator;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.grpc.ClusterManagerClient;
+import org.fedai.eggroll.core.pojo.ErEndpoint;
+import org.fedai.eggroll.core.pojo.ErStore;
+import org.fedai.eggroll.core.pojo.ErStoreLocator;
 import org.junit.Test;
 
 public class TestStore {

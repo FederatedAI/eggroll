@@ -1,12 +1,11 @@
 package com.webank.eggroll.clustermanager.grpc;
 
-import com.eggroll.core.config.Dict;
-import com.eggroll.core.context.Context;
-import com.eggroll.core.deepspeed.store.*;
-import com.eggroll.core.grpc.AbstractCommandServiceProvider;
-import com.eggroll.core.grpc.Dispatcher;
-import com.eggroll.core.grpc.URI;
-import com.eggroll.core.pojo.*;
+import org.fedai.eggroll.core.config.Dict;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.deepspeed.store.*;
+import org.fedai.eggroll.core.grpc.AbstractCommandServiceProvider;
+import org.fedai.eggroll.core.grpc.Dispatcher;
+import org.fedai.eggroll.core.grpc.URI;
 import com.google.gson.Gson;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -17,12 +16,11 @@ import com.webank.eggroll.clustermanager.dao.impl.StoreCrudOperator;
 import com.webank.eggroll.clustermanager.job.JobServiceHandler;
 import com.webank.eggroll.clustermanager.processor.DefaultProcessorManager;
 import com.webank.eggroll.clustermanager.session.DefaultSessionManager;
+import org.fedai.eggroll.core.pojo.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-
-import static com.eggroll.core.grpc.CommandUri.*;
 
 @Singleton
 public class CommandServiceProvider extends AbstractCommandServiceProvider {
@@ -54,7 +52,7 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     }
 
     @URI(value= nodeHeartbeat)
-    public  ErNodeHeartbeat nodeHeartbeat(Context context ,ErNodeHeartbeat  erNodeHeartbeat){
+    public ErNodeHeartbeat nodeHeartbeat(Context context , ErNodeHeartbeat  erNodeHeartbeat){
         context.setNodeId(erNodeHeartbeat.getNode().getId().toString());
         context.putLogData(Dict.STATUS,erNodeHeartbeat.getNode().getStatus());
        return  clusterManagerService.nodeHeartbeat(context,erNodeHeartbeat);
@@ -97,7 +95,7 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     }
 
     @URI(value = getStoreFromNamespace)
-    public ErStoreList getStoreFromNamespace(Context context ,ErStore erStore) {
+    public ErStoreList getStoreFromNamespace(Context context , ErStore erStore) {
         return storeCrudOperator.getStoreFromNamespace(erStore);
     }
 
@@ -112,7 +110,7 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     }
 
     @URI(value = heartbeat)
-    public ErProcessor heartbeat(Context context ,ErProcessor erProcessor) {
+    public ErProcessor heartbeat(Context context , ErProcessor erProcessor) {
         context.setSessionId(erProcessor.getSessionId());
         context.setProcessorId(erProcessor.getId().toString());
         context.putLogData(Dict.STATUS,erProcessor.getStatus());
@@ -160,7 +158,7 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     }
 
     @URI(value = killJob)
-    public KillJobResponse killJob(Context context ,KillJobRequest request){
+    public KillJobResponse killJob(Context context , KillJobRequest request){
 
         Gson gson = new Gson();
         String reqStr = gson.toJson(request);
@@ -195,17 +193,17 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     }
 
     @URI(value = rendezvousSet)
-    public RendezvousStoreSetResponse rendezvousSet(Context context ,RendezvousStoreSetRequest request){
+    public RendezvousStoreSetResponse rendezvousSet(Context context , RendezvousStoreSetRequest request){
         return rendezvousStoreService.set(context,request);
     }
 
     @URI(value = rendezvousGet)
-    public RendezvousStoreGetResponse rendezvousGet(Context context ,RendezvousStoreGetRequest request) throws InterruptedException {
+    public RendezvousStoreGetResponse rendezvousGet(Context context , RendezvousStoreGetRequest request) throws InterruptedException {
         return rendezvousStoreService.get(context,request);
     }
 
     @URI(value = checkResourceEnough)
-    public CheckResourceEnoughResponse checkResourceEnough(Context context ,CheckResourceEnoughRequest request) throws InterruptedException {
+    public CheckResourceEnoughResponse checkResourceEnough(Context context , CheckResourceEnoughRequest request) throws InterruptedException {
         return clusterResourceManager.checkResourceEnoughForFlow(context, request);
     }
 

@@ -1,6 +1,6 @@
 package com.webank.eggroll.nodemanager.pojo;
 
-import com.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.config.MetaInfo;
 import com.webank.eggroll.nodemanager.meta.NodeManagerMeta;
 import lombok.Data;
 

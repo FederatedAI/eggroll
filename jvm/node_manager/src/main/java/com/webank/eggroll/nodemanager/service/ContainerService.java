@@ -1,10 +1,9 @@
 package com.webank.eggroll.nodemanager.service;
 
-import com.eggroll.core.config.Dict;
-import com.eggroll.core.context.Context;
-import com.eggroll.core.pojo.ErProcessor;
-import com.eggroll.core.pojo.ErSessionMeta;
-import com.eggroll.core.utils.JsonUtil;
+import org.fedai.eggroll.core.config.Dict;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.pojo.ErProcessor;
+import org.fedai.eggroll.core.pojo.ErSessionMeta;
 import com.google.inject.Singleton;
 import com.webank.eggroll.nodemanager.meta.NodeManagerMeta;
 import com.webank.eggroll.nodemanager.pojo.ContainerParam;

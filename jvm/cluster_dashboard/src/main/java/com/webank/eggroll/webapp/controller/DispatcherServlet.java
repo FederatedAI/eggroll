@@ -1,6 +1,6 @@
 package com.webank.eggroll.webapp.controller;
 
-import com.eggroll.core.invoke.InvokeInfo;
+import org.fedai.eggroll.core.invoke.InvokeInfo;
 import com.google.inject.Singleton;
 import com.webank.eggroll.webapp.global.ErrorCode;
 import com.webank.eggroll.webapp.interfaces.ApiMethod;

@@ -1,15 +1,15 @@
 package com.webank.eggroll.clustermanager.job;
 
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-import com.eggroll.core.config.Dict;
-import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.constant.*;
-import com.eggroll.core.context.Context;
-import com.eggroll.core.exceptions.ErSessionException;
-import com.eggroll.core.grpc.NodeManagerClient;
-import com.eggroll.core.pojo.*;
-import com.eggroll.core.utils.JsonUtil;
-import com.eggroll.core.utils.LockUtils;
+import org.fedai.eggroll.core.config.Dict;
+import org.fedai.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.constant.*;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.exceptions.ErSessionException;
+import org.fedai.eggroll.core.grpc.NodeManagerClient;
+import org.fedai.eggroll.core.pojo.*;
+import org.fedai.eggroll.core.utils.JsonUtil;
+import org.fedai.eggroll.core.utils.LockUtils;
 import com.google.gson.Gson;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;

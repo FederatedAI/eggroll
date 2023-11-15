@@ -1,12 +1,10 @@
 package com.webank.eggroll.guice.module;
 
-import com.baomidou.mybatisplus.core.mapper.Mapper;
 import com.baomidou.mybatisplus.core.toolkit.reflect.IGenericTypeResolver;
 import com.baomidou.mybatisplus.core.toolkit.reflect.SpringReflectionHelper;
-import com.eggroll.core.utils.Generics;
+import org.fedai.eggroll.core.utils.Generics;
 import com.webank.eggroll.clustermanager.dao.impl.NodeResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ServiceImpl;
-import com.webank.eggroll.clustermanager.dao.mapper.NodeResourceMapper;
 import org.apache.commons.lang3.ArrayUtils;
 
 import java.lang.reflect.ParameterizedType;

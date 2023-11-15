@@ -1,15 +1,15 @@
 package com.webank.eggroll.nodemanager.service;
 
-import com.eggroll.core.config.Dict;
-import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.context.Context;
-import com.eggroll.core.grpc.ClusterManagerClient;
-import com.eggroll.core.pojo.ErEndpoint;
-import com.eggroll.core.pojo.ErNodeHeartbeat;
-import com.eggroll.core.pojo.ErResource;
-import com.eggroll.core.pojo.ErServerNode;
-import com.eggroll.core.postprocessor.ApplicationStartedRunner;
-import com.eggroll.core.utils.NetUtils;
+import org.fedai.eggroll.core.config.Dict;
+import org.fedai.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.grpc.ClusterManagerClient;
+import org.fedai.eggroll.core.pojo.ErEndpoint;
+import org.fedai.eggroll.core.pojo.ErNodeHeartbeat;
+import org.fedai.eggroll.core.pojo.ErResource;
+import org.fedai.eggroll.core.pojo.ErServerNode;
+import org.fedai.eggroll.core.postprocessor.ApplicationStartedRunner;
+import org.fedai.eggroll.core.utils.NetUtils;
 import com.google.inject.Singleton;
 import com.webank.eggroll.nodemanager.env.SysInfoLinux;
 import com.webank.eggroll.nodemanager.meta.NodeManagerMeta;

@@ -1,11 +1,11 @@
 package com.webank.eggroll.nodemanager;
 
-import com.eggroll.core.boostrap.CommonBoostrap;
-import com.eggroll.core.config.Dict;
-import com.eggroll.core.config.ExtendEnvConf;
-import com.eggroll.core.postprocessor.ApplicationStartedRunnerUtils;
-import com.eggroll.core.utils.CommandArgsUtils;
-import com.eggroll.core.utils.PropertiesUtil;
+import org.fedai.eggroll.core.boostrap.CommonBoostrap;
+import org.fedai.eggroll.core.config.Dict;
+import org.fedai.eggroll.core.config.ExtendEnvConf;
+import org.fedai.eggroll.core.postprocessor.ApplicationStartedRunnerUtils;
+import org.fedai.eggroll.core.utils.CommandArgsUtils;
+import org.fedai.eggroll.core.utils.PropertiesUtil;
 import com.google.common.collect.Lists;
 import com.google.inject.Guice;
 import com.google.inject.Injector;

@@ -1,6 +1,6 @@
 package com.webank.eggroll.webapp.model;
 
-import com.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.config.MetaInfo;
 import com.google.inject.Singleton;
 import com.google.inject.servlet.ServletModule;
 import com.webank.eggroll.clustermanager.register.ZooKeeperRegistration;

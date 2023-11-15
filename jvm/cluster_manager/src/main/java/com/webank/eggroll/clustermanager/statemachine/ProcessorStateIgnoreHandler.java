@@ -1,7 +1,7 @@
 package com.webank.eggroll.clustermanager.statemachine;
 
-import com.eggroll.core.context.Context;
-import com.eggroll.core.pojo.ErProcessor;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.pojo.ErProcessor;
 import com.google.inject.Singleton;
 
 @Singleton

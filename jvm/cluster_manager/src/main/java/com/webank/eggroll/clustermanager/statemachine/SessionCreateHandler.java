@@ -1,14 +1,14 @@
 package com.webank.eggroll.clustermanager.statemachine;
 
-import com.eggroll.core.config.Dict;
-import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.constant.*;
-import com.eggroll.core.context.Context;
-import com.eggroll.core.grpc.NodeManagerClient;
-import com.eggroll.core.pojo.ErEndpoint;
-import com.eggroll.core.pojo.ErProcessor;
-import com.eggroll.core.pojo.ErServerNode;
-import com.eggroll.core.pojo.ErSessionMeta;
+import org.fedai.eggroll.core.config.Dict;
+import org.fedai.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.constant.*;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.grpc.NodeManagerClient;
+import org.fedai.eggroll.core.pojo.ErEndpoint;
+import org.fedai.eggroll.core.pojo.ErProcessor;
+import org.fedai.eggroll.core.pojo.ErServerNode;
+import org.fedai.eggroll.core.pojo.ErSessionMeta;
 import com.google.common.collect.Lists;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.entity.SessionMain;

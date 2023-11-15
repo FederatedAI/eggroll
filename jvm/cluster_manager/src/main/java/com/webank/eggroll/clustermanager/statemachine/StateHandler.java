@@ -1,7 +1,7 @@
 package com.webank.eggroll.clustermanager.statemachine;
 
-import com.eggroll.core.config.Dict;
-import com.eggroll.core.context.Context;
+import org.fedai.eggroll.core.config.Dict;
+import org.fedai.eggroll.core.context.Context;
 
 
 interface StateHandler<T> {

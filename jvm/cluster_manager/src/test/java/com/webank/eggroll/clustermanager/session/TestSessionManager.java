@@ -1,11 +1,10 @@
 package com.webank.eggroll.clustermanager.session;
 
-import com.eggroll.core.config.Dict;
-import com.eggroll.core.context.Context;
-import com.eggroll.core.grpc.ClusterManagerClient;
-import com.eggroll.core.pojo.ErEndpoint;
-import com.eggroll.core.pojo.ErSessionMeta;
-import com.webank.eggroll.clustermanager.grpc.GrpcServer;
+import org.fedai.eggroll.core.config.Dict;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.grpc.ClusterManagerClient;
+import org.fedai.eggroll.core.pojo.ErEndpoint;
+import org.fedai.eggroll.core.pojo.ErSessionMeta;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

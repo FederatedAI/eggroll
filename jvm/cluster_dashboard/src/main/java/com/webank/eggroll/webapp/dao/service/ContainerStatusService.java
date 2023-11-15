@@ -1,14 +1,14 @@
 package com.webank.eggroll.webapp.dao.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.eggroll.core.config.Dict;
-import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.constant.ProcessorType;
-import com.eggroll.core.context.Context;
-import com.eggroll.core.grpc.ClusterManagerClient;
-import com.eggroll.core.grpc.NodeManagerClient;
-import com.eggroll.core.pojo.*;
-import com.eggroll.core.utils.JsonUtil;
+import org.fedai.eggroll.core.config.Dict;
+import org.fedai.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.constant.ProcessorType;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.grpc.ClusterManagerClient;
+import org.fedai.eggroll.core.grpc.NodeManagerClient;
+import org.fedai.eggroll.core.pojo.*;
+import org.fedai.eggroll.core.utils.JsonUtil;
 import com.google.gson.Gson;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;

@@ -1,6 +1,6 @@
 package com.webank.eggroll.webapp.controller;
 
-import com.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.config.MetaInfo;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.webapp.entity.UserInfo;

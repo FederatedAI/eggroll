@@ -2,8 +2,8 @@ package com.webank.eggroll.webapp.dao.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-import com.eggroll.core.pojo.ErProcessor;
-import com.eggroll.core.pojo.ErResource;
+import org.fedai.eggroll.core.pojo.ErProcessor;
+import org.fedai.eggroll.core.pojo.ErResource;
 import com.google.common.collect.Lists;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.impl.EggRollBaseServiceImpl;

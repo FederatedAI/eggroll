@@ -1,15 +1,14 @@
 package com.webank.eggroll.clustermanager.dao.impl;
 
 
-import com.eggroll.core.pojo.FifoBroker;
-import com.eggroll.core.pojo.QueueViewResponse;
-import com.eggroll.core.pojo.ResourceApplication;
+import org.fedai.eggroll.core.pojo.FifoBroker;
+import org.fedai.eggroll.core.pojo.QueueViewResponse;
+import org.fedai.eggroll.core.pojo.ResourceApplication;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.cluster.ClusterResourceManager;
 
 import java.util.ArrayList;
-import java.util.List;
 
 @Singleton
 public class QueueViewService {

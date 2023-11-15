@@ -1,10 +1,10 @@
 package com.webank.eggroll.clustermanager.statemachine;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.eggroll.core.config.Dict;
-import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.context.Context;
-import com.eggroll.core.pojo.ErProcessor;
+import org.fedai.eggroll.core.config.Dict;
+import org.fedai.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.pojo.ErProcessor;
 import com.google.inject.Inject;
 import com.webank.eggroll.clustermanager.dao.impl.SessionProcessorService;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;

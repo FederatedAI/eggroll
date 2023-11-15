@@ -1,7 +1,7 @@
 package com.webank.eggroll.nodemanager.extend;
 
-import com.eggroll.core.grpc.GrpcConnectionFactory;
-import com.eggroll.core.pojo.ErEndpoint;
+import org.fedai.eggroll.core.grpc.GrpcConnectionFactory;
+import org.fedai.eggroll.core.pojo.ErEndpoint;
 import com.webank.eggroll.core.transfer.Extend;
 import com.webank.eggroll.core.transfer.ExtendTransferServerGrpc;
 import io.grpc.ManagedChannel;

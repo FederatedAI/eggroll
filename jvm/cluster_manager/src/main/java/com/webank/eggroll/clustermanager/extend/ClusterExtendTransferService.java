@@ -1,9 +1,9 @@
 package com.webank.eggroll.clustermanager.extend;
 
-import com.eggroll.core.exceptions.RankNotExistException;
-import com.eggroll.core.grpc.GrpcConnectionFactory;
-import com.eggroll.core.pojo.ErEndpoint;
-import com.eggroll.core.pojo.ErServerNode;
+import org.fedai.eggroll.core.exceptions.RankNotExistException;
+import org.fedai.eggroll.core.grpc.GrpcConnectionFactory;
+import org.fedai.eggroll.core.pojo.ErEndpoint;
+import org.fedai.eggroll.core.pojo.ErServerNode;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;

@@ -1,8 +1,8 @@
 package com.webank.eggroll.clustermanager.dao.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.eggroll.core.pojo.ErEndpoint;
-import com.eggroll.core.pojo.ErServerNode;
+import org.fedai.eggroll.core.pojo.ErEndpoint;
+import org.fedai.eggroll.core.pojo.ErServerNode;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;

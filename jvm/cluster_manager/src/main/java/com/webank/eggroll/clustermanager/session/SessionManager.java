@@ -1,10 +1,9 @@
 package com.webank.eggroll.clustermanager.session;
 
 
-import com.eggroll.core.context.Context;
-import com.eggroll.core.pojo.ErProcessor;
-import com.eggroll.core.pojo.ErSessionMeta;
-import com.eggroll.core.pojo.QueueViewResponse;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.pojo.ErSessionMeta;
+import org.fedai.eggroll.core.pojo.QueueViewResponse;
 
 
 public interface SessionManager {

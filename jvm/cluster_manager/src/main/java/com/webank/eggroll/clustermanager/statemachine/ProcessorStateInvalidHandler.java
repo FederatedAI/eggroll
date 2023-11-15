@@ -1,11 +1,10 @@
 package com.webank.eggroll.clustermanager.statemachine;
 
-import com.eggroll.core.context.Context;
-import com.eggroll.core.pojo.ErProcessor;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.pojo.ErProcessor;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.cluster.ClusterManagerService;
-import com.webank.eggroll.clustermanager.processor.DefaultProcessorManager;
 
 @Singleton
 public class ProcessorStateInvalidHandler extends AbstractProcessorStateHandler {

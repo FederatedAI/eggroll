@@ -1,6 +1,6 @@
 package com.webank.eggroll.nodemanager.service;
 
-import com.eggroll.core.config.Dict;
+import org.fedai.eggroll.core.config.Dict;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.webank.eggroll.guice.module.NodeModule;

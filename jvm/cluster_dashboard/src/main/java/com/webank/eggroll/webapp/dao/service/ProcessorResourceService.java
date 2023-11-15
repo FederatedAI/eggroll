@@ -1,8 +1,8 @@
 package com.webank.eggroll.webapp.dao.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.eggroll.core.pojo.ErProcessor;
-import com.eggroll.core.pojo.ErResource;
+import org.fedai.eggroll.core.pojo.ErProcessor;
+import org.fedai.eggroll.core.pojo.ErResource;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.impl.EggRollBaseServiceImpl;
 import com.webank.eggroll.clustermanager.entity.ProcessorResource;

@@ -2,16 +2,15 @@ package com.webank.eggroll.clustermanager.dao.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.eggroll.core.pojo.ErResource;
-import com.eggroll.core.pojo.ErSessionMeta;
+import org.fedai.eggroll.core.pojo.ErResource;
+import org.fedai.eggroll.core.pojo.ErSessionMeta;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.mapper.SessionProcessorMapper;
 import com.webank.eggroll.clustermanager.entity.ProcessorResource;
-import com.webank.eggroll.clustermanager.entity.SessionOption;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
-import com.eggroll.core.pojo.ErEndpoint;
-import com.eggroll.core.pojo.ErProcessor;
+import org.fedai.eggroll.core.pojo.ErEndpoint;
+import org.fedai.eggroll.core.pojo.ErProcessor;
 import org.apache.commons.lang3.StringUtils;
 
 
