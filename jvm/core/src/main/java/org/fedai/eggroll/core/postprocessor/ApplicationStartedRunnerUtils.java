@@ -20,7 +20,7 @@ public class ApplicationStartedRunnerUtils {
         List<ApplicationStartedRunner> implementations = new ArrayList<>();
         Set<Class<? extends ApplicationStartedRunner>> subClasses = new HashSet<>();
         // add core
-        String corePackage = "com.eggroll.core";
+        String corePackage = "org.fedai.eggroll.core";
         if (!packages.contains(corePackage)) {
             packages.add(corePackage);
         }

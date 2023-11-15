@@ -2,7 +2,7 @@
 //
 //import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 //import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-//import com.eggroll.core.postprocessor.ApplicationStartedRunner;
+//import org.fedai.core.postprocessor.ApplicationStartedRunner;
 //import com.google.inject.Inject;
 //import com.google.inject.Singleton;
 //import org.fedai.impl.dao.clustermanager.eggroll.StoreLocatorService;

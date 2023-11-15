@@ -3,7 +3,7 @@
 //// (powered by FernFlower decompiler)
 ////
 //
-//package com.eggroll.core.utils;
+//package org.fedai.core.utils;
 //
 //import java.io.IOException;
 //import java.io.ObjectInputStream;

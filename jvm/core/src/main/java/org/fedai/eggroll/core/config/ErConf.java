@@ -1,4 +1,4 @@
-//package com.eggroll.core.config;
+//package org.fedai.core.config;
 //
 //import java.io.*;
 //import java.util.HashMap;

@@ -1,8 +1,8 @@
-//package com.eggroll.core.pojo;
+//package org.fedai.core.pojo;
 //
-//import com.eggroll.core.config.Dict;
-//import com.eggroll.core.config.ErConf;
-//import com.eggroll.core.config.MetaInfo;
+//import org.fedai.core.config.Dict;
+//import org.fedai.core.config.ErConf;
+//import org.fedai.core.config.MetaInfo;
 //
 //import java.util.Map;
 //import java.util.Properties;
