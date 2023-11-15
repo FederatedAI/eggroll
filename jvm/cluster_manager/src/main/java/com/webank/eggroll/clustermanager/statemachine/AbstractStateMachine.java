@@ -1,9 +1,9 @@
 package com.webank.eggroll.clustermanager.statemachine;
 
 
-import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.context.Context;
-import com.eggroll.core.utils.LockUtils;
+import org.fedai.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.utils.LockUtils;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import org.mybatis.guice.transactional.Transactional;

@@ -1,7 +1,7 @@
 package com.webank.eggroll.clustermanager.statemachine;
 
-import com.eggroll.core.context.Context;
-import com.eggroll.core.pojo.ErSessionMeta;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.pojo.ErSessionMeta;
 import com.google.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -1,14 +1,13 @@
 package com.webank.eggroll.clustermanager.cluster;
 
-import com.eggroll.core.constant.ServerNodeStatus;
-import com.eggroll.core.constant.ServerNodeTypes;
-import com.eggroll.core.context.Context;
-import com.eggroll.core.pojo.ErEndpoint;
-import com.eggroll.core.pojo.ErNodeHeartbeat;
-import com.eggroll.core.pojo.ErServerNode;
+import org.fedai.eggroll.core.constant.ServerNodeStatus;
+import org.fedai.eggroll.core.constant.ServerNodeTypes;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.pojo.ErEndpoint;
+import org.fedai.eggroll.core.pojo.ErNodeHeartbeat;
+import org.fedai.eggroll.core.pojo.ErServerNode;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 
 public class TestClusterManagerService {

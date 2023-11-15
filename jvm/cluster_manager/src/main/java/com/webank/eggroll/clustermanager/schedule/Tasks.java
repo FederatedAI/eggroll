@@ -1,14 +1,14 @@
 package com.webank.eggroll.clustermanager.schedule;
 
-import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.constant.ProcessorStatus;
-import com.eggroll.core.constant.ServerNodeStatus;
-import com.eggroll.core.constant.SessionStatus;
-import com.eggroll.core.context.Context;
-import com.eggroll.core.grpc.NodeManagerClient;
-import com.eggroll.core.pojo.ErProcessor;
-import com.eggroll.core.pojo.ErServerNode;
-import com.eggroll.core.pojo.ErSessionMeta;
+import org.fedai.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.constant.ProcessorStatus;
+import org.fedai.eggroll.core.constant.ServerNodeStatus;
+import org.fedai.eggroll.core.constant.SessionStatus;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.grpc.NodeManagerClient;
+import org.fedai.eggroll.core.pojo.ErProcessor;
+import org.fedai.eggroll.core.pojo.ErServerNode;
+import org.fedai.eggroll.core.pojo.ErSessionMeta;
 import com.google.common.collect.Lists;
 import com.webank.eggroll.clustermanager.cluster.ClusterManagerService;
 import com.webank.eggroll.clustermanager.cluster.ClusterResourceManager;

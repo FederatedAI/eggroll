@@ -1,8 +1,8 @@
 package com.webank.eggroll.clustermanager.statemachine;
 
-import com.eggroll.core.constant.SessionStatus;
-import com.eggroll.core.context.Context;
-import com.eggroll.core.pojo.ErSessionMeta;
+import org.fedai.eggroll.core.constant.SessionStatus;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.pojo.ErSessionMeta;
 import com.google.inject.Inject;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
@@ -13,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-import java.util.Date;
 import java.util.Map;
 
 public abstract class AbstractSessionStateHandler implements StateHandler<ErSessionMeta> {

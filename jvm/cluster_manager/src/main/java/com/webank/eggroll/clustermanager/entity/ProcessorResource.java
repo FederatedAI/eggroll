@@ -3,7 +3,7 @@ package com.webank.eggroll.clustermanager.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.eggroll.core.pojo.ErResource;
+import org.fedai.eggroll.core.pojo.ErResource;
 
 import java.util.Date;
 

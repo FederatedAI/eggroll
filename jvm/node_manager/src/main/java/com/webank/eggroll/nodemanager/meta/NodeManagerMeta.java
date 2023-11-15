@@ -1,11 +1,11 @@
 package com.webank.eggroll.nodemanager.meta;
 
-import com.eggroll.core.config.Dict;
-import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.constant.StringConstants;
-import com.eggroll.core.utils.FileSystemUtils;
-import com.eggroll.core.utils.JsonUtil;
-import com.eggroll.core.utils.NetUtils;
+import org.fedai.eggroll.core.config.Dict;
+import org.fedai.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.constant.StringConstants;
+import org.fedai.eggroll.core.utils.FileSystemUtils;
+import org.fedai.eggroll.core.utils.JsonUtil;
+import org.fedai.eggroll.core.utils.NetUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.gson.Gson;
 import org.slf4j.Logger;

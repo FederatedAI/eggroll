@@ -7,17 +7,15 @@ package com.webank.eggroll.guice.module;
 
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.extension.MybatisMapWrapperFactory;
-import com.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.config.MetaInfo;
 import com.google.inject.Inject;
 import com.google.inject.ProvisionException;
 
-import com.webank.eggroll.clustermanager.dao.mapper.ServerNodeMapper;
 import edu.umd.cs.findbugs.annotations.Nullable;
 
 import org.apache.ibatis.executor.ErrorContext;
 import org.apache.ibatis.io.ResolverUtil;
 import org.apache.ibatis.logging.log4j2.Log4j2Impl;
-import org.apache.ibatis.logging.stdout.StdOutImpl;
 import org.apache.ibatis.mapping.DatabaseIdProvider;
 import org.apache.ibatis.mapping.Environment;
 import org.apache.ibatis.session.AutoMappingBehavior;

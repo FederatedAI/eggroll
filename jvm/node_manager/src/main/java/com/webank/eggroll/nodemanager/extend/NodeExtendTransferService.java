@@ -1,6 +1,6 @@
 package com.webank.eggroll.nodemanager.extend;
 
-import com.eggroll.core.exceptions.PathNotExistException;
+import org.fedai.eggroll.core.exceptions.PathNotExistException;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.core.transfer.Extend;

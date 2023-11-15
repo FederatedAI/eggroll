@@ -1,7 +1,6 @@
 package com.webank.eggroll.nodemanager.service;
 
-import com.eggroll.core.containers.container.ContainerTrait;
-import com.eggroll.core.containers.container.WorkingDirectoryPreparer;
+import org.fedai.eggroll.core.containers.container.ContainerTrait;
 import com.google.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

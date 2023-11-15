@@ -1,8 +1,8 @@
 package com.webank.eggroll.webapp;
 
-import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.utils.CommandArgsUtils;
-import com.eggroll.core.utils.PropertiesUtil;
+import org.fedai.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.utils.CommandArgsUtils;
+import org.fedai.eggroll.core.utils.PropertiesUtil;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.servlet.GuiceFilter;

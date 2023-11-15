@@ -1,8 +1,8 @@
 package com.webank.eggroll.clustermanager.statemachine;
 
-import com.eggroll.core.constant.ResourceStatus;
-import com.eggroll.core.context.Context;
-import com.eggroll.core.pojo.ErProcessor;
+import org.fedai.eggroll.core.constant.ResourceStatus;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.pojo.ErProcessor;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.impl.SessionProcessorService;

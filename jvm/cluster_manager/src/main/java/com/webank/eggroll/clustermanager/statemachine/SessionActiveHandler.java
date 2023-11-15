@@ -1,9 +1,9 @@
 package com.webank.eggroll.clustermanager.statemachine;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.eggroll.core.constant.SessionStatus;
-import com.eggroll.core.context.Context;
-import com.eggroll.core.pojo.ErSessionMeta;
+import org.fedai.eggroll.core.constant.SessionStatus;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.pojo.ErSessionMeta;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.entity.SessionMain;

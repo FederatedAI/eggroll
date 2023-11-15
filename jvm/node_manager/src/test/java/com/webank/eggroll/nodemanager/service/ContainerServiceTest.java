@@ -1,11 +1,11 @@
 package com.webank.eggroll.nodemanager.service;
 
 
-import com.eggroll.core.config.Dict;
-import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.context.Context;
-import com.eggroll.core.pojo.*;
-import com.eggroll.core.utils.PropertiesUtil;
+import org.fedai.eggroll.core.config.Dict;
+import org.fedai.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.pojo.*;
+import org.fedai.eggroll.core.utils.PropertiesUtil;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.webank.eggroll.guice.module.NodeModule;

@@ -1,8 +1,8 @@
 package com.webank.eggroll.clustermanager.register;
 
-import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.utils.JsonUtil;
-import com.eggroll.core.utils.NetUtils;
+import org.fedai.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.utils.JsonUtil;
+import org.fedai.eggroll.core.utils.NetUtils;
 import com.google.inject.Singleton;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.curator.framework.CuratorFramework;

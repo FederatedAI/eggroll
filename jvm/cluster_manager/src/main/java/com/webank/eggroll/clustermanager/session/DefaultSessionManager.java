@@ -1,15 +1,15 @@
 package com.webank.eggroll.clustermanager.session;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.constant.ServerNodeStatus;
-import com.eggroll.core.constant.ServerNodeTypes;
-import com.eggroll.core.constant.SessionStatus;
-import com.eggroll.core.context.Context;
-import com.eggroll.core.exceptions.ErSessionException;
-import com.eggroll.core.pojo.ErServerNode;
-import com.eggroll.core.pojo.ErSessionMeta;
-import com.eggroll.core.pojo.QueueViewResponse;
+import org.fedai.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.constant.ServerNodeStatus;
+import org.fedai.eggroll.core.constant.ServerNodeTypes;
+import org.fedai.eggroll.core.constant.SessionStatus;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.exceptions.ErSessionException;
+import org.fedai.eggroll.core.pojo.ErServerNode;
+import org.fedai.eggroll.core.pojo.ErSessionMeta;
+import org.fedai.eggroll.core.pojo.QueueViewResponse;
 import com.google.common.collect.Lists;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import static com.eggroll.core.config.MetaInfo.EGGROLL_SESSION_START_TIMEOUT_MS;
+import static org.fedai.eggroll.core.config.MetaInfo.EGGROLL_SESSION_START_TIMEOUT_MS;
 
 
 @Singleton

@@ -1,10 +1,10 @@
 package com.webank.eggroll.clustermanager.statemachine;
 
-import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.constant.SessionStatus;
-import com.eggroll.core.context.Context;
-import com.eggroll.core.exceptions.ErSessionException;
-import com.eggroll.core.pojo.ErSessionMeta;
+import org.fedai.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.constant.SessionStatus;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.exceptions.ErSessionException;
+import org.fedai.eggroll.core.pojo.ErSessionMeta;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;

@@ -1,10 +1,9 @@
 package com.webank.eggroll.clustermanager.schedule;
 
-import javax.inject.Inject;
 import javax.inject.Singleton;
 
 
-import com.eggroll.core.postprocessor.ApplicationStartedRunner;
+import org.fedai.eggroll.core.postprocessor.ApplicationStartedRunner;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
@@ -15,7 +14,7 @@ import org.slf4j.LoggerFactory;
 import java.text.ParseException;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.eggroll.core.config.Dict.SCHEDULE_KEY;
+import static org.fedai.eggroll.core.config.Dict.SCHEDULE_KEY;
 
 
 @Singleton

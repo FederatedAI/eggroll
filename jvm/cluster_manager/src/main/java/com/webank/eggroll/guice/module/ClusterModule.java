@@ -1,7 +1,7 @@
 package com.webank.eggroll.guice.module;
 
 import com.baomidou.mybatisplus.core.toolkit.reflect.GenericTypeUtils;
-import com.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.config.MetaInfo;
 import com.github.pagehelper.PageInterceptor;
 import com.google.inject.AbstractModule;
 import com.google.inject.Key;

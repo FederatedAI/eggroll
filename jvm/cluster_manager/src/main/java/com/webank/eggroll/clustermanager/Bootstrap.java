@@ -1,7 +1,7 @@
 package com.webank.eggroll.clustermanager;
 
-import com.eggroll.core.boostrap.CommonBoostrap;
-import com.eggroll.core.postprocessor.ApplicationStartedRunnerUtils;
+import org.fedai.eggroll.core.boostrap.CommonBoostrap;
+import org.fedai.eggroll.core.postprocessor.ApplicationStartedRunnerUtils;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.webank.eggroll.clustermanager.schedule.Tasks;

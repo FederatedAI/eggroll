@@ -1,16 +1,16 @@
 package com.webank.eggroll.nodemanager.grpc;
 
-import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.containers.meta.KillContainersResponse;
-import com.eggroll.core.containers.meta.StartContainersResponse;
-import com.eggroll.core.containers.meta.StopContainersResponse;
-import com.eggroll.core.context.Context;
-import com.eggroll.core.grpc.AbstractCommandServiceProvider;
-import com.eggroll.core.grpc.Dispatcher;
-import com.eggroll.core.grpc.URI;
-import com.eggroll.core.invoke.InvokeInfo;
-import com.eggroll.core.pojo.*;
-import com.eggroll.core.utils.NetUtils;
+import org.fedai.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.containers.meta.KillContainersResponse;
+import org.fedai.eggroll.core.containers.meta.StartContainersResponse;
+import org.fedai.eggroll.core.containers.meta.StopContainersResponse;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.grpc.AbstractCommandServiceProvider;
+import org.fedai.eggroll.core.grpc.Dispatcher;
+import org.fedai.eggroll.core.grpc.URI;
+import org.fedai.eggroll.core.invoke.InvokeInfo;
+import org.fedai.eggroll.core.pojo.*;
+import org.fedai.eggroll.core.utils.NetUtils;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.nodemanager.processor.DefaultProcessorManager;
@@ -20,8 +20,6 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static com.eggroll.core.grpc.CommandUri.*;
 
 @Singleton
 public class CommandServiceProvider extends AbstractCommandServiceProvider {

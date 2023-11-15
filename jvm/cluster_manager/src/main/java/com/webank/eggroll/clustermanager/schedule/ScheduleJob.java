@@ -8,7 +8,7 @@ import org.quartz.JobExecutionException;
 
 import java.lang.reflect.InvocationTargetException;
 
-import static com.eggroll.core.config.Dict.SCHEDULE_KEY;
+import static org.fedai.eggroll.core.config.Dict.SCHEDULE_KEY;
 
 public class ScheduleJob implements Job {
     @Override
