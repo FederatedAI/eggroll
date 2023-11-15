@@ -206,28 +206,6 @@ public class NetUtils {
         return Optional.empty();
     }
 
-
-//    public static String getLocalIp() {
-//
-//        try {
-//            InetAddress inetAddress = getLocalAddress0("eth0");
-//            if (inetAddress != null) {
-//                return inetAddress.getHostAddress();
-//            } else {
-//                inetAddress = getLocalAddress0("");
-//            }
-//            if (inetAddress != null) {
-//                return inetAddress.getHostAddress();
-//            } else {
-//                throw new RuntimeException("can not get local ip");
-//            }
-//
-//        } catch (Throwable e) {
-//            logger.error(e.getMessage(), e);
-//        }
-//        return "";
-//    }
-
     private static String getIpByEthNum(String ethNum) {
         try {
             Enumeration allNetInterfaces = NetworkInterface.getNetworkInterfaces();
@@ -285,15 +263,12 @@ public class NetUtils {
             localAddress = InetAddress.getLocalHost();
             Optional<InetAddress> addressOp = toValidAddress(localAddress);
             if (addressOp.isPresent()) {
-//                return addressOp.get();
             } else {
                 localAddress = null;
             }
         } catch (Throwable e) {
             e.printStackTrace();
         }
-//        if(StringUtils.isNotEmpty(name)||localAddress.getHostAddress().equals(LOCALHOST_VALUE)) {
-
             try {
                 Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
                 if (null == interfaces) {
@@ -417,17 +392,6 @@ public class NetUtils {
         }
     }
 
-//    public static boolean matchIpExpression(String pattern, String host, int port) throws UnknownHostException {
-//
-//        // if the pattern is subnet format, it will not be allowed to config port param in pattern.
-//        if (pattern.contains("/")) {
-//            CIDRUtils utils = new CIDRUtils(pattern);
-//            return utils.isInRange(host);
-//        }
-//
-//
-//        return matchIpRange(pattern, host, port);
-//    }
 
     /**
      * @param pattern

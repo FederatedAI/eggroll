@@ -37,7 +37,6 @@ public class SessionActiveHandler extends AbstractSessionStateHandler {
     public ErSessionMeta handle(Context context, ErSessionMeta data, String preStateParam, String desStateParam) {
         logger.info("handle session state {} to {}", preStateParam, desStateParam);
         this.sessionMainService.update(new LambdaUpdateWrapper<SessionMain>().eq(SessionMain::getSessionId, data.getId()).set(SessionMain::getStatus, data.getStatus()));
-        // .set(SessionMain::getActiveProcCount,data.getActiveProcCount()));
         return this.sessionMainService.getSession(data.getId(), false, false, false);
     }
 
@@ -45,7 +44,6 @@ public class SessionActiveHandler extends AbstractSessionStateHandler {
     @Override
     public void asynPostHandle(Context context, ErSessionMeta data, String preStateParam, String desStateParam) {
         // 唤醒阻塞进程
-
         sessionManager.wakeUpSession(data.getId());
     }
 

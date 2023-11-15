@@ -30,7 +30,6 @@ import java.util.Properties;
 public class JettyServer {
 
     public static void main(String[] args) throws Exception {
-        //MetaInfo init
         System.setProperty("module", "cluster-manager");
         CommandLine cm = CommandArgsUtils.parseArgs(args);
         String confPath = cm.getOptionValue('c', "./conf/eggroll.properties");

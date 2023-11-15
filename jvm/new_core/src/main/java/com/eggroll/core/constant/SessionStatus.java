@@ -1,16 +1,6 @@
 package com.eggroll.core.constant;
 
 
-//object SessionStatus {
-//        val NEW = "NEW"
-//        val NEW_TIMEOUT = "NEW_TIMEOUT"
-//        val ACTIVE = "ACTIVE"
-//        val CLOSED = "CLOSED"
-//        val KILLED = "KILLED"
-//        val ERROR = "ERROR"
-//        val FINISHED = "FINISHED"
-//        }
-
 public enum SessionStatus {
 
     WAITING_RESOURCE("WAITING_RESOURCE",false),

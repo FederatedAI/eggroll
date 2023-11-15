@@ -33,7 +33,6 @@ public abstract class AbstractProcessorStateHandler implements StateHandler<ErPr
                 return sessionProcessor.toErProcessor();
             } else {
                 logger.error("processor {} is not found", data.getId());
-                //  setIsBreak(context,true);
                 return data;
             }
         }

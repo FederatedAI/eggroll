@@ -22,12 +22,9 @@ public class DefaultProcessorManager {
     Logger logger = LoggerFactory.getLogger(DefaultProcessorManager.class);
     @Inject
     ProcessorStateMachine processorStateMachine;
-    // ConcurrentHashMap<Long,ErProcessor>  residualHeartbeatMap = new ConcurrentHashMap<Long,ErProcessor>();
     Cache<String, ErProcessor> processorHeartBeat = CacheUtil.buildErProcessorCache(1000, 1, TimeUnit.MINUTES);
 
-
     public ErProcessor heartbeat(Context context, ErProcessor proc) {
-//        logger.info("heart beat proc {}",proc);
         ErProcessor previousHeartbeat = processorHeartBeat.asMap().get(proc.getId().toString());
         if (previousHeartbeat == null) {
             processorHeartBeat.asMap().put(proc.getId().toString(), proc);

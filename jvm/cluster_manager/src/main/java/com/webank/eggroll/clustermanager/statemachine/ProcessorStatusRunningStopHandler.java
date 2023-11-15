@@ -26,24 +26,6 @@ public class ProcessorStatusRunningStopHandler extends AbstractProcessorStateHan
     @Override
     public ErProcessor handle(Context context, ErProcessor data, String preStateParam, String desStateParam) {
         String line = preStateParam + "_" + desStateParam;
-//        switch (line){
-//            case "NEW_RUNNING":
-//                updateState(data,desStateParam);
-//                if(this.checkNeedChangeResource(data)) {
-//                    resourceStateMachine.changeStatus(context, data, ResourceStatus.PRE_ALLOCATED.getValue(), ResourceStatus.ALLOCATED.getValue());
-//                }
-//
-//
-//                break;
-//            case "NEW_STOPPED":
-//            case "NEW_KILLED":
-//            case "NEW_ERROR":
-//                updateState(data,desStateParam);
-//                if(this.checkNeedChangeResource(data)) {
-//                    resourceStateMachine.changeStatus(context, data,  ResourceStatus.PRE_ALLOCATED.getValue(),ResourceStatus.ALLOCATE_FAILED.getValue());
-//                }
-//                break;
-//        }
         updateState(data, desStateParam);
         if (this.checkNeedChangeResource(data)) {
             resourceStateMachine.changeStatus(context, data, ResourceStatus.ALLOCATED.getValue(), ResourceStatus.RETURN.getValue());
@@ -55,13 +37,6 @@ public class ProcessorStatusRunningStopHandler extends AbstractProcessorStateHan
         }
         return result.toErProcessor();
     }
-
-//    void   updateState(ErProcessor  erProcessor,String desStateParam){
-//        SessionProcessor  sessionProcessor =  new SessionProcessor();
-//        sessionProcessor.setStatus(desStateParam);
-//        sessionProcessor.setProcessorId(erProcessor.getId());
-//        this.processorService.updateById(sessionProcessor);
-//    }
 
 
 }

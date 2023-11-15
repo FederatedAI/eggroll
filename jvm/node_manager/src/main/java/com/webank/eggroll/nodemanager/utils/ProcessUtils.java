@@ -47,7 +47,6 @@ public class ProcessUtils {
             }
             return b.toString().contains(processId);
         } catch (IOException e) {
-            //log.error(processId, e);
         } finally {
             if (process != null) {
                 process.destroy();

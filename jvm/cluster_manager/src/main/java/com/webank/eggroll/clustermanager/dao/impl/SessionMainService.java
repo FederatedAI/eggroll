@@ -54,7 +54,6 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
 
     public boolean updateSessionMainActiveCount(String sessionId) {
         List<ErProcessor> processors = sessionProcessorService.getProcessorBySession(sessionId, false);
-        logger.info("=============  {}", processors);
         long activeCount = 0;
         for (int i = 0; i < processors.size(); i++) {
             ErProcessor p = processors.get(i);
@@ -62,7 +61,7 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
                 activeCount = activeCount + 1;
             }
         }
-        logger.info("total {} active {}", processors.size(), activeCount);
+        logger.info("updateSessionMainActiveCount, total {} active {}", processors.size(), activeCount);
         UpdateWrapper<SessionMain> updateWrapper = new UpdateWrapper<>();
         updateWrapper.lambda()
                 .set(SessionMain::getActiveProcCount, activeCount)
@@ -210,29 +209,6 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
 
     @Transactional
     public void registerWithResource(ErSessionMeta erSessionMeta) {
-//        this.removeById(erSessionMeta.getId());
-//        sessionOptionService.remove(new QueryWrapper<SessionOption>().lambda().eq(SessionOption::getSessionId,erSessionMeta.getId()));
-//        sessionProcessorService.remove(new QueryWrapper<SessionProcessor>().lambda().eq(SessionProcessor::getSessionId,erSessionMeta.getId()));
-
-//        SessionMain sessionMain = new SessionMain();
-//        sessionMain.setSessionId(erSessionMeta.getId());
-//        sessionMain.setName(erSessionMeta.getName());
-//        sessionMain.setStatus(erSessionMeta.getStatus());
-//        sessionMain.setTag(erSessionMeta.getTag());
-//        sessionMain.setTotalProcCount(erSessionMeta.getTotalProcCount());
-//        sessionMain.setActiveProcCount(0);
-//        this.save(sessionMain);
-//
-//        Map<String, String> opts = erSessionMeta.getOptions();
-//        if(opts!=null){
-//            opts.forEach((k,v)->{
-//                SessionOption sessionOption = new SessionOption();
-//                sessionOption.setSessionId(erSessionMeta.getId());
-//                sessionOption.setName(k);
-//                sessionOption.setData(v);
-//                sessionOptionService.save(sessionOption);
-//            });
-//        }
         Context context = new Context();
         context.putData(Dict.KEY_PROCESSOR_TYPE, ProcessorType.DeepSpeed.name());
         sessionStateMachine.changeStatus(context, erSessionMeta, SessionStatus.WAITING_RESOURCE.name(), SessionStatus.NEW.name());
