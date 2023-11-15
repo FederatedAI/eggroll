@@ -44,9 +44,8 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
 
 
     private Cache<String, ReentrantLock> sessionLockCache = CacheBuilder.newBuilder()
-            .maximumSize(100)
-            // 不设置过期，由定时任务判断状态再去清理
-            .expireAfterWrite(Long.MAX_VALUE, TimeUnit.NANOSECONDS)
+            .maximumSize(1024)
+            .expireAfterWrite(MetaInfo.EGGROLL_SESSION_MAX_LIVE_MS, TimeUnit.MILLISECONDS)
             .build();
 
     private FifoBroker<ResourceApplication> applicationQueue = new FifoBroker<>();
