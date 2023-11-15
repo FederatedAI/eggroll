@@ -246,7 +246,7 @@ public class StoreCrudOperator {
     @Transactional
     public ErStore doDeleteStore(ErStore input) {
         ErStoreLocator inputStoreLocator = input.getStoreLocator();
-        ErStoreLocator outputStoreLocator = null;
+        ErStoreLocator outputStoreLocator;
         if ("*".equals(inputStoreLocator.getName())) {
             UpdateWrapper<StoreLocator> updateWrapper = new UpdateWrapper<>();
             updateWrapper.lambda().setSql("name = concat(name, " + System.currentTimeMillis() + ")")

@@ -2,8 +2,7 @@ package com.webank.eggroll.webapp.utils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.webank.eggroll.clustermanager.entity.SessionMain;
-import com.webank.eggroll.webapp.entity.UserInfo;
+import com.webank.eggroll.webapp.entity.UserDTO;
 import com.webank.eggroll.webapp.global.ErrorCode;
 import com.webank.eggroll.webapp.model.ResponseResult;
 
@@ -14,7 +13,7 @@ import java.util.List;
 
 public class RequestUtils {
 
-    public static UserInfo extractUserCredentials(HttpServletRequest request) throws IOException {
+    public static UserDTO extractUserCredentials(HttpServletRequest request) throws IOException {
         StringBuilder requestBody = new StringBuilder();
         String line;
 
@@ -32,7 +31,7 @@ public class RequestUtils {
         String username = jsonNode.get("username").asText();
         String password = jsonNode.get("password").asText();
 
-        return new UserInfo(username, password);
+        return new UserDTO(username, password);
     }
 
     public static <T> ResponseResult<List<T>> isResourceExist(List<T> resources) {
