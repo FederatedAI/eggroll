@@ -1,6 +1,7 @@
 package com.webank.eggroll.clustermanager.statemachine;
 
 
+import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.utils.LockUtils;
 import com.google.common.cache.Cache;
@@ -22,9 +23,8 @@ public abstract class AbstractStateMachine<T> {
     public static final String IGNORE = "IGNORE";
 
     Cache<String, ReentrantLock> stateLockCache = CacheBuilder.newBuilder()
-            .maximumSize(1000)
-            // 可以设置为session的超时时间
-            .expireAfterWrite(Long.MAX_VALUE, TimeUnit.NANOSECONDS)
+            .maximumSize(3000)
+            .expireAfterWrite(MetaInfo.EGGROLL_SESSION_MAX_LIVE_MS, TimeUnit.MILLISECONDS)
             .build();
 
     ConcurrentHashMap<String, StateHandler<T>> statueChangeHandlerMap = new ConcurrentHashMap<>();

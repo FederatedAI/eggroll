@@ -1,5 +1,7 @@
 package com.webank.eggroll.clustermanager.cluster;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.constant.ProcessorStatus;
@@ -30,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -68,7 +71,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
     public static Map<Long, ErProcessor> residualHeartbeatMap = new ConcurrentHashMap<>();
     Cache<Long, ReentrantLock> heartbeatLockCache = CacheBuilder.newBuilder()
             .maximumSize(100)
-            .expireAfterAccess(MetaInfo.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL * 5, TimeUnit.SECONDS)
+            .expireAfterAccess(MetaInfo.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL * 10, TimeUnit.MILLISECONDS)
             .build();
 
     public void addResidualHeartbeat(ErProcessor erProcessor) {
@@ -256,7 +259,18 @@ public class ClusterManagerService implements ApplicationStartedRunner {
 
 
     @Override
-    public void run(String[] args) throws Exception {
+    public void run(String[] args) {
+        //delete cluster manager
+        ServerNode cluster = new ServerNode();
+        cluster.setHost(MetaInfo.CONFKEY_CLUSTER_MANAGER_HOST);
+        cluster.setPort(MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT);
+        cluster.setNodeType(Dict.CLUSTER_MANAGER);
+        serverNodeService.remove(new QueryWrapper<>(cluster));
 
+        //insert clustermanager
+        cluster.setStatus(Dict.HEALTHY);
+        cluster.setServerClusterId(0L);
+        cluster.setLastHeartbeatAt(new Date());
+        serverNodeService.save(cluster);
     }
 }
