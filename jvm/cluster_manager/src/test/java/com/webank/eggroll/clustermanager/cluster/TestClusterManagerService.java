@@ -1,5 +1,6 @@
 package com.webank.eggroll.clustermanager.cluster;
 
+import org.fedai.eggroll.clustermanager.cluster.ClusterManagerService;
 import org.fedai.eggroll.core.constant.ServerNodeStatus;
 import org.fedai.eggroll.core.constant.ServerNodeTypes;
 import org.fedai.eggroll.core.context.Context;

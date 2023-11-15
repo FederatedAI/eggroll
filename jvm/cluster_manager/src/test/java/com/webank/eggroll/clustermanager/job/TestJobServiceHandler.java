@@ -1,6 +1,7 @@
 package com.webank.eggroll.clustermanager.job;
 
 
+import org.fedai.eggroll.clustermanager.job.JobServiceHandler;
 import org.fedai.eggroll.core.config.MetaInfo;
 import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.grpc.CommandClient;
