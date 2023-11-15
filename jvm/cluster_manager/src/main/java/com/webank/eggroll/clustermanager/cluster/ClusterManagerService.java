@@ -1,6 +1,5 @@
 package com.webank.eggroll.clustermanager.cluster;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.config.MetaInfo;
@@ -52,8 +51,8 @@ public class ClusterManagerService implements ApplicationStartedRunner {
     @Inject
     NodeResourceService nodeResourceService;
 
-    @Inject
-    SessionProcessorService sessionProcessorService;
+//    @Inject
+//    SessionProcessorService sessionProcessorService;
 
     @Inject
     ProcessorStateMachine processorStateMachine;
@@ -105,7 +104,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
 
     public void checkAndHandleDeepspeedOutTimeSession(Context context, ErSessionMeta session, List<ErProcessor> sessionProcessors) {
         long current = System.currentTimeMillis();
-        Integer maxInterval = MetaInfo.EGGROLL_SESSION_START_TIMEOUT_MS * 2;
+        int maxInterval = MetaInfo.EGGROLL_SESSION_START_TIMEOUT_MS * 2;
         long interval = current - session.getCreateTime().getTime();
         log.debug("watch deepspeed new session: {} {}  {}", session.getId(), interval, maxInterval);
         if (interval > maxInterval) {
