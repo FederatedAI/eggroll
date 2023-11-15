@@ -1,14 +1,14 @@
 //package com.webank.eggroll.clustermanager.statemechine;
 //
 //import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-//import com.eggroll.core.config.Dict;
-//import com.eggroll.core.config.MetaInfo;
-//import com.eggroll.core.constant.ResourceStatus;
-//import com.eggroll.core.constant.ResourceType;
-//import com.eggroll.core.context.Context;
-//import com.eggroll.core.pojo.ErProcessor;
-//import com.eggroll.core.pojo.ErResource;
-//import com.eggroll.core.pojo.ErServerNode;
+//import org.fedai.core.config.Dict;
+//import org.fedai.core.config.MetaInfo;
+//import org.fedai.core.constant.ResourceStatus;
+//import org.fedai.core.constant.ResourceType;
+//import org.fedai.core.context.Context;
+//import org.fedai.core.pojo.ErProcessor;
+//import org.fedai.core.pojo.ErResource;
+//import org.fedai.core.pojo.ErServerNode;
 //import com.google.common.collect.Lists;
 //import com.google.common.collect.Maps;
 //import org.fedai.impl.dao.clustermanager.eggroll.NodeResourceService;

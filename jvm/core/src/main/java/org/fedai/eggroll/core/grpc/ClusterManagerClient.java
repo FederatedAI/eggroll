@@ -2,7 +2,6 @@ package org.fedai.eggroll.core.grpc;
 
 
 import org.fedai.eggroll.core.context.Context;
-import com.eggroll.core.pojo.*;
 import org.fedai.eggroll.core.pojo.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

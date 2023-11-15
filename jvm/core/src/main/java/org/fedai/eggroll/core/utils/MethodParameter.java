@@ -1,5 +1,5 @@
 //
-//package com.eggroll.core.utils;
+//package org.fedai.core.utils;
 //
 //import java.lang.annotation.Annotation;
 //import java.lang.reflect.AnnotatedElement;
