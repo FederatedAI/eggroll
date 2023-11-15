@@ -1,4 +1,4 @@
-package com.webank.eggroll.clustermanager.session;
+package org.fedai.eggroll.clustermanager.session;
 
 import org.fedai.eggroll.core.config.Dict;
 import org.fedai.eggroll.core.context.Context;

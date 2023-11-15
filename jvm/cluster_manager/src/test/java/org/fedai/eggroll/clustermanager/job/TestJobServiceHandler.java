@@ -1,4 +1,4 @@
-package com.webank.eggroll.clustermanager.job;
+package org.fedai.eggroll.clustermanager.job;
 
 
 import org.fedai.eggroll.clustermanager.job.JobServiceHandler;

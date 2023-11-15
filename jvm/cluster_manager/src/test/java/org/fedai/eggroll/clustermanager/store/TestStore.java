@@ -1,4 +1,4 @@
-package com.webank.eggroll.clustermanager.store;
+package org.fedai.eggroll.clustermanager.store;
 
 import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.grpc.ClusterManagerClient;

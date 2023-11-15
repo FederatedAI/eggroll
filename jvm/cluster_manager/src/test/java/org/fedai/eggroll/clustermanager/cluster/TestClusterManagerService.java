@@ -1,4 +1,4 @@
-package com.webank.eggroll.clustermanager.cluster;
+package org.fedai.eggroll.clustermanager.cluster;
 
 import org.fedai.eggroll.clustermanager.cluster.ClusterManagerService;
 import org.fedai.eggroll.core.constant.ServerNodeStatus;
