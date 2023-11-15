@@ -1,4 +1,4 @@
-package com.webank.eggroll.clustermanager.deepspeed;
+package org.fedai.eggroll.clustermanager.deepspeed;
 
 import org.fedai.eggroll.core.config.Dict;
 import org.fedai.eggroll.core.context.Context;
