@@ -1,9 +1,9 @@
 package org.fedai.eggroll.clustermanager.statemachine;
 
-import org.fedai.eggroll.core.context.Context;
-import org.fedai.eggroll.core.pojo.ErProcessor;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import org.fedai.eggroll.core.context.Context;
+import org.fedai.eggroll.core.pojo.ErProcessor;
 
 
 @Singleton

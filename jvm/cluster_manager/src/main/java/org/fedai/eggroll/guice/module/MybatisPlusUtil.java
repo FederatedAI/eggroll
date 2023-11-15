@@ -2,10 +2,10 @@ package org.fedai.eggroll.guice.module;
 
 import com.baomidou.mybatisplus.core.toolkit.reflect.IGenericTypeResolver;
 import com.baomidou.mybatisplus.core.toolkit.reflect.SpringReflectionHelper;
-import org.fedai.eggroll.core.utils.Generics;
+import org.apache.commons.lang3.ArrayUtils;
 import org.fedai.eggroll.clustermanager.dao.impl.NodeResourceService;
 import org.fedai.eggroll.clustermanager.dao.impl.ServiceImpl;
-import org.apache.commons.lang3.ArrayUtils;
+import org.fedai.eggroll.core.utils.Generics;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;

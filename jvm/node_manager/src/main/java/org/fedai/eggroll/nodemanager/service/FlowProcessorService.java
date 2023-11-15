@@ -1,7 +1,7 @@
 package org.fedai.eggroll.nodemanager.service;
 
-import org.fedai.eggroll.core.containers.container.ContainerTrait;
 import com.google.inject.Singleton;
+import org.fedai.eggroll.core.containers.container.ContainerTrait;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

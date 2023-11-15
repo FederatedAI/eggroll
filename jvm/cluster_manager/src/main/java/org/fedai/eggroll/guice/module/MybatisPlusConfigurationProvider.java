@@ -7,12 +7,9 @@ package org.fedai.eggroll.guice.module;
 
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.extension.MybatisMapWrapperFactory;
-import org.fedai.eggroll.core.config.MetaInfo;
 import com.google.inject.Inject;
 import com.google.inject.ProvisionException;
-
 import edu.umd.cs.findbugs.annotations.Nullable;
-
 import org.apache.ibatis.executor.ErrorContext;
 import org.apache.ibatis.io.ResolverUtil;
 import org.apache.ibatis.logging.log4j2.Log4j2Impl;
@@ -21,12 +18,12 @@ import org.apache.ibatis.mapping.Environment;
 import org.apache.ibatis.session.AutoMappingBehavior;
 import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.session.ExecutorType;
-;
+import org.fedai.eggroll.core.config.MetaInfo;
 import org.mybatis.guice.configuration.ConfigurationSettingListener;
 import org.mybatis.guice.configuration.settings.ConfigurationSetting;
 import org.mybatis.guice.configuration.settings.MapperConfigurationSetting;
-import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Named;
 import javax.inject.Provider;
@@ -35,6 +32,8 @@ import javax.sql.DataSource;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
+
+;
 
 @Singleton
 public class MybatisPlusConfigurationProvider implements Provider<Configuration>, ConfigurationSettingListener {

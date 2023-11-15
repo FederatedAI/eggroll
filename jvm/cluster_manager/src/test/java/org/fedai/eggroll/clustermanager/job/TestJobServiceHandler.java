@@ -1,13 +1,12 @@
 package org.fedai.eggroll.clustermanager.job;
 
 
-import org.fedai.eggroll.clustermanager.job.JobServiceHandler;
+import com.google.inject.Inject;
 import org.fedai.eggroll.core.config.MetaInfo;
 import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.grpc.CommandClient;
 import org.fedai.eggroll.core.pojo.*;
 import org.fedai.eggroll.core.utils.NetUtils;
-import com.google.inject.Inject;
 import org.junit.Test;
 
 import java.util.ArrayList;

@@ -1,5 +1,10 @@
 package org.fedai.eggroll.clustermanager.deepspeed;
 
+import com.webank.eggroll.core.meta.Containers;
+import com.webank.eggroll.core.meta.DeepspeedDownload;
+import com.webank.eggroll.core.meta.DsDownloadServiceGrpc;
+import io.grpc.ManagedChannel;
+import io.grpc.stub.StreamObserver;
 import org.fedai.eggroll.core.config.Dict;
 import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.grpc.ClusterManagerClient;
@@ -9,12 +14,6 @@ import org.fedai.eggroll.core.pojo.ErSessionMeta;
 import org.fedai.eggroll.core.pojo.PrepareJobDownloadRequest;
 import org.fedai.eggroll.core.pojo.PrepareJobDownloadResponse;
 import org.fedai.eggroll.core.utils.JsonUtil;
-import com.webank.eggroll.core.meta.Containers;
-import com.webank.eggroll.core.meta.DeepspeedDownload;
-import com.webank.eggroll.core.meta.DsDownloadServiceGrpc;
-import com.webank.eggroll.core.transfer.TransferServiceGrpc;
-import io.grpc.ManagedChannel;
-import io.grpc.stub.StreamObserver;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -1,11 +1,10 @@
 package org.fedai.eggroll.nodemanager.service;
 
-import org.fedai.eggroll.core.config.Dict;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import org.fedai.eggroll.core.config.Dict;
 import org.fedai.eggroll.guice.module.NodeModule;
 import org.fedai.eggroll.nodemanager.pojo.ResourceWrapper;
-import org.fedai.eggroll.nodemanager.service.NodeResourceManager;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;

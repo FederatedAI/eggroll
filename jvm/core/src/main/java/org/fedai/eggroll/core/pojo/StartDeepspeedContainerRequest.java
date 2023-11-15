@@ -1,7 +1,7 @@
 package org.fedai.eggroll.core.pojo;
 
-import org.fedai.eggroll.core.config.Dict;
 import lombok.Data;
+import org.fedai.eggroll.core.config.Dict;
 
 import java.util.ArrayList;
 import java.util.HashMap;

@@ -1,10 +1,14 @@
 package org.fedai.eggroll.clustermanager.schedule;
 
+import com.google.common.collect.Lists;
+import org.apache.ibatis.session.Configuration;
 import org.fedai.eggroll.clustermanager.cluster.ClusterManagerService;
 import org.fedai.eggroll.clustermanager.cluster.ClusterResourceManager;
+import org.fedai.eggroll.clustermanager.dao.impl.ServerNodeService;
 import org.fedai.eggroll.clustermanager.dao.impl.SessionMainService;
 import org.fedai.eggroll.clustermanager.dao.impl.SessionProcessorService;
 import org.fedai.eggroll.clustermanager.entity.SessionProcessor;
+import org.fedai.eggroll.clustermanager.statemachine.ProcessorStateMachine;
 import org.fedai.eggroll.core.config.MetaInfo;
 import org.fedai.eggroll.core.constant.ProcessorStatus;
 import org.fedai.eggroll.core.constant.ServerNodeStatus;
@@ -14,10 +18,6 @@ import org.fedai.eggroll.core.grpc.NodeManagerClient;
 import org.fedai.eggroll.core.pojo.ErProcessor;
 import org.fedai.eggroll.core.pojo.ErServerNode;
 import org.fedai.eggroll.core.pojo.ErSessionMeta;
-import com.google.common.collect.Lists;
-import org.fedai.eggroll.clustermanager.dao.impl.ServerNodeService;
-import org.fedai.eggroll.clustermanager.statemachine.ProcessorStateMachine;
-import org.apache.ibatis.session.Configuration;
 import org.mybatis.guice.configuration.ConfigurationSettingListener;
 import org.mybatis.guice.configuration.settings.ConfigurationSetting;
 import org.mybatis.guice.configuration.settings.MapperConfigurationSetting;

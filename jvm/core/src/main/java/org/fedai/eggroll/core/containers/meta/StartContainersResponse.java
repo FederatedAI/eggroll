@@ -1,9 +1,9 @@
 package org.fedai.eggroll.core.containers.meta;
 
-import org.fedai.eggroll.core.pojo.RpcMessage;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.eggroll.core.meta.Containers;
 import lombok.Data;
+import org.fedai.eggroll.core.pojo.RpcMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

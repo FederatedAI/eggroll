@@ -1,9 +1,9 @@
 package org.fedai.eggroll.core.pojo;
 
-import org.fedai.eggroll.core.constant.StringConstants;
 import com.google.protobuf.ByteString;
 import com.webank.eggroll.core.meta.Deepspeed;
 import lombok.Data;
+import org.fedai.eggroll.core.constant.StringConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

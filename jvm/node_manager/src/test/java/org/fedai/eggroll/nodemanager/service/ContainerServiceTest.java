@@ -1,16 +1,15 @@
 package org.fedai.eggroll.nodemanager.service;
 
 
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 import org.fedai.eggroll.core.config.Dict;
 import org.fedai.eggroll.core.config.MetaInfo;
 import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.pojo.*;
 import org.fedai.eggroll.core.utils.PropertiesUtil;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
 import org.fedai.eggroll.guice.module.NodeModule;
 import org.fedai.eggroll.nodemanager.processor.DefaultProcessorManager;
-import org.fedai.eggroll.nodemanager.service.ContainerService;
 import org.junit.BeforeClass;
 import org.junit.Test;
 

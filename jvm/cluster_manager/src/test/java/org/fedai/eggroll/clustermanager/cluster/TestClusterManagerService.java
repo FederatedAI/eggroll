@@ -1,13 +1,11 @@
 package org.fedai.eggroll.clustermanager.cluster;
 
-import org.fedai.eggroll.clustermanager.cluster.ClusterManagerService;
 import org.fedai.eggroll.core.constant.ServerNodeStatus;
 import org.fedai.eggroll.core.constant.ServerNodeTypes;
 import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.pojo.ErEndpoint;
 import org.fedai.eggroll.core.pojo.ErNodeHeartbeat;
 import org.fedai.eggroll.core.pojo.ErServerNode;
-
 import org.junit.Test;
 
 

@@ -1,11 +1,11 @@
 package org.fedai.eggroll.core.context;
 
-import org.fedai.eggroll.core.pojo.ErEndpoint;
-import org.fedai.eggroll.core.pojo.RpcMessage;
-import org.fedai.eggroll.core.utils.RandomUtil;
 import com.google.common.collect.Maps;
 import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
+import org.fedai.eggroll.core.pojo.ErEndpoint;
+import org.fedai.eggroll.core.pojo.RpcMessage;
+import org.fedai.eggroll.core.utils.RandomUtil;
 
 import java.util.HashMap;
 import java.util.Map;

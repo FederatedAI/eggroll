@@ -1,18 +1,18 @@
 package org.fedai.eggroll.clustermanager.statemachine;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import org.fedai.eggroll.clustermanager.cluster.ClusterResourceManager;
+import org.fedai.eggroll.clustermanager.dao.impl.NodeResourceService;
+import org.fedai.eggroll.clustermanager.dao.impl.ProcessorResourceService;
 import org.fedai.eggroll.clustermanager.entity.ProcessorResource;
 import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.pojo.ErProcessor;
 import org.fedai.eggroll.core.pojo.ErResource;
 import org.fedai.eggroll.core.utils.LockUtils;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
-import org.fedai.eggroll.clustermanager.dao.impl.NodeResourceService;
-import org.fedai.eggroll.clustermanager.dao.impl.ProcessorResourceService;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -1,5 +1,8 @@
 package org.fedai.eggroll.nodemanager.processor;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+import org.apache.commons.beanutils.BeanUtils;
 import org.fedai.eggroll.core.config.Dict;
 import org.fedai.eggroll.core.config.MetaInfo;
 import org.fedai.eggroll.core.constant.ProcessorStatus;
@@ -10,13 +13,10 @@ import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.grpc.ClusterManagerClient;
 import org.fedai.eggroll.core.pojo.*;
 import org.fedai.eggroll.core.postprocessor.ApplicationStartedRunner;
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import org.fedai.eggroll.nodemanager.containers.ContainersServiceHandler;
 import org.fedai.eggroll.nodemanager.containers.FlowJobServiceHandle;
 import org.fedai.eggroll.nodemanager.service.ContainerService;
 import org.fedai.eggroll.nodemanager.utils.ProcessUtils;
-import org.apache.commons.beanutils.BeanUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

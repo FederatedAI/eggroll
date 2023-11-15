@@ -1,5 +1,8 @@
 package org.fedai.eggroll.clustermanager.statemachine;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+import org.apache.commons.lang3.StringUtils;
 import org.fedai.eggroll.clustermanager.dao.impl.SessionMainService;
 import org.fedai.eggroll.core.constant.ProcessorStatus;
 import org.fedai.eggroll.core.constant.ServerNodeStatus;
@@ -8,9 +11,6 @@ import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.grpc.NodeManagerClient;
 import org.fedai.eggroll.core.pojo.ErServerNode;
 import org.fedai.eggroll.core.pojo.ErSessionMeta;
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
-import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 

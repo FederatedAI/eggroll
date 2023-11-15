@@ -1,13 +1,8 @@
 package org.fedai.eggroll.webapp.queryobject;
 
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
-
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 
 @Data
 @NoArgsConstructor

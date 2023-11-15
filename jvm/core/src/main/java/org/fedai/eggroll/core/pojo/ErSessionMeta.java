@@ -1,11 +1,11 @@
 package org.fedai.eggroll.core.pojo;
 
-import org.fedai.eggroll.core.constant.SessionStatus;
-import org.fedai.eggroll.core.constant.StringConstants;
-import org.fedai.eggroll.core.utils.JsonUtil;
 import com.webank.eggroll.core.meta.Meta;
 import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
+import org.fedai.eggroll.core.constant.SessionStatus;
+import org.fedai.eggroll.core.constant.StringConstants;
+import org.fedai.eggroll.core.utils.JsonUtil;
 
 import java.util.*;
 import java.util.stream.Collectors;

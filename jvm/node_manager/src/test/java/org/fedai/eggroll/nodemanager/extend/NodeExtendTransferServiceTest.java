@@ -1,11 +1,11 @@
 package org.fedai.eggroll.nodemanager.extend;
 
-import org.fedai.eggroll.core.grpc.GrpcConnectionFactory;
-import org.fedai.eggroll.core.pojo.ErEndpoint;
 import com.webank.eggroll.core.transfer.Extend;
 import com.webank.eggroll.core.transfer.ExtendTransferServerGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.stub.StreamObserver;
+import org.fedai.eggroll.core.grpc.GrpcConnectionFactory;
+import org.fedai.eggroll.core.pojo.ErEndpoint;
 import org.junit.Test;
 
 public class NodeExtendTransferServiceTest {

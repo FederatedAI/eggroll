@@ -16,11 +16,10 @@
 
 package org.fedai.eggroll.core.exceptions;
 
-import org.fedai.eggroll.core.context.Context;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-
+import org.fedai.eggroll.core.context.Context;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

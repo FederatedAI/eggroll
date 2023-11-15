@@ -3,9 +3,9 @@ package org.fedai.eggroll.clustermanager.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import org.fedai.eggroll.core.pojo.ErSessionMeta;
 import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
+import org.fedai.eggroll.core.pojo.ErSessionMeta;
 
 import java.util.Date;
 

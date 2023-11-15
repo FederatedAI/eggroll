@@ -1,7 +1,7 @@
 package org.fedai.eggroll.core.pojo;
 
-import org.fedai.eggroll.core.constant.StringConstants;
 import lombok.Data;
+import org.fedai.eggroll.core.constant.StringConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

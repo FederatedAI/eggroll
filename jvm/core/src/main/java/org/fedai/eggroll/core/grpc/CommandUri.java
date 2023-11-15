@@ -1,7 +1,5 @@
 package org.fedai.eggroll.core.grpc;
 
-import lombok.val;
-
 public class CommandUri {
 
     public static final String getServerNode = "v1/cluster-manager/metadata/getServerNode";

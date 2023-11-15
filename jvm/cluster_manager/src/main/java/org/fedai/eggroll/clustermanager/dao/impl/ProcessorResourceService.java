@@ -1,12 +1,12 @@
 package org.fedai.eggroll.clustermanager.dao.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.google.inject.Singleton;
 import org.fedai.eggroll.clustermanager.dao.mapper.ProcessorResourceMapper;
 import org.fedai.eggroll.clustermanager.entity.ProcessorResource;
 import org.fedai.eggroll.clustermanager.resource.ResourceManager;
 import org.fedai.eggroll.core.pojo.ErProcessor;
 import org.fedai.eggroll.core.pojo.ErResource;
-import com.google.inject.Singleton;
 
 @Singleton
 public class ProcessorResourceService extends EggRollBaseServiceImpl<ProcessorResourceMapper, ProcessorResource> implements ResourceManager {

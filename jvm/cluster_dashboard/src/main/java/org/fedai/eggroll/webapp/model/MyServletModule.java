@@ -1,11 +1,10 @@
 package org.fedai.eggroll.webapp.model;
 
-import org.fedai.eggroll.core.config.MetaInfo;
 import com.google.inject.Singleton;
 import com.google.inject.servlet.ServletModule;
 import org.fedai.eggroll.clustermanager.register.ZooKeeperRegistration;
+import org.fedai.eggroll.core.config.MetaInfo;
 import org.fedai.eggroll.guice.module.ClusterModule;
-import com.webank.eggroll.webapp.controller.*;
 import org.fedai.eggroll.webapp.controller.DispatcherServlet;
 import org.fedai.eggroll.webapp.controller.EggrollServiceProvider;
 import org.fedai.eggroll.webapp.controller.LoginController;

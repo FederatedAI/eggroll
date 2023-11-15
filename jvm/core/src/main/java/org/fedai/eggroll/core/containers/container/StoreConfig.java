@@ -2,8 +2,6 @@ package org.fedai.eggroll.core.containers.container;
 
 import lombok.Data;
 
-import java.util.Optional;
-
 
 @Data
 public class StoreConfig {

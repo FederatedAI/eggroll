@@ -1,8 +1,8 @@
 package org.fedai.eggroll.core.pojo;
 
 
-import org.fedai.eggroll.core.utils.JsonUtil;
 import com.webank.eggroll.core.meta.Meta;
+import org.fedai.eggroll.core.utils.JsonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

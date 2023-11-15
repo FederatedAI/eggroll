@@ -1,5 +1,7 @@
 package org.fedai.eggroll.nodemanager.grpc;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import org.fedai.eggroll.core.config.MetaInfo;
 import org.fedai.eggroll.core.containers.meta.KillContainersResponse;
 import org.fedai.eggroll.core.containers.meta.StartContainersResponse;
@@ -11,8 +13,6 @@ import org.fedai.eggroll.core.grpc.URI;
 import org.fedai.eggroll.core.invoke.InvokeInfo;
 import org.fedai.eggroll.core.pojo.*;
 import org.fedai.eggroll.core.utils.NetUtils;
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import org.fedai.eggroll.nodemanager.processor.DefaultProcessorManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

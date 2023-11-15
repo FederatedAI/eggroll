@@ -1,7 +1,7 @@
 package org.fedai.eggroll.core.containers.container;
 
-import org.fedai.eggroll.core.config.MetaInfo;
 import org.apache.commons.lang3.StringUtils;
+import org.fedai.eggroll.core.config.MetaInfo;
 
 import java.util.Map;
 

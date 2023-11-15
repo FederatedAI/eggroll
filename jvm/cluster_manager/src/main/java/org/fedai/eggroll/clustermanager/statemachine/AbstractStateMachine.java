@@ -1,15 +1,14 @@
 package org.fedai.eggroll.clustermanager.statemachine;
 
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import org.fedai.eggroll.core.config.MetaInfo;
 import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.utils.LockUtils;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import org.mybatis.guice.transactional.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingDeque;

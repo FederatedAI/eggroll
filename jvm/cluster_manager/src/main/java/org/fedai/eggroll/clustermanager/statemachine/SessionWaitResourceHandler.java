@@ -1,10 +1,10 @@
 package org.fedai.eggroll.clustermanager.statemachine;
 
+import com.google.inject.Singleton;
 import org.fedai.eggroll.clustermanager.entity.SessionMain;
 import org.fedai.eggroll.core.constant.SessionStatus;
 import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.pojo.ErSessionMeta;
-import com.google.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

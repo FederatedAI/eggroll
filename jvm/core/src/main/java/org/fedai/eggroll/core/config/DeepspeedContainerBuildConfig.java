@@ -1,12 +1,15 @@
 package org.fedai.eggroll.core.config;
 
+import lombok.Data;
 import org.fedai.eggroll.core.containers.container.PythonContainerRuntimeConfig;
 import org.fedai.eggroll.core.containers.container.WarpedDeepspeedContainerConfig;
 import org.fedai.eggroll.core.containers.container.WorkingDirectoryPreparer;
-import lombok.Data;
 
 import java.nio.file.Path;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Data
 public class DeepspeedContainerBuildConfig {
