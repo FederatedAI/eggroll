@@ -1,4 +1,4 @@
-package com.webank.eggroll.webapp.utils;
+package org.fedai.eggroll.webapp.utils;
 
 import javax.crypto.Cipher;
 import java.io.ByteArrayOutputStream;
