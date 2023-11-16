@@ -1,5 +1,6 @@
 package org.fedai.eggroll.clustermanager.job;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.google.gson.Gson;
 import com.google.inject.Inject;
@@ -61,13 +62,13 @@ public class JobServiceHandler {
             }
             ErSessionMeta sessionMeta = sessionMainService.getSession(sessionId);
             if (StringUtils.equalsAny(sessionMeta.getStatus(),
-                    SessionStatus.KILLED.name(), SessionStatus.CLOSED.name(), SessionStatus.ERROR.name(), SessionStatus.FINISHED.name())) {
+                    SessionStatus.KILLED.name(), SessionStatus.ERROR.name(), SessionStatus.FINISHED.name())) {
                 log.error(" session {} status is {}, will not send kill request to nodemanager", sessionId, sessionMeta.getStatus());
                 return;
             }
             if(sessionMeta.getStatus().equals(SessionStatus.WAITING_RESOURCE.name())){
                 sessionMeta.setStatusReason(statusReason);
-                sessionStateMachine.changeStatus(context,sessionMeta,SessionStatus.WAITING_RESOURCE.name(),SessionStatus.KILLED.name());
+                sessionStateMachine.changeStatus(context,sessionMeta,SessionStatus.WAITING_RESOURCE.name(),SessionStatus.ERROR.name());
                 return;
             }
 
@@ -87,9 +88,14 @@ public class JobServiceHandler {
                     log.info("send kill job command {}", sessionId);
                     new NodeManagerClient(erServerNode.getEndpoint()).killJobContainers(context, killContainersRequest);
                     final UpdateWrapper<SessionMain> updateWrapper = new UpdateWrapper<>();
-                    updateWrapper.lambda().eq(SessionMain::getSessionId, sessionId)
-                            .set(SessionMain::getStatus, SessionStatus.CLOSED.name())
-                            .set(SessionMain::getStatusReason, statusReason);
+                    LambdaUpdateWrapper<SessionMain> lambda = updateWrapper.lambda();
+                    lambda.eq(SessionMain::getSessionId, sessionId);
+                    lambda.set(SessionMain::getStatusReason, statusReason);
+                    if (StatusReason.API.equals(statusReason)) {
+                        lambda.set(SessionMain::getStatus, SessionStatus.KILLED.name());
+                    }else {
+                        lambda.set(SessionMain::getStatus, SessionStatus.ERROR.name());
+                    }
                     sessionMainService.update(updateWrapper);
                 } catch (Exception e) {
                     log.error("killContainers error : ", e);

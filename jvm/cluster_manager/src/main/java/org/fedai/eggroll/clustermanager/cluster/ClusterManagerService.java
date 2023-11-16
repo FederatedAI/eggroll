@@ -3,6 +3,7 @@ package org.fedai.eggroll.clustermanager.cluster;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.sun.deploy.util.SessionState;
 import org.apache.commons.lang3.StringUtils;
 import org.fedai.eggroll.clustermanager.dao.impl.NodeResourceService;
 import org.fedai.eggroll.clustermanager.dao.impl.ServerNodeService;
@@ -125,7 +126,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         long liveTime = MetaInfo.EGGROLL_SESSION_MAX_LIVE_MS;
         if (session.getCreateTime().getTime() < now - liveTime) {
             log.error("session " + session.getId() + " is timeout, live time is " + liveTime + ", max live time in config is " + MetaInfo.EGGROLL_SESSION_MAX_LIVE_MS);
-            sessionManager.killSession(new Context(), session);
+            sessionManager.killSession(new Context(), session, SessionStatus.ERROR.name());
         } else {
             List<ErProcessor> invalidProcessor = sessionProcessors.stream().filter(p -> StringUtils.equalsAny(p.getStatus(),
                     ProcessorStatus.ERROR.name(), ProcessorStatus.KILLED.name(), ProcessorStatus.STOPPED.name())).collect(Collectors.toList());
@@ -133,7 +134,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
                 boolean needKillSession = invalidProcessor.stream().anyMatch(p -> p.getUpdatedAt().getTime() < now - MetaInfo.EGGROLL_SESSION_STOP_TIMEOUT_MS);
                 if (needKillSession) {
                     log.info("invalid processors " + JsonUtil.object2Json(invalidProcessor) + ", session watcher kill eggpair session " + session);
-                    sessionManager.killSession(new Context(), session);
+                    sessionManager.killSession(new Context(), session, SessionStatus.ERROR.name());
                 }
             }
         }
@@ -149,9 +150,8 @@ public class ClusterManagerService implements ApplicationStartedRunner {
             } catch (ErSessionException e) {
                 log.error("failed to kill session " + session.getId(), e);
             }
-        } else if (sessionProcessors.stream().anyMatch(p -> ProcessorStatus.FINISHED.name().equals(p.getStatus()))) {
+        } else if (sessionProcessors.stream().allMatch(p -> ProcessorStatus.FINISHED.name().equals(p.getStatus()))) {
             session.setStatus(SessionStatus.FINISHED.name());
-
             sessionMainService.updateSessionMain(session, erSessionMeta -> erSessionMeta.getProcessors().forEach(processor -> processorStateMachine.changeStatus(new Context(), processor, null, erSessionMeta.getStatus())));
         }
         log.debug("found all processor belongs to session " + session.getId() + " finished, update session status to `Finished`");

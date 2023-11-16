@@ -245,7 +245,7 @@ public class DefaultSessionManager implements SessionManager {
 
     @Override
     public ErSessionMeta stopSession(Context context, ErSessionMeta sessionMeta) {
-        return sessionStateMachine.changeStatus(context, sessionMeta, null, SessionStatus.CLOSED.name());
+        return sessionStateMachine.changeStatus(context, sessionMeta, null, SessionStatus.KILLED.name());
     }
 
     @Override

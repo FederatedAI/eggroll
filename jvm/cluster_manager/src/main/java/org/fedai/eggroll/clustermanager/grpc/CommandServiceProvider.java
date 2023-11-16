@@ -159,10 +159,6 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
 
     @URI(value = killJob)
     public KillJobResponse killJob(Context context , KillJobRequest request){
-
-        Gson gson = new Gson();
-        String reqStr = gson.toJson(request);
-        logger.info("=============killJob==========reqStr: {}",request);
         return jobServiceHandler.handleJobKill(context,request);
     }
 
