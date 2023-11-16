@@ -32,7 +32,7 @@
 
         <dependency>
             <groupId>com.webank.eggroll</groupId>
-            <artifactId>new_core</artifactId>
+            <artifactId>core</artifactId>
             <version>3.0.0</version>
         </dependency>
 
