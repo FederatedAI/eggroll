@@ -41,7 +41,6 @@ public class ClusterModule extends AbstractModule {
                 Class rawType = key.getTypeLiteral().getRawType();
                 if (rawType != null && subpacket.matches(rawType)) {
                     Method[] methods = rawType.getMethods();
-//                    System.err.println("xxxxxxxxxxx" + rawType);
                     Arrays.stream(methods).forEach(method -> {
                         try {
                             Schedule config = method.getDeclaredAnnotation(Schedule.class);

@@ -41,7 +41,7 @@ public class FifoBroker<E> implements Iterator<E> {
                     return false;
                 } else {
                     try {
-                        Thread.sleep(10); // continue
+                        Thread.sleep(10);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }

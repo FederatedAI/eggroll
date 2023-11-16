@@ -31,7 +31,6 @@ public class MyServletModule extends ServletModule {
         String url =  ZooKeeperRegistration.generateZkUrl(HOST,PORT);
 
         //配置url映射
-        //serve("/eggroll/zookeeper-query").with(ZookeeperQueryResource.class);
         serve("/eggroll/*").with(DispatcherServlet.class);
 
 

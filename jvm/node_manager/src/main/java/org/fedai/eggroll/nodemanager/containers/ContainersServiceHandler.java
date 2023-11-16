@@ -50,8 +50,6 @@ public class ContainersServiceHandler {
 
     private ContainersManager containersManager = buildContainersManager();
 
-    private StartDeepspeedContainerRequest startDeepspeedContainerRequest;
-
     private Path containersDataDir = null;
 
     public Path getContainersDataDir() {
