@@ -1,6 +1,5 @@
 package org.fedai.eggroll.clustermanager.job;
 
-
 import com.google.inject.Inject;
 import org.fedai.eggroll.core.config.MetaInfo;
 import org.fedai.eggroll.core.context.Context;
@@ -13,6 +12,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+
+import static org.fedai.eggroll.core.grpc.CommandUri.*;
 
 public class TestJobServiceHandler {
 
