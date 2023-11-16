@@ -80,7 +80,7 @@ public class ErSessionMeta implements RpcMessage {
     }
 
     public boolean isOverState() {
-        if (StringUtils.equalsAny(this.status, SessionStatus.KILLED.name(), SessionStatus.CLOSED.name(), SessionStatus.ERROR.name())) {
+        if (StringUtils.equalsAny(this.status, SessionStatus.KILLED.name(), SessionStatus.ERROR.name())) {
             return true;
         } else {
             return false;
