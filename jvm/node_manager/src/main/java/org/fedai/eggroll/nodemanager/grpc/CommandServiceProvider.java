@@ -21,6 +21,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.fedai.eggroll.core.grpc.CommandUri.*;
+
 @Singleton
 public class CommandServiceProvider extends AbstractCommandServiceProvider {
 
