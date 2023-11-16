@@ -2,7 +2,6 @@ package org.fedai.eggroll.clustermanager.grpc;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import io.grpc.BindableService;
@@ -27,8 +26,6 @@ import java.io.File;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 @Singleton
@@ -54,32 +51,20 @@ public class GrpcServer implements ApplicationStartedRunner {
                                List<ServerServiceDefinition> bindServices,
                                Map<String, String> options) throws SSLException {
 
-
         if (port < 0) {
             throw new IllegalArgumentException(" cannot listen to port <= 0");
         }
         if (grpcServices.isEmpty()) {
             throw new IllegalArgumentException("grpc services cannot be empty");
         }
-
         InetSocketAddress addr = new InetSocketAddress(host, port);
-
         NettyServerBuilder nettyServerBuilder = NettyServerBuilder.forAddress(addr);
-
-
         grpcServices.forEach(s -> nettyServerBuilder.addService(ServerInterceptors.intercept(s, new ServiceExceptionHandler(), new ContextPrepareInterceptor())));
         bindServices.forEach(s -> nettyServerBuilder.addService(ServerInterceptors.intercept(s, new ServiceExceptionHandler(), new ContextPrepareInterceptor())));
-
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             logger.info("*** shutting down gRPC server in shutdown hook. host: {}, port {} ***",host,port);
-
-            logger.info("*** server shut down. host: {}, port {} ***",host,port);
         }));
 
-        Integer maxConcurrentCallPerConnection = MetaInfo.CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONCURRENT_CALL_PER_CONNECTION;
-        Integer maxInboundMessageSize = MetaInfo.CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE;
-        Integer maxInboundMetadataSize = MetaInfo.CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_METADATA_SIZE;
-        Integer flowControlWindow = MetaInfo.CONFKEY_CORE_GRPC_SERVER_CHANNEL_FLOW_CONTROL_WINDOW;
         Integer channelKeepAliveTimeSec = MetaInfo.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIME_SEC;
         Integer channelKeepAliveTimeoutSec = MetaInfo.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIMEOUT_SEC;
         Integer channelPermitKeepAliveTime = MetaInfo.CONFKEY_CORE_GRPC_SERVER_CHANNEL_PERMIT_KEEPALIVE_TIME_SEC;
@@ -87,13 +72,6 @@ public class GrpcServer implements ApplicationStartedRunner {
         Integer maxConnectionIdle = MetaInfo.CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONNECTION_IDLE_SEC;
         Integer maxConnectionAge = MetaInfo.CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONNECTION_AGE_SEC;
         Integer maxConnectionAgeGrace = MetaInfo.CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONNECTION_AGE_GRACE_SEC;
-        ThreadFactory threadFactory = new ThreadFactoryBuilder().setDaemon(false).setNameFormat("GRPC-SERVER" + "-%d").build();
-        final NettyServerBuilder nettyServerBuilder1 = nettyServerBuilder
-                .executor(Executors.newCachedThreadPool(threadFactory))
-                .maxConcurrentCallsPerConnection(maxConcurrentCallPerConnection)
-                .maxInboundMessageSize(maxInboundMessageSize)
-                .maxInboundMetadataSize(maxInboundMetadataSize)
-                .flowControlWindow(flowControlWindow);
 
         if (channelKeepAliveTimeSec > 0) {
             nettyServerBuilder.keepAliveTime(channelKeepAliveTimeSec, TimeUnit.SECONDS);
@@ -139,7 +117,6 @@ public class GrpcServer implements ApplicationStartedRunner {
             } else {
                 sslContextBuilder.clientAuth(ClientAuth.OPTIONAL);
             }
-
             nettyServerBuilder.sslContext(sslContextBuilder.build());
         } else {
             logger.info("gRPC server at {} starting in insecure mode", port);
@@ -155,7 +132,6 @@ public class GrpcServer implements ApplicationStartedRunner {
 
     @Override
     public void run(String[] args) throws Exception {
-
         Server server = createServer("0.0.0.0", MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT, Lists.newArrayList(commandServiceProvider, clusterExtendTransferService), Lists.newArrayList(), Maps.newHashMap());
         server.start();
     }

@@ -85,7 +85,6 @@ public class FlowJobServiceHandle {
         return startContainersResponse;
     }
 
-
     private ErProcessor buildHeartBeatProcessor(ProcessorStatus status, ContainerTrait container) {
         final ErProcessor erProcessor = new ErProcessor();
         erProcessor.setId(container.getProcessorId());
