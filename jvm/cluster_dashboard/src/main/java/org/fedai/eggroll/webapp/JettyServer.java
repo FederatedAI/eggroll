@@ -4,10 +4,6 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.servlet.GuiceFilter;
 import com.google.inject.servlet.GuiceServletContextListener;
-import com.webank.eggroll.webapp.controller.DispatcherServlet;
-import com.webank.eggroll.webapp.controller.EggrollServiceProvider;
-import com.webank.eggroll.webapp.controller.UserController;
-import com.webank.eggroll.webapp.model.MyServletModule;
 import org.apache.commons.cli.CommandLine;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
@@ -24,6 +20,7 @@ import org.fedai.eggroll.core.utils.CommandArgsUtils;
 import org.fedai.eggroll.core.utils.PropertiesUtil;
 import org.fedai.eggroll.webapp.controller.DispatcherServlet;
 import org.fedai.eggroll.webapp.controller.EggrollServiceProvider;
+import org.fedai.eggroll.webapp.controller.UserController;
 import org.fedai.eggroll.webapp.model.MyServletModule;
 
 import javax.servlet.DispatcherType;
