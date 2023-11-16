@@ -43,6 +43,11 @@ public class MetaInfo {
     public static String USERNAME;
     @Config(confKey = "eggroll.security.login.password")
     public static String PASSWORD = "";
+    @Config(confKey = "eggroll.security.encrypt.private_key")
+    public static String ENCRYPT_PRIVATE_KEY = "";
+
+    @Config(confKey = "eggroll.security.encrypt.enable")
+    public static String ENCRYPT_ENABLE = "false";
 
     @Config(confKey = "eggroll.zookeeper.register.host")
     public static String ZOOKEEPER_HOST = "";
