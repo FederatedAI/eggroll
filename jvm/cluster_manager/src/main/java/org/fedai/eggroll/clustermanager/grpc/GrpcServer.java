@@ -56,7 +56,7 @@ public class GrpcServer implements ApplicationStartedRunner {
 
 
         if (port < 0) {
-            throw new IllegalArgumentException("${modulePrefix} cannot listen to port <= 0");
+            throw new IllegalArgumentException(" cannot listen to port <= 0");
         }
         if (grpcServices.isEmpty()) {
             throw new IllegalArgumentException("grpc services cannot be empty");
@@ -70,13 +70,10 @@ public class GrpcServer implements ApplicationStartedRunner {
         grpcServices.forEach(s -> nettyServerBuilder.addService(ServerInterceptors.intercept(s, new ServiceExceptionHandler(), new ContextPrepareInterceptor())));
         bindServices.forEach(s -> nettyServerBuilder.addService(ServerInterceptors.intercept(s, new ServiceExceptionHandler(), new ContextPrepareInterceptor())));
 
-        Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
-            @Override
-            public void run() {
-                logger.info("*** shutting down gRPC server in shutdown hook. host: ${host}, port ${port} ***");
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            logger.info("*** shutting down gRPC server in shutdown hook. host: {}, port {} ***",host,port);
 
-                logger.info("*** server shut down. host: ${host}, port ${port} ***");
-            }
+            logger.info("*** server shut down. host: {}, port {} ***",host,port);
         }));
 
         Integer maxConcurrentCallPerConnection = MetaInfo.CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONCURRENT_CALL_PER_CONNECTION;
