@@ -1,5 +1,6 @@
 package org.fedai.eggroll.core.constant;
 
+import lombok.Data;
 
 public enum SessionStatus {
 
@@ -19,8 +20,8 @@ public enum SessionStatus {
         this.isOver = isOver;
     }
 
-    private boolean isOver;
-    private String name;
+    public boolean isOver;
+    public String name;
 
 
 }

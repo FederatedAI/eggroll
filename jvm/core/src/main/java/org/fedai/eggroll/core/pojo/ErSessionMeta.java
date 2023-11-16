@@ -2,7 +2,6 @@ package org.fedai.eggroll.core.pojo;
 
 import com.webank.eggroll.core.meta.Meta;
 import lombok.Data;
-import org.apache.commons.lang3.StringUtils;
 import org.fedai.eggroll.core.constant.SessionStatus;
 import org.fedai.eggroll.core.constant.StringConstants;
 import org.fedai.eggroll.core.utils.JsonUtil;
@@ -75,17 +74,12 @@ public class ErSessionMeta implements RpcMessage {
             this.options = sessionMeta.getOptionsMap();
             this.tag = sessionMeta.getTag();
         } catch (Exception e) {
-
+            e.printStackTrace();
         }
     }
 
     public boolean isOverState() {
-        if (StringUtils.equalsAny(this.status, SessionStatus.KILLED.name(), SessionStatus.ERROR.name())) {
-            return true;
-        } else {
-            return false;
-        }
-
+        return SessionStatus.valueOf(this.status).isOver;
     }
 
 }
