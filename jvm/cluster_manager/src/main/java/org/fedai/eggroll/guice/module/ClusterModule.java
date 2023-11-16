@@ -33,7 +33,7 @@ public class ClusterModule extends AbstractModule {
     @Override
     protected void configure() {
 
-        Matcher<Class> subpacket = Matchers.inSubpackage("com.webank");
+        Matcher<Class> subpacket = Matchers.inSubpackage("org.fedai.eggroll");
         ProvisionListener listener = new ProvisionListener() {
             @Override
             public <T> void onProvision(ProvisionInvocation<T> provision) {
@@ -41,7 +41,7 @@ public class ClusterModule extends AbstractModule {
                 Class rawType = key.getTypeLiteral().getRawType();
                 if (rawType != null && subpacket.matches(rawType)) {
                     Method[] methods = rawType.getMethods();
-                    System.err.println("xxxxxxxxxxx" + rawType);
+//                    System.err.println("xxxxxxxxxxx" + rawType);
                     Arrays.stream(methods).forEach(method -> {
                         try {
                             Schedule config = method.getDeclaredAnnotation(Schedule.class);

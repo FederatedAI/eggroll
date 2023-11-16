@@ -314,7 +314,7 @@ public class MetaInfo {
     @Config(confKey = "eggroll.resource.lock.expire.interval", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static Integer EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL = 3600000;
     @Config(confKey = "eggroll.mybatis.mapper.package")
-    public static String EGGROLL_MYBATIS_MAPPER_PACKAGE = "com.webank.eggroll.clustermanager.dao.mapper";
+    public static String EGGROLL_MYBATIS_MAPPER_PACKAGE = "org.fedai.eggroll.clustermanager.dao.mapper";
     @Config(confKey = "eggroll.mybatis.cache.enabled")
     public static Boolean EGGROLL_MYBATIS_cache_enabled = true;
     @Config(confKey = "eggroll.flowlog.print.client")

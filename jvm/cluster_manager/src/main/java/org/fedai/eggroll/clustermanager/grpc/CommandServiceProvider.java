@@ -22,6 +22,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
+import static org.fedai.eggroll.core.grpc.CommandUri.*;
+
 @Singleton
 public class CommandServiceProvider extends AbstractCommandServiceProvider {
 
@@ -50,14 +52,12 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
         this.dispatcher = dispatcher;
         this.dispatcher.register(this);
     }
-
     @URI(value= nodeHeartbeat)
     public ErNodeHeartbeat nodeHeartbeat(Context context , ErNodeHeartbeat  erNodeHeartbeat){
         context.setNodeId(erNodeHeartbeat.getNode().getId().toString());
         context.putLogData(Dict.STATUS,erNodeHeartbeat.getNode().getStatus());
        return  clusterManagerService.nodeHeartbeat(context,erNodeHeartbeat);
     }
-
     @URI(value = getServerNode)
     public ErServerNode getServerNodeServiceName(Context context ,ErServerNode erServerNode) {
         List<ErServerNode> nodeList = serverNodeService.getListByErServerNode(erServerNode);
