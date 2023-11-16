@@ -26,8 +26,8 @@ if [[ ! -d "lib" ]]; then
     mkdir lib
 fi
 rm -r lib/*.jar
-cp -r jvm/new_core/target/new_core-${version}.jar lib
-cp -r jvm/new_core/target/lib/* ./lib
+cp -r jvm/core/target/core-${version}.jar lib
+cp -r jvm/core/target/lib/* ./lib
 cp -r jvm/cluster_manager/target/cluster_manager-${version}.jar lib
 cp -r jvm/cluster_manager/target/lib/* lib
 cp -r jvm/node_manager/target/node_manager-${version}.jar lib
