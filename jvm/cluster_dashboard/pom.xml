@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <artifactId>eggroll-all</artifactId>
-        <groupId>com.webank.eggroll</groupId>
+        <groupId>org.fedai.eggroll</groupId>
         <relativePath>../pom.xml</relativePath>
         <version>3.0.0</version>
     </parent>
@@ -80,12 +80,12 @@
         </dependency>
 
         <dependency>
-            <groupId>com.webank.eggroll</groupId>
+            <groupId>org.fedai.eggroll</groupId>
             <artifactId>core</artifactId>
             <version>${eggroll.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.webank.eggroll</groupId>
+            <groupId>org.fedai.eggroll</groupId>
             <artifactId>cluster_manager</artifactId>
             <version>3.0.0</version>
         </dependency>
@@ -166,7 +166,7 @@
             <artifactId>commons-collections</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.webank.eggroll</groupId>
+            <groupId>org.fedai.eggroll</groupId>
             <artifactId>cluster_manager</artifactId>
             <version>3.0.0</version>
             <scope>compile</scope>

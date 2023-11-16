@@ -91,7 +91,7 @@ public class JobServiceHandler {
                     LambdaUpdateWrapper<SessionMain> lambda = updateWrapper.lambda();
                     lambda.eq(SessionMain::getSessionId, sessionId);
                     lambda.set(SessionMain::getStatusReason, statusReason);
-                    if (StatusReason.API.equals(statusReason)) {
+                    if (StatusReason.API.name().equals(statusReason)) {
                         lambda.set(SessionMain::getStatus, SessionStatus.KILLED.name());
                     }else {
                         lambda.set(SessionMain::getStatus, SessionStatus.ERROR.name());
