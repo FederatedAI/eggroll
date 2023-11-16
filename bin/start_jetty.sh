@@ -34,7 +34,7 @@ echo "processor_tag=$processor_tag"
 main() {
 	case "$module" in
 		jettyserver)
-			main_class=com.webank.eggroll.webapp.JettyServer
+			main_class=org.fedai.eggroll.webapp.JettyServer
       get_property "eggroll.jetty.server.port"
       port=${property_value}
 
