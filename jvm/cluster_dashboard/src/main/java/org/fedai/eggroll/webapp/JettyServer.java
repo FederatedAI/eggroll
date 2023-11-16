@@ -20,6 +20,7 @@ import org.fedai.eggroll.core.utils.CommandArgsUtils;
 import org.fedai.eggroll.core.utils.PropertiesUtil;
 import org.fedai.eggroll.webapp.controller.DispatcherServlet;
 import org.fedai.eggroll.webapp.controller.EggrollServiceProvider;
+import org.fedai.eggroll.webapp.controller.UserController;
 import org.fedai.eggroll.webapp.model.MyServletModule;
 
 import javax.servlet.DispatcherType;
@@ -59,6 +60,8 @@ public class JettyServer {
         // 注册并调用被@ApiMethod注解的方法
         DispatcherServlet apiMethodRegistry = injector.getInstance(DispatcherServlet.class);
         EggrollServiceProvider myService = injector.getInstance(EggrollServiceProvider.class);
+        UserController userController = injector.getInstance(UserController.class);
+        apiMethodRegistry.register(userController);
         apiMethodRegistry.register(myService);
 
 

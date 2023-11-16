@@ -40,7 +40,6 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
         this.dispatcher.register(this);
     }
 
-
     @URI(value = startContainers)
     public ErSessionMeta startContainers(Context context, ErSessionMeta sessionMeta) {
         return defaultProcessorManager.startContainers(context, sessionMeta);
@@ -50,7 +49,6 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     public ErSessionMeta stopContainers(Context context, ErSessionMeta sessionMeta) {
         return defaultProcessorManager.stopContainers(context, sessionMeta);
     }
-
     @URI(value = killContainers)
     public ErSessionMeta killContainers(Context context, ErSessionMeta sessionMeta) {
         return defaultProcessorManager.killContainers(context, sessionMeta);
