@@ -7,7 +7,8 @@ import org.fedai.eggroll.core.config.MetaInfo;
 import org.fedai.eggroll.guice.module.ClusterModule;
 import org.fedai.eggroll.webapp.controller.DispatcherServlet;
 import org.fedai.eggroll.webapp.controller.EggrollServiceProvider;
-import org.fedai.eggroll.webapp.controller.LoginController;
+import org.fedai.eggroll.webapp.controller.UserController;
+
 
 public class MyServletModule extends ServletModule {
 

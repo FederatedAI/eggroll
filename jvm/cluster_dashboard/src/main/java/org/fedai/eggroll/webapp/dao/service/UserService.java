@@ -1,10 +1,12 @@
-package com.webank.eggroll.webapp.dao.service;
+package org.fedai.eggroll.webapp.dao.service;
 
-import com.eggroll.core.config.MetaInfo;
+
 import com.google.inject.Inject;
-import com.webank.eggroll.webapp.entity.UserDTO;
-import com.webank.eggroll.webapp.utils.StandardRSAUtils;
+
 import org.apache.commons.lang3.StringUtils;
+import org.fedai.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.webapp.entity.UserDTO;
+import org.fedai.eggroll.webapp.utils.StandardRSAUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
