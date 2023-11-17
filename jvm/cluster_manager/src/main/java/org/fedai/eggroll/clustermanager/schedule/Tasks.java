@@ -12,6 +12,7 @@ import org.fedai.eggroll.clustermanager.statemachine.ProcessorStateMachine;
 import org.fedai.eggroll.core.config.MetaInfo;
 import org.fedai.eggroll.core.constant.ProcessorStatus;
 import org.fedai.eggroll.core.constant.ServerNodeStatus;
+import org.fedai.eggroll.core.constant.ServerNodeTypes;
 import org.fedai.eggroll.core.constant.SessionStatus;
 import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.grpc.NodeManagerClient;
@@ -118,7 +119,7 @@ public class Tasks implements Provider<Configuration>, ConfigurationSettingListe
             for (ErServerNode node : nodes) {
                 long interval = now - (node.getLastHeartBeat() != null ?
                         node.getLastHeartBeat().getTime() : now);
-                if (interval > expire) {
+                if (interval > expire && ServerNodeTypes.NODE_MANAGER.name().equals(node.getNodeType())) {
                     log.info("server node " + node + " change status to LOSS");
                     node.setStatus(ServerNodeStatus.LOSS.name());
                     managerService.updateNode(node, false, false);
