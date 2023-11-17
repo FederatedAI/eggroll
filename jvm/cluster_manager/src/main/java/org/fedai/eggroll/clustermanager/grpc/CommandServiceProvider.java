@@ -11,6 +11,7 @@ import org.fedai.eggroll.clustermanager.job.JobServiceHandler;
 import org.fedai.eggroll.clustermanager.processor.DefaultProcessorManager;
 import org.fedai.eggroll.clustermanager.session.DefaultSessionManager;
 import org.fedai.eggroll.core.config.Dict;
+import org.fedai.eggroll.core.config.MetaInfo;
 import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.deepspeed.store.*;
 import org.fedai.eggroll.core.grpc.AbstractCommandServiceProvider;
@@ -20,7 +21,9 @@ import org.fedai.eggroll.core.pojo.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.fedai.eggroll.core.grpc.CommandUri.*;
 
@@ -201,6 +204,24 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     @URI(value = checkResourceEnough)
     public CheckResourceEnoughResponse checkResourceEnough(Context context , CheckResourceEnoughRequest request) throws InterruptedException {
         return clusterResourceManager.checkResourceEnoughForFlow(context, request);
+    }
+
+    @URI(value = nodeMetaInfo)
+    public MetaInfoResponse queryNodeMetaInfo(Context context, MetaInfoRequest metaInfoRequest) {
+        logger.info("=============queryNodeMetaInfo==============");
+        MetaInfoResponse metaInfoResponse = new MetaInfoResponse();
+        Map<String,String> metaMap = new HashMap<>();
+        Map map = MetaInfo.toMap();
+        map.keySet().stream().forEach(key -> {
+            String strValue = null;
+            Object object = map.get(key);
+            if (null != object) {
+                strValue = String.valueOf(map.get(key));
+            }
+            metaMap.put(String.valueOf(key),strValue);
+        });
+        metaInfoResponse.setMetaMap(metaMap);
+        return metaInfoResponse;
     }
 
 }
