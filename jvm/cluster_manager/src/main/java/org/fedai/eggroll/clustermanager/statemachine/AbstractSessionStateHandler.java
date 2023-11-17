@@ -28,13 +28,11 @@ public abstract class AbstractSessionStateHandler implements StateHandler<ErSess
     SessionOptionService sessionOptionService;
 
     void updateStatus(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam) {
-        final ErSessionMeta dbSession = sessionMainService.getSession(erSessionMeta.getId());
         SessionMain sessionMain = new SessionMain();
         sessionMain.setSessionId(erSessionMeta.getId());
         sessionMain.setStatus(desStateParam);
         sessionMain.setActiveProcCount(erSessionMeta.getActiveProcCount());
-        sessionMain.setBeforeStatus(preStateParam);
-        sessionMain.setBeforeStatus(dbSession.getStatus());
+        sessionMain.setBeforeStatus(erSessionMeta.getBeforeStatus());
         sessionMainService.updateById(sessionMain);
     }
 
