@@ -3,7 +3,6 @@ package org.fedai.eggroll.clustermanager.cluster;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.sun.deploy.util.SessionState;
 import org.apache.commons.lang3.StringUtils;
 import org.fedai.eggroll.clustermanager.dao.impl.NodeResourceService;
 import org.fedai.eggroll.clustermanager.dao.impl.ServerNodeService;
@@ -225,9 +224,8 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         List<ErResource> insertResources = new ArrayList<>();
         for (ErResource e : existResources) {
             boolean needUpdate = false;
-            for (ErResource r : registedResources) {
-                if (r.getResourceType().equals(e.getResourceType())) {
-                    ErResource updatedResource = r;
+            for (ErResource updatedResource : registedResources) {
+                if (updatedResource.getResourceType().equals(e.getResourceType())) {
                     updatedResource.setAllocated(-1L);
                     needUpdate = true;
                     updateResources.add(updatedResource);

@@ -3,12 +3,18 @@ package org.fedai.eggroll.webapp.entity;
 
 
 
-import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import lombok.*;
 
 import javax.validation.constraints.NotNull;
 import java.io.Serializable;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode
+@ToString
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class UserDTO implements Serializable {
     @NotNull(message = "username can't be null!")
     private String username;
@@ -16,8 +22,4 @@ public class UserDTO implements Serializable {
     @NotNull(message = "password can't be null!")
     private String password;
 
-    public UserDTO(String username, String password) {
-        this.username = username;
-        this.password = password;
-    }
 }
