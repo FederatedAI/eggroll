@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.core.type.TypeReference;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
 import org.fedai.eggroll.core.pojo.ErEndpoint;
@@ -15,6 +16,7 @@ import java.util.Map;
 
 @TableName(value = "session_processor", autoResultMap = true)
 @Data
+@AllArgsConstructor
 public class SessionProcessor {
     @TableId(type = IdType.AUTO)
     private Long processorId;

@@ -41,8 +41,8 @@ public class RSAUtils {
         return Base64.encodeBase64String(cipher.doFinal(str.getBytes(StandardCharsets.UTF_8)));
     }
 
-    public static String decrypt(String str, String privateKey) throws Exception {
-        byte[] inputByte = Base64.decodeBase64(str.getBytes(StandardCharsets.UTF_8));
+    public static String decrypt(String cipherText, String privateKey) throws Exception {
+        byte[] inputByte = Base64.decodeBase64(cipherText.getBytes(StandardCharsets.UTF_8));
         byte[] decoded = Base64.decodeBase64(privateKey);
         PrivateKey priKey = KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(decoded));
         Cipher cipher = Cipher.getInstance("RSA");
