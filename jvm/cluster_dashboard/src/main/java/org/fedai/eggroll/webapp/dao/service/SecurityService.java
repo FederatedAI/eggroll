@@ -4,6 +4,6 @@ public interface SecurityService {
 
     String getEncryptKey() throws Exception;
 
-    boolean compareValue(String encryptedValue, String realValue) throws Exception;
+    boolean compareValue(String passwordCipher, String passwordValue) throws Exception;
 
 }
