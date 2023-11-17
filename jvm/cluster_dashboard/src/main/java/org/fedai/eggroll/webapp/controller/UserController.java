@@ -22,6 +22,16 @@ public class UserController {
     @Inject
     private UserService userService;
 
+    @ApiMethod("/eggroll/getPublicKey")
+    public Object getPublicKey(HttpServletRequest req) {
+        try {
+            return new ResponseResult<>(userService.getCurrentPublicKey());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseResult.error(ErrorCode.SYS_ERROR.getCode(), "get public key failed");
+        }
+    }
+
     @ApiMethod("/eggroll/login")
     public Object login(HttpServletRequest req) throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
@@ -33,4 +43,11 @@ public class UserController {
             return new ResponseResult(ErrorCode.SUCCESS,false);
         }
     }
+
+    @ApiMethod("/eggroll/logout")
+    public Object logout(HttpServletRequest req) {
+        userService.logout(req);
+        return new ResponseResult(ErrorCode.SUCCESS);
+    }
+
 }
