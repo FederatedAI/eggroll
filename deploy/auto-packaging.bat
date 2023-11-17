@@ -1,7 +1,10 @@
 @echo off
+if "%1"==":batch" goto :batch_start
+start /b cmd /c "%~dpnx0" :batch
+exit /b
+:batch_start
 
 setlocal
-
 set "pwd=%cd%"
 set "cwd=%~dp0"
 cd /d "%cwd%"
@@ -33,3 +36,7 @@ tar -czf eggroll.tar.gz lib bin conf data python deploy
 cd /d "%pwd%"
 
 endlocal
+
+echo ========================================================
+pause
+exit /b 0
