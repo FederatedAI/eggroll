@@ -227,10 +227,11 @@ class ErSession(object):
                 raise ValueError(f'processor type {processor_type} not supported in roll pair')
 
     def get_rank_in_node(self, partition_id, server_node_id):
+        if self._eggs.get(server_node_id,None) :
+            return -1
         processor_count_of_node = len(self._eggs[server_node_id])
         cluster_node_count = len(self._eggs)
         rank_in_node = calculate_rank_in_node(partition_id, cluster_node_count, processor_count_of_node)
-
         return rank_in_node
 
     def route_to_egg(self, partition: ErPartition):
@@ -256,6 +257,8 @@ class ErSession(object):
         for p in store._partitions:
             server_node_id = p._processor._server_node_id
             rank_in_node = self.get_rank_in_node(p._id, p._processor._server_node_id)
+            if rank_in_node == -1:
+                continue
             pp = ErPartition(id=p._id,
                              store_locator=p._store_locator,
                              processor=self.route_to_egg_by_rank(server_node_id, rank_in_node),
