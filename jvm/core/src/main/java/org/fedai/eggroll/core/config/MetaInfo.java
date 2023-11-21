@@ -69,6 +69,9 @@ public class MetaInfo {
     @Config(confKey = "eggroll.jetty.server.port", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static Integer JETTY_SERVER_PORT = 0;
 
+    @Config(confKey = "eggroll.security.session.expired.time", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer EGGROLL_SESSION_EXPIRED_TIME = 0;
+
     @Config(confKey = "grpc.server.max.concurrent.call.per.connection", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static int PROPERTY_GRPC_SERVER_MAX_CONCURRENT_CALL_PER_CONNECTION = 1000;
 
@@ -323,6 +326,10 @@ public class MetaInfo {
     public static Integer EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL = 3600000;
     @Config(confKey = "eggroll.mybatis.mapper.package")
     public static String EGGROLL_MYBATIS_MAPPER_PACKAGE = "org.fedai.eggroll.clustermanager.dao.mapper";
+
+    @Config(confKey = "eggroll.dashboard.mybatis.mapper.package")
+    public static String EGGROLL_DASHBOARD_MYBATIS_MAPPER_PACKAGE = "classpath*:org/fedai/eggroll/webapp/dao/mapper/**/*.class";
+
     @Config(confKey = "eggroll.mybatis.cache.enabled")
     public static Boolean EGGROLL_MYBATIS_cache_enabled = true;
     @Config(confKey = "eggroll.flowlog.print.client")
