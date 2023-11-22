@@ -66,8 +66,8 @@ public class SessionKillHandler extends AbstractSessionStateHandler {
 
     @Override
     public ErSessionMeta handle(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam) {
+        logger.info("handel session, preState: {}, desState: {}, sessionInfo: {}",preStateParam,desStateParam,erSessionMeta);
         updateStatus(context, erSessionMeta, preStateParam, desStateParam);
-        logger.info("===================={}", erSessionMeta);
         erSessionMeta.getProcessors().forEach(processor -> {
             processorStateMachine.changeStatus(context, processor, null, ProcessorStatus.KILLED.name());
         });

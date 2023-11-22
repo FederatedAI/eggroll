@@ -6,6 +6,7 @@ import org.fedai.eggroll.clustermanager.dao.impl.SessionMainService;
 import org.fedai.eggroll.clustermanager.dao.impl.SessionOptionService;
 import org.fedai.eggroll.clustermanager.entity.SessionMain;
 import org.fedai.eggroll.clustermanager.entity.SessionOption;
+import org.fedai.eggroll.core.config.Dict;
 import org.fedai.eggroll.core.constant.SessionStatus;
 import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.pojo.ErSessionMeta;
@@ -32,7 +33,8 @@ public abstract class AbstractSessionStateHandler implements StateHandler<ErSess
         sessionMain.setSessionId(erSessionMeta.getId());
         sessionMain.setStatus(desStateParam);
         sessionMain.setActiveProcCount(erSessionMeta.getActiveProcCount());
-        sessionMain.setBeforeStatus(preStateParam);
+        sessionMain.setBeforeStatus(String.valueOf(context.getData(Dict.BEFORE_STATUS)));
+        sessionMain.setStatusReason(String.valueOf(context.getData(Dict.STATUS_REASON)));
         sessionMainService.updateById(sessionMain);
     }
 

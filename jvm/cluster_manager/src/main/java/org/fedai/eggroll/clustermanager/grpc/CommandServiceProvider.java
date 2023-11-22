@@ -12,6 +12,7 @@ import org.fedai.eggroll.clustermanager.processor.DefaultProcessorManager;
 import org.fedai.eggroll.clustermanager.session.DefaultSessionManager;
 import org.fedai.eggroll.core.config.Dict;
 import org.fedai.eggroll.core.config.MetaInfo;
+import org.fedai.eggroll.core.constant.StatusReason;
 import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.deepspeed.store.*;
 import org.fedai.eggroll.core.grpc.AbstractCommandServiceProvider;
@@ -41,7 +42,7 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     @Inject
     StoreCrudOperator storeCrudOperator;
     @Inject
-    ClusterManagerService  clusterManagerService;
+    ClusterManagerService clusterManagerService;
     @Inject
     JobServiceHandler jobServiceHandler;
     @Inject
@@ -58,11 +59,11 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     @URI(value= nodeHeartbeat)
     public ErNodeHeartbeat nodeHeartbeat(Context context , ErNodeHeartbeat  erNodeHeartbeat){
         context.setNodeId(erNodeHeartbeat.getNode().getId().toString());
-        context.putLogData(Dict.STATUS,erNodeHeartbeat.getNode().getStatus());
-       return  clusterManagerService.nodeHeartbeat(context,erNodeHeartbeat);
+        context.putLogData(Dict.STATUS, erNodeHeartbeat.getNode().getStatus());
+        return  clusterManagerService.nodeHeartbeat(context, erNodeHeartbeat);
     }
     @URI(value = getServerNode)
-    public ErServerNode getServerNodeServiceName(Context context ,ErServerNode erServerNode) {
+    public ErServerNode getServerNodeServiceName(Context context, ErServerNode erServerNode) {
         List<ErServerNode> nodeList = serverNodeService.getListByErServerNode(erServerNode);
         return nodeList.size() > 0 ? nodeList.get(0) : null;
     }
@@ -123,13 +124,16 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     @URI(value = stopSession)
     public ErSessionMeta stopSession(Context context ,ErSessionMeta erSessionMeta) {
         context.setSessionId(erSessionMeta.getId());
+        context.putData(Dict.STATUS_REASON,StatusReason.API.name());
+        logger.info("session will be stoped: sessionId  = {}", erSessionMeta.getId());
         return defaultSessionManager.stopSession(context, erSessionMeta);
     }
 
     @URI(value = killSession)
     public ErSessionMeta killSession(Context context ,ErSessionMeta erSessionMeta) {
         context.setSessionId(erSessionMeta.getId());
-        logger.info("====================> will kill sessionId  = {}",erSessionMeta.getId());
+        context.putData(Dict.STATUS_REASON,StatusReason.API.name());
+        logger.info("session will be killed: sessionId  = {}", erSessionMeta.getId());
         return defaultSessionManager.killSession(context, erSessionMeta);
     }
 
@@ -141,6 +145,7 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     @URI(value = killAllSessions)
     public ErSessionMeta killAllSession(Context context ,ErSessionMeta erSessionMeta) {
         context.setSessionId(erSessionMeta.getId());
+        context.putData(Dict.STATUS_REASON,StatusReason.API.name());
         return defaultSessionManager.killAllSessions(context, erSessionMeta);
     }
 

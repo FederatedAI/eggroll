@@ -4,8 +4,10 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import org.fedai.eggroll.clustermanager.dao.impl.SessionMainService;
 import org.fedai.eggroll.clustermanager.session.DefaultSessionManager;
+import org.fedai.eggroll.core.config.Dict;
 import org.fedai.eggroll.core.config.MetaInfo;
 import org.fedai.eggroll.core.constant.SessionStatus;
+import org.fedai.eggroll.core.constant.StatusReason;
 import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.exceptions.ErSessionException;
 import org.fedai.eggroll.core.pojo.ErSessionMeta;
@@ -29,6 +31,7 @@ public class SessionRepeatedCreateHandler extends AbstractSessionStateHandler {
             if (!SessionStatus.ACTIVE.name().equals(erSessionMeta.getStatus())) {
                 logger.error("unable to start all processors for session id {} total {} active {} ", erSessionMeta.getId(),
                         erSessionMeta.getTotalProcCount(), erSessionMeta.getActiveProcCount());
+                context.putData(Dict.STATUS_REASON, StatusReason.PROCESS_ERROR.name());
                 sessionManager.killSession(context, data);
                 StringBuilder builder = new StringBuilder();
                 builder.append("unable to start all processors for session id: . ")
