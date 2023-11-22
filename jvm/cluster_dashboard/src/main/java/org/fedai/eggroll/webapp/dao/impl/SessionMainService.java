@@ -1,4 +1,4 @@
-package org.fedai.eggroll.webapp.dao.service;
+package org.fedai.eggroll.webapp.dao.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -9,7 +9,7 @@ import com.google.inject.Singleton;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.tuple.MutableTriple;
-import org.fedai.eggroll.clustermanager.dao.impl.EggRollBaseServiceImpl;
+
 import org.fedai.eggroll.clustermanager.entity.SessionMain;
 import org.fedai.eggroll.clustermanager.entity.SessionOption;
 import org.fedai.eggroll.clustermanager.entity.SessionProcessor;
