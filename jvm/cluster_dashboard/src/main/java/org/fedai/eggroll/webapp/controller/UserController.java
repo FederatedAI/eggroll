@@ -23,11 +23,12 @@ public class UserController {
     private UserService userService;
 
     @ApiMethod("/eggroll/getPublicKey")
-    public Object getPublicKey(HttpServletRequest req) {
-        try {
-            return new ResponseResult<>(userService.getCurrentPublicKey());
-        } catch (Exception e) {
-            e.printStackTrace();
+    public Object getPublicKey(HttpServletRequest req) throws Exception {
+
+        String result = userService.getCurrentPublicKey();
+        if (result != null) {
+            return ResponseResult.success(result);
+        } else {
             return ResponseResult.error(ErrorCode.SYS_ERROR.getCode(), "get public key failed");
         }
     }
@@ -38,9 +39,9 @@ public class UserController {
         UserDTO userDTO = objectMapper.readValue(req.getInputStream(), UserDTO.class);
         Boolean result = userService.login(userDTO, req);
         if (result) {
-            return new ResponseResult(ErrorCode.SUCCESS,true);
+            return new ResponseResult(ErrorCode.SUCCESS, true);
         } else {
-            return new ResponseResult(ErrorCode.SUCCESS,false);
+            return new ResponseResult(ErrorCode.LOGIN_ERROR, false);
         }
     }
 

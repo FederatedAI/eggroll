@@ -1,8 +1,7 @@
-package org.fedai.eggroll.webapp.dao.service;
+package org.fedai.eggroll.webapp.dao.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.google.inject.Singleton;
-import org.fedai.eggroll.clustermanager.dao.impl.EggRollBaseServiceImpl;
 import org.fedai.eggroll.clustermanager.entity.ProcessorResource;
 import org.fedai.eggroll.clustermanager.resource.ResourceManager;
 import org.fedai.eggroll.core.pojo.ErProcessor;
