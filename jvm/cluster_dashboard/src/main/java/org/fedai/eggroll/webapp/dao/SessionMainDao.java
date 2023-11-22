@@ -6,8 +6,9 @@ import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.google.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
-import org.fedai.eggroll.clustermanager.dao.impl.SessionMainService;
+
 import org.fedai.eggroll.clustermanager.entity.SessionMain;
+import org.fedai.eggroll.webapp.dao.impl.SessionMainService;
 import org.fedai.eggroll.webapp.queryobject.SessionMainQO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,7 +76,7 @@ public class SessionMainDao {
 
     public Long queryActiveSession(){
         QueryWrapper<SessionMain> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("status", "ACTIVATED" );
+        queryWrapper.eq("status", "ACTIVE" );
         return this.sessionMainService.count(queryWrapper);
     }
 
