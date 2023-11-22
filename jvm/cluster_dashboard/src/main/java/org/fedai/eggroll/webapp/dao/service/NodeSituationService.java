@@ -2,8 +2,8 @@ package org.fedai.eggroll.webapp.dao.service;
 
 
 import com.google.inject.Inject;
-import org.fedai.eggroll.clustermanager.dao.impl.NodeResourceService;
-import org.fedai.eggroll.clustermanager.dao.impl.ServerNodeService;
+import org.fedai.eggroll.webapp.dao.impl.NodeResourceService;
+import org.fedai.eggroll.webapp.dao.impl.ServerNodeService;
 import org.fedai.eggroll.clustermanager.entity.NodeResource;
 import org.fedai.eggroll.clustermanager.entity.ServerNode;
 import org.fedai.eggroll.webapp.entity.NodeInfo;

@@ -1,11 +1,10 @@
-package org.fedai.eggroll.webapp.dao.service;
+package org.fedai.eggroll.webapp.dao.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import org.apache.commons.lang3.StringUtils;
-import org.fedai.eggroll.clustermanager.dao.impl.EggRollBaseServiceImpl;
 import org.fedai.eggroll.clustermanager.dao.mapper.SessionProcessorMapper;
 import org.fedai.eggroll.clustermanager.entity.ProcessorResource;
 import org.fedai.eggroll.clustermanager.entity.SessionProcessor;
