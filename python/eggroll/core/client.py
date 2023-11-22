@@ -112,7 +112,7 @@ class CommandClient(object):
                 return []
         except Exception as e:
             L.exception(f"Error calling to {endpoint}, command_uri: {command_uri}, req:{request}")
-            raise CommandCallError(command_uri, endpoint, e)
+            raise CommandCallError(command_uri, endpoint, e) from e
 
     def async_call(self, args, output_types: list, command_uri: CommandURI, callback=None):
         futures = list()
