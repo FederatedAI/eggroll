@@ -25,7 +25,7 @@ echo "EGGROLL_HOME=${EGGROLL_HOME}"
 
 eval action=\$$#
 start_mode=1
-modules=(clustermanager nodemanager)
+modules=(clustermanager nodemanager dashboard)
 
 if [ $action = starting ];then
 	action=start
@@ -62,6 +62,11 @@ main() {
 			get_property "eggroll.resourcemanager.nodemanager.jvm.options"
 			jvm_options=${property_value}
 			;;
+	  dashboard)
+  		main_class=org.fedai.eggroll.webapp.JettyServer
+      get_property "eggroll.jetty.server.port"
+      port=${property_value}
+  		;;
 		*)
 			usage
 			exit -1
@@ -114,7 +119,7 @@ all() {
 }
 
 usage() {
-	echo "usage: `basename ${0}` {clustermanager | nodemanager | all} {start | stop | kill | restart | status}"
+	echo "usage: `basename ${0}` {clustermanager | nodemanager | dashboard | all} {start | stop | kill | restart | status}"
 }
 
 multiple() {
