@@ -154,7 +154,7 @@ public class StoreCrudOperator {
         inputWithoutType.getStoreLocator().setStoreType(StringConstants.EMPTY);
         try {
             LockUtils.lock(storeLockCache, input.getStoreLocator().buildKey());
-            logger.info("==============> store getorcreate lock key ={}",input.getStoreLocator().buildKey());
+//            logger.info("==============> store getorcreate lock key ={}",input.getStoreLocator().buildKey());
             ErStore existing = doGetStore(inputWithoutType);
             if (existing != null) {
                 if (!existing.getStoreLocator().getStoreType().equals(inputStoreType)) {
@@ -169,7 +169,7 @@ public class StoreCrudOperator {
             }
         } finally {
             LockUtils.unLock(storeLockCache, input.getStoreLocator().buildKey());
-            logger.info("==============> store getorcreate uuuuuuuuuuuunlock key ={}",input.getStoreLocator().buildKey());
+//            logger.info("==============> store getorcreate uuuuuuuuuuuunlock key ={}",input.getStoreLocator().buildKey());
         }
     }
 

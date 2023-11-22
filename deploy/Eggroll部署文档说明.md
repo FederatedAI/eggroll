@@ -50,16 +50,13 @@ tar -xzf eggroll.tar.gz
 |--python		--存放eggroll python代码部分
 ```
 
-### 3.2.  修改配置文件
-
-配置文件一共有三个需要修改：
-
+数据库建表语句
 ```properties
 |--conf
-|----eggroll.properties
-|----create-eggroll-meta-tables.sql
-|----2.5.x_To_3.0.0_DDL.sql
+ |--create-eggroll-meta-tables.sql
 ```
+
+### 3.2.  修改配置文件
 
 各配置文件修改说明如下：
 
@@ -83,14 +80,14 @@ eggroll.resourcemanager.clustermanager.jdbc.password=数据库密码
 	1、以下包含的路径都是相对Eggroll的实际部署目录之下的相对路径，若不在Eggroll的实际部署目录之下，可用系统绝对路径；
 	2、根据部署方法分为三个修改级别：需要修改、建议默认、默认即可，其中端口为建议默认但需要根据实际服务器端口是否可用或部署方式来考虑是否修改，以避免端口冲突。-->
 
-eggroll.data.dir=data/			<--存放缓存数据目录，默认即可-->
-eggroll.logs.dir=logs/			<--存放eggroll生成日志目录，默认即可-->
 eggroll.resourcemanager.clustermanager.host=127.0.0.1	<--clustermanager服务ip地址，需要修改-->
 eggroll.resourcemanager.clustermanager.port=4670	<--clustermanager服务端口，建议默认-->
 eggroll.resourcemanager.nodemanager.host=127.0.0.1	<--nodemanager服务ip地址，需要修改-->
 eggroll.resourcemanager.nodemanager.port=4671	<--nodemanager服务端口：1、部署单机版与clustermanager相同，建议默认；2、部署集群版需修改为其他可用端口，需要修改-->
 
 <--以下几项默认即可-->
+eggroll.data.dir=data/			<--存放缓存数据目录，默认即可-->
+eggroll.logs.dir=logs/			<--存放eggroll生成日志目录，默认即可-->
 eggroll.resourcemanager.process.tag=	<--集群服务标签，对不同集群需要单独指，例如EGGROLL_TAG，需要修改-->
 eggroll.bootstrap.root.script=bin/eggroll_boot.sh	<--eggroll_boot.sh启动脚本路径，默认即可-->
 eggroll.resourcemanager.bootstrap.egg_pair.exepath=bin/roll_pair/egg_pair_bootstrap.sh		<--egg_pair启动脚本路径，默认即可-->

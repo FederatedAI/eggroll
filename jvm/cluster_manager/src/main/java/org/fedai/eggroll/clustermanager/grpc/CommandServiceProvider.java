@@ -129,7 +129,6 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     @URI(value = killSession)
     public ErSessionMeta killSession(Context context ,ErSessionMeta erSessionMeta) {
         context.setSessionId(erSessionMeta.getId());
-        logger.info("====================> will kill sessionId  = {}",erSessionMeta.getId());
         return defaultSessionManager.killSession(context, erSessionMeta);
     }
 
