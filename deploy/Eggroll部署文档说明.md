@@ -21,9 +21,10 @@
 从github拉取Eggroll项目，通过执行auto-packaging.sh自动打包脚本在同目录下生成eggroll.tar.gz
 
 ```shell
-git clone -b v2.x https://github.com/WeBankFinTech/Eggroll.git
-cd Eggroll
-sh deploy/auto-packaging.sh
+git clone -b v3.0.0 https://github.com/FederatedAI/eggroll.git
+cd eggroll
+windows : deploy/auto-packaging.bat
+linux : sh deploy/auto-packaging.sh
 ```
 
 
@@ -32,7 +33,7 @@ sh deploy/auto-packaging.sh
 
 ### 3.1.  解压
 
-将eggroll.tar.gz移到或发送到Eggroll的安装目录下，然后执行：
+将eggroll.tar.gz移到或发送到eggroll的安装目录下，然后执行：
 
 ```shell
 tar -xzf eggroll.tar.gz
@@ -56,8 +57,8 @@ tar -xzf eggroll.tar.gz
 ```properties
 |--conf
 |----eggroll.properties
-|----route_tabe.json
 |----create-eggroll-meta-tables.sql
+|----2.5.x_To_3.0.0_DDL.sql
 ```
 
 各配置文件修改说明如下：
@@ -70,9 +71,8 @@ vi conf/eggroll.properties
 
 ```properties
 <--数据库配置选项说明：
-	eggroll提供两种数据库连接方式：
-	1、项目自带h2数据库，适用于单节点部署，使用此方式则以下几项jdbc配置无需修改，使用原有默认配置即可；
-	2、安装的mysql8.0数据库，建议集群版多节点使用，若使用此方式则需要按如下方式进行修改配置。-->
+	eggroll数据库连接方式：
+	1、安装的mysql8.0数据库，建议集群版多节点使用，若使用此方式则需要按如下方式进行修改配置。-->
 
 eggroll.resourcemanager.clustermanager.jdbc.driver.class.name=com.mysql.cj.jdbc.Driver
 eggroll.resourcemanager.clustermanager.jdbc.url=jdbc:mysql://数据库服务器ip:端口/数据库名称?useSSL=false&serverTimezone=UTC&characterEncoding=utf8&allowPublicKeyRetrieval=true
@@ -87,24 +87,23 @@ eggroll.data.dir=data/			<--存放缓存数据目录，默认即可-->
 eggroll.logs.dir=logs/			<--存放eggroll生成日志目录，默认即可-->
 eggroll.resourcemanager.clustermanager.host=127.0.0.1	<--clustermanager服务ip地址，需要修改-->
 eggroll.resourcemanager.clustermanager.port=4670	<--clustermanager服务端口，建议默认-->
-eggroll.resourcemanager.nodemanager.port=9394	<--nodemanager服务端口：1、部署单机版与clustermanager相同，建议默认；2、部署集群版需修改为其他可用端口，需要修改-->
+eggroll.resourcemanager.nodemanager.host=127.0.0.1	<--nodemanager服务ip地址，需要修改-->
+eggroll.resourcemanager.nodemanager.port=4671	<--nodemanager服务端口：1、部署单机版与clustermanager相同，建议默认；2、部署集群版需修改为其他可用端口，需要修改-->
+
+<--以下几项默认即可-->
 eggroll.resourcemanager.process.tag=	<--集群服务标签，对不同集群需要单独指，例如EGGROLL_TAG，需要修改-->
-
 eggroll.bootstrap.root.script=bin/eggroll_boot.sh	<--eggroll_boot.sh启动脚本路径，默认即可-->
-
 eggroll.resourcemanager.bootstrap.egg_pair.exepath=bin/roll_pair/egg_pair_bootstrap.sh		<--egg_pair启动脚本路径，默认即可-->
 eggroll.resourcemanager.bootstrap.egg_pair.venv=		<--virtualenv安装路径，需要修改-->
 eggroll.resourcemanager.bootstrap.egg_pair.pythonpath=python		<--python文件路径，也作PYTHONPATH，默认即可-->
 eggroll.resourcemanager.bootstrap.egg_pair.filepath=python/eggroll/roll_pair/egg_pair.py	<--egg_pair.py文件路径，默认即可-->
 eggroll.resourcemanager.bootstrap.egg_pair.ld_library_path=		<--egg_pair ld_library_path路径，默认即可-->
 
-<--以下几项默认即可-->
 eggroll.resourcemanager.bootstrap.egg_frame.exepath=bin/roll_frame/egg_frame_bootstrap.sh		<--egg_frame_bootstrap.sh文件路径-->
 eggroll.resourcemanager.bootstrap.egg_frame.javahome=	<--java环境变量，系统安装jdk1.8-->
 eggroll.resourcemanager.bootstrap.egg_frame.classpath=conf/:lib/*	<--eggroll启动时读取classpath文件路径-->
 eggroll.resourcemanager.bootstrap.egg_frame.mainclass=com.webank.eggroll.rollframe.EggFrameBootstrap	<--roll_frame主类-->
 eggroll.resourcemanager.bootstrap.egg_frame.jvm.options=	<--jvm启动参数-->
-<--以上几项默认即可-->
 
 # roll_frame
 arrow.enable_unsafe_memory_access=true
@@ -116,58 +115,11 @@ hadoop.fs.defaultFS=file:///
 hadoop.dfs.nameservices=
 hadoop.dfs.namenode.rpc-address.nn1=
 hadoop.dfs.namenode.rpc-address.nn2=
-
-<--rollsite配置说明：其服务ip、端口与partyId需要与route_table.json配置文件中对应一致-->
-eggroll.rollsite.coordinator=webank			<--rollsite服务标签，默认即可-->
-eggroll.rollsite.host=127.0.0.1				<--rollsite服务ip，需要修改-->
-eggroll.rollsite.port=9370					<--rollsite服务端口，建议默认-->
-eggroll.rollsite.party.id=10001				<--集群partyId，不同集群需要使用不同的partyId，需要修改-->
-eggroll.rollsite.route.table.path=conf/route_table.json	<--route_table.json路由配置文件路径，默认即可-->
-eggroll.rollsite.jvm.options=			<--rollsite jvm启动参数添加，默认即可，有需要可自行添加-->
-
 eggroll.session.processors.per.node=4		<--单节点启动egg pair个数，小于或等于cpu核数，建议16-->
 eggroll.session.start.timeout.ms=180000		<--session超时设定ms数，默认即可-->
-eggroll.rollsite.adapter.sendbuf.size=1048576	<--rollsite传输块大小，默认即可-->
 eggroll.rollpair.transferpair.sendbuf.size=4150000		<--rollpair传输块大小，默认即可-->
+<--以上几项默认即可-->
 ```
-
-- **修改route_table.json路由信息**
-
-```shell
-vi conf/route_table.json
-```
-
-```properties
-{
-  "route_table":
-  {
-    "集群一partyId":			<--此处需要修改-->
-    {   
-      "default":[
-        {   
-          "port": 集群一rollsite服务端口,		<--此处需要修改-->
-          "ip": "集群一rollsite服务ip"		<--此处需要修改-->
-        }   
-      ]   
-    },  
-    "集群二partyId":			<--此处需要修改-->
-    {   
-      "default":[
-        {   
-          "port": 集群二rollsite服务端口,		<--此处需要修改-->
-          "ip": "集群二rollsite服务ip"		<--此处需要修改-->
-        }   
-      ]   
-    }   
-  },  
-  "permission":
-  {
-    "default_allow": true
-  }
-}
-```
-
-
 
 ### 3.3.  多节点部署
 
@@ -240,11 +192,11 @@ sh bin/eggroll.sh clustermanager starting
 <--查看clustermanager服务状态-->
 sh bin/eggroll.sh clustermanager status
 
-<--重启rollsite服务-->
-sh bin/eggroll.sh rollsite restart
+<--重启clustermanager服务-->
+sh bin/eggroll.sh clustermanager restart
 
-<--阻塞重启rollsite服务-->
-sh bin/eggroll.sh rollsite restarting
+<--阻塞重启clustermanager服务-->
+sh bin/eggroll.sh clustermanager restarting
 
 <--关闭nodemanager服务-->
 sh bin/eggroll.sh nodemanager stop
