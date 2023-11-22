@@ -19,7 +19,7 @@ from eggroll.core.client import CommandClient
 from eggroll.core.command.command_model import CommandURI
 from eggroll.core.conf_keys import RollPairConfKeys
 from eggroll.core.constants import StoreTypes, PartitionerTypes
-from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErTask, ErPartition
+from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErTask, ErPartition, ErJobIO
 from eggroll.core.session import ErSession
 from eggroll.core.utils import generate_job_id, generate_task_id, get_runtime_storage
 from eggroll.roll_pair._roll_pair import RollPair
@@ -109,7 +109,19 @@ class RollPairContext(object):
         for k, v in dict(self.gc_recorder.gc_recorder.items()):
             namespace = k[0]
             name = k[1]
-            rp = self.load_rp(namespace=namespace, name=name, store_type=StoreTypes.ROLLPAIR_IN_MEMORY)
+
+            # TODO: add api to check if store exists?
+            rp = self.create_rp(
+                id=-1,
+                namespace=namespace,
+                name=name,
+                total_partitions=0,
+                store_type=StoreTypes.ROLLPAIR_IN_MEMORY,
+                key_serdes_type=0,
+                value_serdes_type=0,
+                partitioner_type=0,
+                options={},
+            )
             rp.destroy()
 
     def route_to_egg(self, partition: ErPartition):
@@ -239,14 +251,13 @@ class RollPairContext(object):
         if options is None:
             options = {}
         total_partitions = options.get("total_partitions", 1)
-        partitioner = options.get("partitioner", PartitionerTypes.MMH3_BYTESTRING_HASH)
 
         if name == "*":
             store_type = options.get("store_type", "*")
             L.debug(f"cleaning up whole store_type={store_type}, namespace={namespace}, name={name}")
             er_store = ErStore(store_locator=ErStoreLocator(namespace=namespace, name=name, store_type=store_type))
             job_id = generate_job_id(namespace, tag=RollPair.CLEANUP)
-            job = ErJob(id=job_id, name=RollPair.DESTROY, inputs=[er_store], options=options)
+            job = ErJob(id=job_id, name=RollPair.DESTROY, inputs=[ErJobIO(er_store)], options=options)
 
             args = list()
             cleanup_partitions = [ErPartition(id=-1, store_locator=er_store._store_locator)]
@@ -255,7 +266,7 @@ class RollPairContext(object):
                 egg = eggs[0]
                 task = ErTask(
                     id=generate_task_id(job_id, egg._command_endpoint._host),
-                    name=job._name,
+                    name=job.name,
                     inputs=cleanup_partitions,
                     job=job,
                 )
@@ -283,7 +294,6 @@ class RollPairContext(object):
                     namespace=namespace,
                     name=name,
                     total_partitions=total_partitions,
-                    partitioner=partitioner,
                 ),
                 options=final_options,
             )

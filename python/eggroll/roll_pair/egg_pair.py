@@ -285,6 +285,9 @@ if __name__ == "__main__":
     if configs:
         if not args.data_dir:
             args.data_dir = configs["eggroll"]["eggroll.data.dir"]
+            if not os.path.isabs(args.data_dir):
+                args.data_dir = os.path.join(EGGROLL_HOME, args.data_dir)
+                args.data_dir = os.path.realpath(args.data_dir)
 
     L.info(args)
     serve(args)
