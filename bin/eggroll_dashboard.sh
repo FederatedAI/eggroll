@@ -37,7 +37,6 @@ main() {
 			main_class=org.fedai.eggroll.webapp.JettyServer
       get_property "eggroll.jetty.server.port"
       port=${property_value}
-
 			;;
 		*)
 			usage
@@ -90,7 +89,7 @@ all() {
 }
 
 usage() {
-	echo "usage: `basename ${0}` {jettyserver | all} {start | stop | kill | restart | status}"
+	echo "usage: `basename ${0}` {dashboard | all} {start | stop | kill | restart | status}"
 }
 
 multiple() {
