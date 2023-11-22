@@ -56,7 +56,7 @@ public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta> {
         }
         line = preStateParam + "_" + desStateParam;
         context.putLogData("session_status_change", line);
-        erSessionMeta.setBeforeStatus(preStateParam);
+        context.putData(Dict.BEFORE_STATUS,preStateParam);
         return line;
     }
 

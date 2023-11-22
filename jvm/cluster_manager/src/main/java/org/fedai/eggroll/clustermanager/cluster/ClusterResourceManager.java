@@ -651,6 +651,8 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
             }
 
             if (!isStarted) {
+                Context context = new Context();
+                context.putData(Dict.STATUS_REASON,StatusReason.TIMEOUT.name());
                 sessionManager.killSession(new Context(), erSessionInDb, SessionStatus.ERROR.name());
                 throw new ErSessionException("create download session failed");
             }

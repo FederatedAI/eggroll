@@ -116,16 +116,20 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         if (session.getCreateTime().getTime() < current - MetaInfo.EGGROLL_SESSION_STATUS_NEW_TIMEOUT_MS) {
             //session: ErSessionMeta, afterState: String
             log.info("session " + session + " status stay at " + session.getStatus() + " too long, prepare to kill");
-            sessionManager.killSession(new Context(), session.getId());
+            Context context = new Context();
+            context.putData(Dict.STATUS_REASON,StatusReason.API.name());
+            sessionManager.killSession(context, session.getId());
         }
     }
 
     public void checkAndHandleEggpairActiveSession(ErSessionMeta session, List<ErProcessor> sessionProcessors) {
+        Context context = new Context();
         long now = System.currentTimeMillis();
         long liveTime = MetaInfo.EGGROLL_SESSION_MAX_LIVE_MS;
         if (session.getCreateTime().getTime() < now - liveTime) {
             log.error("session " + session.getId() + " is timeout, live time is " + liveTime + ", max live time in config is " + MetaInfo.EGGROLL_SESSION_MAX_LIVE_MS);
-            sessionManager.killSession(new Context(), session, SessionStatus.ERROR.name());
+            context.putData(Dict.STATUS_REASON,StatusReason.TIMEOUT.name());
+            sessionManager.killSession(context, session, SessionStatus.ERROR.name());
         } else {
             List<ErProcessor> invalidProcessor = sessionProcessors.stream().filter(p -> StringUtils.equalsAny(p.getStatus(),
                     ProcessorStatus.ERROR.name(), ProcessorStatus.KILLED.name(), ProcessorStatus.STOPPED.name())).collect(Collectors.toList());
@@ -133,6 +137,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
                 boolean needKillSession = invalidProcessor.stream().anyMatch(p -> p.getUpdatedAt().getTime() < now - MetaInfo.EGGROLL_SESSION_STOP_TIMEOUT_MS);
                 if (needKillSession) {
                     log.info("invalid processors " + JsonUtil.object2Json(invalidProcessor) + ", session watcher kill eggpair session " + session);
+                    context.putData(Dict.STATUS_REASON,StatusReason.PROCESS_ERROR.name());
                     sessionManager.killSession(new Context(), session, SessionStatus.ERROR.name());
                 }
             }
