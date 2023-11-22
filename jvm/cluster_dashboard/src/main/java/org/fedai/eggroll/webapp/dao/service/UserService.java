@@ -20,11 +20,20 @@ public class UserService {
     @Inject
     private SecurityService securityService;
 
+    public String getCurrentPublicKey() throws Exception {
+        return securityService.getEncryptKey();
+    }
+
+    public void logout(HttpServletRequest httpServletRequest) {
+        HttpSession session = httpServletRequest.getSession();
+        session.invalidate();
+    }
+
     public Boolean login(UserDTO userDTO, HttpServletRequest req) {
         String username = userDTO.getUsername();
-        String password = userDTO.getPassword();
+        String passwordMiwen = userDTO.getPassword();
 
-        if (!checkUser(username, password)) {
+        if (!checkUser(username, passwordMiwen)) {
             return false;
         } else {
             HttpSession session = req.getSession();
@@ -33,7 +42,7 @@ public class UserService {
         }
     }
 
-    public boolean checkUser(String username, String password) {
+    public boolean checkUser(String username, String passwordCipher) {
 
         // 更新配置文件的方法待定updateConfig();
         String usernameValue = MetaInfo.USERNAME;
@@ -53,7 +62,7 @@ public class UserService {
             return false;
         }
         try {
-            return securityService.compareValue(password, passwordValue);
+            return securityService.compareValue(passwordCipher, passwordValue);
         } catch (Exception e) {
             e.printStackTrace();
             logger.error("decrypt password error");

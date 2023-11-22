@@ -10,7 +10,7 @@ echo "EGGROLL_HOME=${EGGROLL_HOME}"
 
 eval action=\$$#
 start_mode=1
-modules=(jettyserver)
+modules=(dashboard)
 
 if [ $action = starting ];then
 	action=start
@@ -33,7 +33,7 @@ echo "processor_tag=$processor_tag"
 
 main() {
 	case "$module" in
-		jettyserver)
+		dashboard)
 			main_class=org.fedai.eggroll.webapp.JettyServer
       get_property "eggroll.jetty.server.port"
       port=${property_value}
