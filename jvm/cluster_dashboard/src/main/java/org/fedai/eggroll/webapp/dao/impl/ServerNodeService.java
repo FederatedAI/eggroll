@@ -1,4 +1,4 @@
-package org.fedai.eggroll.webapp.dao.service;
+package org.fedai.eggroll.webapp.dao.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.google.common.cache.CacheBuilder;
@@ -7,12 +7,11 @@ import com.google.common.cache.LoadingCache;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import org.apache.commons.lang3.StringUtils;
-import org.fedai.eggroll.clustermanager.dao.impl.EggRollBaseServiceImpl;
 import org.fedai.eggroll.clustermanager.entity.NodeResource;
 import org.fedai.eggroll.clustermanager.entity.ServerNode;
 import org.fedai.eggroll.core.pojo.ErEndpoint;
 import org.fedai.eggroll.core.pojo.ErServerNode;
-import org.fedai.eggroll.webapp.dao.mapper.ServerNodeMapper;
+import org.fedai.eggroll.webapp.dao.mapper.ServerNodeMapperUI;
 import org.mybatis.guice.transactional.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Singleton
-public class ServerNodeService extends EggRollBaseServiceImpl<ServerNodeMapper, ServerNode> {
+public class ServerNodeService extends EggRollBaseServiceImpl<ServerNodeMapperUI, ServerNode> {
     Logger logger = LoggerFactory.getLogger(ServerNodeService.class);
     LoadingCache<Long, ErServerNode> cache;
 

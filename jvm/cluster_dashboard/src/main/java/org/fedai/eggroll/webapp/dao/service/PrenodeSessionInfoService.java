@@ -2,8 +2,8 @@ package org.fedai.eggroll.webapp.dao.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.google.inject.Inject;
-import org.fedai.eggroll.clustermanager.dao.impl.SessionMainService;
-import org.fedai.eggroll.clustermanager.dao.impl.SessionProcessorService;
+import org.fedai.eggroll.webapp.dao.impl.SessionMainService;
+import org.fedai.eggroll.webapp.dao.impl.SessionProcessorService;
 import org.fedai.eggroll.clustermanager.entity.SessionMain;
 import org.fedai.eggroll.clustermanager.entity.SessionProcessor;
 import org.fedai.eggroll.webapp.global.ErrorCode;

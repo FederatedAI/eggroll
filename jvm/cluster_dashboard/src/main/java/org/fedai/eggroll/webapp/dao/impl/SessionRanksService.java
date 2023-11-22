@@ -1,7 +1,6 @@
-package org.fedai.eggroll.webapp.dao.service;
+package org.fedai.eggroll.webapp.dao.impl;
 
 import com.google.inject.Singleton;
-import org.fedai.eggroll.clustermanager.dao.impl.EggRollBaseServiceImpl;
 import org.fedai.eggroll.clustermanager.entity.SessionRanks;
 import org.fedai.eggroll.webapp.dao.mapper.SessionRanksMapper;
 

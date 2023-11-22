@@ -5,7 +5,7 @@ import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.google.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
-import org.fedai.eggroll.clustermanager.dao.impl.ProcessorResourceService;
+import org.fedai.eggroll.webapp.dao.impl.ProcessorResourceService;
 import org.fedai.eggroll.clustermanager.entity.ProcessorResource;
 import org.fedai.eggroll.webapp.queryobject.ProcessorResourceQO;
 import org.slf4j.Logger;
