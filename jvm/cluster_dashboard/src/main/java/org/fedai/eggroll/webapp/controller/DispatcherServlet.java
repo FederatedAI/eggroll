@@ -44,7 +44,7 @@ public class DispatcherServlet extends HttpServlet {
         if (invokeInfo == null) {
             throw new ServletException("No API found for: " + url);
         }
-        if (!url.contains("login")){
+        if (!url.contains("login")&& !url.contains("getPublicKey")){
             // 拦截器拦截
             if (!userInterceptor.intercept(req, resp)) {
                 // 未登录返回错误码

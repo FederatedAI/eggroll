@@ -328,7 +328,7 @@ public class MetaInfo {
     public static String EGGROLL_MYBATIS_MAPPER_PACKAGE = "org.fedai.eggroll.clustermanager.dao.mapper";
 
     @Config(confKey = "eggroll.dashboard.mybatis.mapper.package")
-    public static String EGGROLL_DASHBOARD_MYBATIS_MAPPER_PACKAGE = "classpath*:org/fedai/eggroll/webapp/dao/mapper/**/*.class";
+    public static String EGGROLL_DASHBOARD_MYBATIS_MAPPER_PACKAGE = "org.fedai.eggroll.webapp.dao.mapper";
 
     @Config(confKey = "eggroll.mybatis.cache.enabled")
     public static Boolean EGGROLL_MYBATIS_cache_enabled = true;
