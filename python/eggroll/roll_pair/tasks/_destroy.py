@@ -11,10 +11,9 @@ L = get_logger()
 class _Destroy(object):
     @classmethod
     def run(cls, data_dir: str, job: ErJob, task: ErTask):
-        input_store_locator = task.first_input._store_locator
-        namespace = input_store_locator._namespace
-        name = input_store_locator._name
-        store_type = input_store_locator._store_type
+        namespace = task.first_input.store_locator.namespace
+        name = task.first_input.store_locator.name
+        store_type = task.first_input.store_locator.store_type
         L.debug(f"destroying store_type={store_type}, namespace={namespace}, name={name}")
         if name == "*":
             from eggroll.core._data_path import get_db_path_from_partition
@@ -32,10 +31,12 @@ class _Destroy(object):
                 realpath = os.path.realpath(path)
                 if os.path.exists(path):
                     if realpath == "/" or realpath == data_dir or not realpath.startswith(data_dir):
-                        raise ValueError(f"trying to delete a dangerous path: {realpath}")
+                        raise ValueError(
+                            f"trying to delete a dangerous path: realpath={realpath} and data_dir={data_dir}"
+                        )
                     else:
-                        shutil.rmtree(path)
+                        shutil.rmtree(path, ignore_errors=True)
         else:
-            options = task._job._options
-            with task.first_input.get_adapter(data_dir, options=options) as input_adapter:
-                input_adapter.destroy(options=options)
+            options = task.job._options
+            input_adapter = task.first_input.get_adapter(data_dir, options=options)
+            input_adapter.destroy(options=options)
