@@ -157,7 +157,8 @@ class FifoBroker(Broker):
         raise StopIteration
 
     def __enter__(self):
+        self.__active_writers += 1
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
+        self.signal_write_finish()
