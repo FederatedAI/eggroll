@@ -295,6 +295,12 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
         return serverNodeService.getServerNodesWithResource(erServerNode);
     }
 
+    private List<ErServerNode> getClusterNodeWithResource() {
+        ErServerNode erServerNode = new ErServerNode();
+        erServerNode.setNodeType(ServerNodeTypes.NODE_MANAGER.name());
+        return serverNodeService.getServerNodesWithResource(erServerNode);
+    }
+
     private Boolean checkResourceEnough(List<ErServerNode> erServerNodes, ResourceApplication resourceApplication) {
         boolean result = true;
         Map<String, Long> globalRemainResourceMap = new HashMap<>();

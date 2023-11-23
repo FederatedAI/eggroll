@@ -1,7 +1,7 @@
 package org.fedai.eggroll.core.pojo;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.webank.eggroll.core.resource.Resources;
+import com.webank.eggroll.core.meta.Meta;
 import lombok.Data;
 
 @Data
@@ -9,18 +9,22 @@ public class CheckResourceEnoughResponse implements RpcMessage {
 
     private boolean isEnough = false;
 
+    private ServerCluster serverCluster;
+
     @Override
     public byte[] serialize() {
-        Resources.CheckResourceEnoughResponse.Builder builder = Resources.CheckResourceEnoughResponse.newBuilder();
+        Meta.CheckResourceEnoughResponse.Builder builder = Meta.CheckResourceEnoughResponse.newBuilder();
         builder.setIsEnough(isEnough);
+        builder.setClusterInfo(serverCluster.toProto());
         return builder.build().toByteArray();
     }
 
     @Override
     public void deserialize(byte[] data) {
         try {
-            Resources.CheckResourceEnoughResponse response = Resources.CheckResourceEnoughResponse.parseFrom(data);
+            Meta.CheckResourceEnoughResponse response = Meta.CheckResourceEnoughResponse.parseFrom(data);
             this.isEnough = response.getIsEnough();
+            this.serverCluster = serverCluster.fromProto(response.getClusterInfo());
         } catch (InvalidProtocolBufferException e) {
             e.printStackTrace();
         }

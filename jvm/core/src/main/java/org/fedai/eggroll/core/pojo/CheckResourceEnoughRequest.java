@@ -1,7 +1,7 @@
 package org.fedai.eggroll.core.pojo;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.webank.eggroll.core.resource.Resources;
+import com.webank.eggroll.core.meta.Meta;
 import lombok.Data;
 import org.fedai.eggroll.core.config.Dict;
 
@@ -23,7 +23,7 @@ public class CheckResourceEnoughRequest implements RpcMessage {
 
     @Override
     public byte[] serialize() {
-        Resources.CheckResourceEnoughRequest.Builder builder = Resources.CheckResourceEnoughRequest.newBuilder();
+        Meta.CheckResourceEnoughRequest.Builder builder = Meta.CheckResourceEnoughRequest.newBuilder();
         builder.setResourceType(resourceType);
         builder.setRequiredResourceCount(requiredResourceCount);
         builder.setCheckType(checkType);
@@ -33,7 +33,7 @@ public class CheckResourceEnoughRequest implements RpcMessage {
     @Override
     public void deserialize(byte[] data) {
         try {
-            Resources.CheckResourceEnoughRequest request = Resources.CheckResourceEnoughRequest.parseFrom(data);
+            Meta.CheckResourceEnoughRequest request = Meta.CheckResourceEnoughRequest.parseFrom(data);
             this.resourceType = request.getResourceType();
             this.requiredResourceCount = request.getRequiredResourceCount();
             this.checkType = request.getCheckType();
