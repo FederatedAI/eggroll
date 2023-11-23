@@ -50,6 +50,7 @@ public class ProcessorStateMachine extends AbstractStateMachine<ErProcessor> {
         context.putLogData("processor_status", line);
         logger.info("processor {} prepare to change status {}", erProcessor.getId(), line);
         erProcessor.setBeforeStatus(preStateParam);
+        context.putData(Dict.BEFORE_STATUS,preStateParam);
         return line;
     }
 
