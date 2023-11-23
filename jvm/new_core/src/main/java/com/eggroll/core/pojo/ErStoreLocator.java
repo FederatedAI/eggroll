@@ -13,7 +13,7 @@ import java.util.UUID;
 
 
 @Data
-public class ErStoreLocator implements RpcMessage,Cloneable {
+public class ErStoreLocator implements RpcMessage, Cloneable {
     Logger log = LoggerFactory.getLogger(ErStoreLocator.class);
 
     private Long id;
@@ -22,26 +22,28 @@ public class ErStoreLocator implements RpcMessage,Cloneable {
     private String name;
     private String path;
     private Integer totalPartitions;
-    private String partitioner;
-    private String serdes;
+    private Integer keySerdesType;
+    private Integer valueSerdesType;
+    private Integer partitionerType;
 
-    public ErStoreLocator(){
+    public ErStoreLocator() {
 
     }
 
-    public ErStoreLocator(long id, String storeType, String namespace, String name, String path, int totalPartitions, String partitioner, String serdes) {
+    public ErStoreLocator(long id, String storeType, String namespace, String name, String path, int totalPartitions, int keySerdesType, int valueSerdesType, int partitionerType) {
         this.id = id;
         this.storeType = storeType;
         this.namespace = namespace;
         this.name = name;
         this.path = path;
         this.totalPartitions = totalPartitions;
-        this.partitioner = partitioner;
-        this.serdes = serdes;
+        this.keySerdesType = keySerdesType;
+        this.valueSerdesType = valueSerdesType;
+        this.partitionerType = partitionerType;
     }
 
     public ErStoreLocator(String storeType, String namespace, String name) {
-        this(-1L, storeType, namespace, name, "", 0, "", "");
+        this(-1L, storeType, namespace, name, "", 0, 0, 0, 0);
     }
 
     public String toPath(String delim) {
@@ -52,8 +54,8 @@ public class ErStoreLocator implements RpcMessage,Cloneable {
         }
     }
 
-    public ErStoreLocator fork(){
-        return fork(Dict.EMPTY,StringConstants.UNDERLINE);
+    public ErStoreLocator fork() {
+        return fork(Dict.EMPTY, StringConstants.UNDERLINE);
     }
 
     public ErStoreLocator fork(String postfix, String delimiter) {
@@ -67,10 +69,10 @@ public class ErStoreLocator implements RpcMessage,Cloneable {
             newName = this.name + delimiter + newPostfix;
         }
 
-        return new ErStoreLocator(this.id, this.storeType, this.namespace, newName, this.path, this.totalPartitions, this.partitioner, this.serdes);
+        return new ErStoreLocator(this.id, this.storeType, this.namespace, newName, this.path, this.totalPartitions, this.keySerdesType, this.valueSerdesType, this.partitionerType);
     }
 
-    public Meta.StoreLocator toProto(){
+    public Meta.StoreLocator toProto() {
         Meta.StoreLocator.Builder builder = Meta.StoreLocator.newBuilder();
         builder.setId(this.id)
                 .setStoreType(this.storeType)
@@ -78,12 +80,13 @@ public class ErStoreLocator implements RpcMessage,Cloneable {
                 .setName(this.name)
                 .setPath(this.path)
                 .setTotalPartitions(this.totalPartitions)
-                .setPartitioner(this.partitioner)
-                .setSerdes(this.serdes);
+                .setKeySerdesType(this.keySerdesType)
+                .setValueSerdesType(this.valueSerdesType)
+                .setPartitionerType(this.partitionerType);
         return builder.build();
     }
 
-    public static ErStoreLocator fromProto(Meta.StoreLocator storeLocator){
+    public static ErStoreLocator fromProto(Meta.StoreLocator storeLocator) {
         ErStoreLocator erStoreLocator = new ErStoreLocator();
         erStoreLocator.deserialize(storeLocator.toByteArray());
 
@@ -99,17 +102,18 @@ public class ErStoreLocator implements RpcMessage,Cloneable {
     public void deserialize(byte[] data) {
         try {
             Meta.StoreLocator storeLocator = Meta.StoreLocator.parseFrom(data);
-           this.id=storeLocator.getId();
-           this.storeType=storeLocator.getStoreType();
-           this.namespace=storeLocator.getNamespace();
-           this.name=storeLocator.getName();
-           this.path=storeLocator.getPath();
-           this.totalPartitions=storeLocator.getTotalPartitions();
-           this.partitioner=storeLocator.getPartitioner();
-           this.serdes=storeLocator.getSerdes();
-            } catch (Exception e) {
-                log.error("deserialize error : ", e);
-            }
+            this.id = storeLocator.getId();
+            this.storeType = storeLocator.getStoreType();
+            this.namespace = storeLocator.getNamespace();
+            this.name = storeLocator.getName();
+            this.path = storeLocator.getPath();
+            this.totalPartitions = storeLocator.getTotalPartitions();
+            this.keySerdesType = storeLocator.getKeySerdesType();
+            this.valueSerdesType = storeLocator.getValueSerdesType();
+            this.partitionerType = storeLocator.getPartitionerType();
+        } catch (Exception e) {
+            log.error("deserialize error : ", e);
+        }
     }
 
     @Override
@@ -117,7 +121,7 @@ public class ErStoreLocator implements RpcMessage,Cloneable {
         return super.clone();
     }
 
-    public String buildKey(){
+    public String buildKey() {
         return (this.namespace == null ? "" : this.namespace) + "_" +
                 (this.name == null ? "" : this.name) + "_" +
                 (this.storeType == null ? "" : this.storeType);
