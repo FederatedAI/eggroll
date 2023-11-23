@@ -1,6 +1,5 @@
 package org.fedai.eggroll.clustermanager.grpc;
 
-import com.google.gson.Gson;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import org.fedai.eggroll.clustermanager.cluster.ClusterManagerService;
