@@ -337,6 +337,8 @@ public class MetaInfo {
     @Config(confKey = "eggroll.request.print")
     public static Boolean EGGROLL_GRPC_REQUEST_PRINT = false;
 
+    @Config(confKey = "eggroll.lock.cache.max.size", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer EGGROLL_LOCK_CACHE_MAX_SIZE = 1024;
 
     // deepspeed config
 
