@@ -29,7 +29,10 @@ public class SessionCreateHandler extends AbstractSessionStateHandler {
         ErServerNode serverNode = new ErServerNode();
         serverNode.setStatus(ServerNodeStatus.HEALTHY.name());
         serverNode.setNodeType(ServerNodeTypes.NODE_MANAGER.name());
-        List<ErServerNode> serverNodes = serverNodeService.getListByErServerNode(serverNode);
+        List<ErServerNode> serverNodes;
+        synchronized (serverNodeService.getReadLockTag()){
+            serverNodes = serverNodeService.getListByErServerNode(serverNode);
+        }
         logger.info("session create , health node {}", serverNodes);
         context.putData(Dict.SERVER_NODES, serverNodes);
         return data;
