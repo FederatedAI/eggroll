@@ -59,11 +59,11 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     @URI(value= nodeHeartbeat)
     public ErNodeHeartbeat nodeHeartbeat(Context context , ErNodeHeartbeat  erNodeHeartbeat){
         context.setNodeId(erNodeHeartbeat.getNode().getId().toString());
-        context.putLogData(Dict.STATUS, erNodeHeartbeat.getNode().getStatus());
-        return  clusterManagerService.nodeHeartbeat(context, erNodeHeartbeat);
+        context.putLogData(Dict.STATUS,erNodeHeartbeat.getNode().getStatus());
+       return  clusterManagerService.nodeHeartbeat(context,erNodeHeartbeat);
     }
     @URI(value = getServerNode)
-    public ErServerNode getServerNodeServiceName(Context context, ErServerNode erServerNode) {
+    public ErServerNode getServerNodeServiceName(Context context ,ErServerNode erServerNode) {
         List<ErServerNode> nodeList = serverNodeService.getListByErServerNode(erServerNode);
         return nodeList.size() > 0 ? nodeList.get(0) : null;
     }
