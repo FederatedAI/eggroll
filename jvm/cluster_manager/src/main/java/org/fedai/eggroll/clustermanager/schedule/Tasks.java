@@ -1,5 +1,6 @@
 package org.fedai.eggroll.clustermanager.schedule;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.google.common.collect.Lists;
 import org.apache.ibatis.session.Configuration;
 import org.fedai.eggroll.clustermanager.cluster.ClusterManagerService;
@@ -120,9 +121,14 @@ public class Tasks implements Provider<Configuration>, ConfigurationSettingListe
                 long interval = now - (node.getLastHeartBeat() != null ?
                         node.getLastHeartBeat().getTime() : now);
                 if (interval > expire && ServerNodeTypes.NODE_MANAGER.name().equals(node.getNodeType())) {
-                    log.info("server node " + node + " change status to LOSS");
-                    node.setStatus(ServerNodeStatus.LOSS.name());
-                    managerService.updateNode(node, false, false);
+                    QueryWrapper<SessionProcessor> processorQueryWrapper = new QueryWrapper<>();
+                    processorQueryWrapper.lambda().eq(SessionProcessor::getServerNodeId, node.getId())
+                            .eq(SessionProcessor::getStatus, ProcessorStatus.RUNNING.name());
+                    if (sessionProcessorService.count(processorQueryWrapper) == 0) {
+                        log.info("server node " + node + " change status to LOSS");
+                        node.setStatus(ServerNodeStatus.LOSS.name());
+                        managerService.updateNode(node, false, false);
+                    }
                 }
             }
         } catch (Throwable e) {
