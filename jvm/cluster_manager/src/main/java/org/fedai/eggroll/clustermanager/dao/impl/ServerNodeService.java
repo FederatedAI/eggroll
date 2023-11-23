@@ -1,15 +1,18 @@
 package org.fedai.eggroll.clustermanager.dao.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
 import org.fedai.eggroll.clustermanager.dao.mapper.ServerNodeMapper;
 import org.fedai.eggroll.clustermanager.entity.NodeResource;
 import org.fedai.eggroll.clustermanager.entity.ServerNode;
+import org.fedai.eggroll.core.config.MetaInfo;
 import org.fedai.eggroll.core.pojo.ErEndpoint;
 import org.fedai.eggroll.core.pojo.ErServerNode;
 import org.mybatis.guice.transactional.Transactional;
@@ -20,13 +23,19 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
+@Data
 @Singleton
 public class ServerNodeService extends EggRollBaseServiceImpl<ServerNodeMapper, ServerNode> {
     Logger logger = LoggerFactory.getLogger(ServerNodeService.class);
     LoadingCache<Long, ErServerNode> cache;
-
+    private final Object readLockTag = new Object();
+    private Cache<String, ReentrantLock> nodeLockCache = CacheBuilder.newBuilder()
+            .maximumSize(MetaInfo.EGGROLL_LOCK_CACHE_MAX_SIZE)
+            .expireAfterWrite(MetaInfo.EGGROLL_SESSION_MAX_LIVE_MS, TimeUnit.MILLISECONDS)
+            .build();
     ServerNodeService() {
         cache = CacheBuilder.newBuilder()
                 .maximumSize(1000)

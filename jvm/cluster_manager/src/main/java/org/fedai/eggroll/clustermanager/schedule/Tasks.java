@@ -120,13 +120,15 @@ public class Tasks implements Provider<Configuration>, ConfigurationSettingListe
                 long interval = now - (node.getLastHeartBeat() != null ?
                         node.getLastHeartBeat().getTime() : now);
                 if (interval > expire && ServerNodeTypes.NODE_MANAGER.name().equals(node.getNodeType())) {
-                    QueryWrapper<SessionProcessor> processorQueryWrapper = new QueryWrapper<>();
-                    processorQueryWrapper.lambda().eq(SessionProcessor::getServerNodeId, node.getId())
-                            .eq(SessionProcessor::getStatus, ProcessorStatus.RUNNING.name());
-                    if (sessionProcessorService.count(processorQueryWrapper) == 0) {
-                        log.info("server node " + node + " change status to LOSS");
-                        node.setStatus(ServerNodeStatus.LOSS.name());
-                        managerService.updateNode(node, false, false);
+                    synchronized (serverNodeService.getReadLockTag()) {
+                        QueryWrapper<SessionProcessor> processorQueryWrapper = new QueryWrapper<>();
+                        processorQueryWrapper.lambda().eq(SessionProcessor::getServerNodeId, node.getId())
+                                .eq(SessionProcessor::getStatus, ProcessorStatus.RUNNING.name());
+                        if (sessionProcessorService.count(processorQueryWrapper) == 0) {
+                            log.info("server node " + node + " change status to LOSS");
+                            node.setStatus(ServerNodeStatus.LOSS.name());
+                            managerService.updateNode(node, false, false);
+                        }
                     }
                 }
             }
