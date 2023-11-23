@@ -109,7 +109,7 @@ class ErThreadUnpooledExecutor(_base.Executor):
             thread_name = f'{self._thread_name_prefix or self}_{self._num_threads}'
             f = _base.Future()
             w = _ErWorkItem(f, fn, args, kwargs)
-            t = threading.Thread(name=thread_name, target=w.run, kwargs={"on_join": self.decrease_thread_count})
+            t = threading.Thread(name=thread_name, target=w.run, kwargs={"on_join": self.decrease_thread_count}, daemon=True)
             t.start()
 
             return f
