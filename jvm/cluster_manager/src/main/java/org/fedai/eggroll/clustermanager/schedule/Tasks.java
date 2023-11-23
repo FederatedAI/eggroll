@@ -10,11 +10,9 @@ import org.fedai.eggroll.clustermanager.dao.impl.SessionMainService;
 import org.fedai.eggroll.clustermanager.dao.impl.SessionProcessorService;
 import org.fedai.eggroll.clustermanager.entity.SessionProcessor;
 import org.fedai.eggroll.clustermanager.statemachine.ProcessorStateMachine;
+import org.fedai.eggroll.core.config.Dict;
 import org.fedai.eggroll.core.config.MetaInfo;
-import org.fedai.eggroll.core.constant.ProcessorStatus;
-import org.fedai.eggroll.core.constant.ServerNodeStatus;
-import org.fedai.eggroll.core.constant.ServerNodeTypes;
-import org.fedai.eggroll.core.constant.SessionStatus;
+import org.fedai.eggroll.core.constant.*;
 import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.grpc.NodeManagerClient;
 import org.fedai.eggroll.core.pojo.ErProcessor;
@@ -88,9 +86,10 @@ public class Tasks implements Provider<Configuration>, ConfigurationSettingListe
                             if (processorInDb != null) {
                                 if (ProcessorStatus.RUNNING.name().equals(processorInDb.getStatus())) {
                                     ErProcessor checkNodeProcessResult = nodeManagerClient.checkNodeProcess(context, processor);
-
                                     if (checkNodeProcessResult == null || ProcessorStatus.KILLED.name().equals(checkNodeProcessResult.getStatus())) {
-                                        processorStateMachine.changeStatus(new Context(), processor, null, ProcessorStatus.ERROR.name());
+                                        Context statusContext = new Context();
+                                        statusContext.putData(Dict.STATUS_REASON, StatusReason.TASK_CHECK.name());
+                                        processorStateMachine.changeStatus(statusContext, processor, null, ProcessorStatus.ERROR.name());
                                     }
                                 }
                             }

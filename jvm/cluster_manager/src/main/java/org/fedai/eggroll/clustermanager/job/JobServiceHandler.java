@@ -61,20 +61,18 @@ public class JobServiceHandler {
                 return;
             }
             ErSessionMeta sessionMeta = sessionMainService.getSession(sessionId);
+            context.putData(Dict.BEFORE_STATUS,sessionMeta.getStatus());
+            context.putData(Dict.STATUS_REASON,statusReason);
             if (StringUtils.equalsAny(sessionMeta.getStatus(),
                     SessionStatus.KILLED.name(), SessionStatus.ERROR.name(), SessionStatus.FINISHED.name())) {
                 log.error(" session {} status is {}, will not send kill request to nodemanager", sessionId, sessionMeta.getStatus());
                 return;
             }
             if(sessionMeta.getStatus().equals(SessionStatus.WAITING_RESOURCE.name())){
-                sessionMeta.setStatusReason(statusReason);
                 sessionStateMachine.changeStatus(context,sessionMeta,SessionStatus.WAITING_RESOURCE.name(),SessionStatus.ERROR.name());
                 return;
             }
-
             Map<Long, List<ErProcessor>> groupMap = sessionMeta.getProcessors().stream().collect(Collectors.groupingBy(ErProcessor::getServerNodeId));
-
-            Map<ErServerNode, List<ErProcessor>> nodeAndProcessors = new HashMap<>();
             groupMap.forEach((nodeId, processors) -> {
                 ErServerNode erServerNode = serverNodeService.getById(nodeId).toErServerNode();
                 KillContainersRequest killContainersRequest = new KillContainersRequest();

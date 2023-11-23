@@ -5,6 +5,7 @@ import com.google.inject.Singleton;
 import org.fedai.eggroll.clustermanager.dao.impl.ServerNodeService;
 import org.fedai.eggroll.clustermanager.dao.impl.SessionMainService;
 import org.fedai.eggroll.clustermanager.entity.SessionMain;
+import org.fedai.eggroll.core.config.Dict;
 import org.fedai.eggroll.core.context.Context;
 import org.fedai.eggroll.core.pojo.ErSessionMeta;
 import org.slf4j.Logger;
@@ -36,7 +37,7 @@ public class SessionWaitingKillHandler extends AbstractSessionStateHandler {
         SessionMain sessionMain = new SessionMain();
         sessionMain.setSessionId(erSessionMeta.getId());
         sessionMain.setStatus(desStateParam);
-        sessionMain.setStatusReason(erSessionMeta.getStatusReason());
+        sessionMain.setStatusReason(String.valueOf(context.getData(Dict.STATUS_REASON)));
         erSessionMeta.setBeforeStatus(preStateParam);
         sessionMainService.updateById(sessionMain);
         return erSessionMeta;

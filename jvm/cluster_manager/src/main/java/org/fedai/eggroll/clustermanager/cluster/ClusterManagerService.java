@@ -117,7 +117,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
             //session: ErSessionMeta, afterState: String
             log.info("session " + session + " status stay at " + session.getStatus() + " too long, prepare to kill");
             Context context = new Context();
-            context.putData(Dict.STATUS_REASON,StatusReason.API.name());
+            context.putData(Dict.STATUS_REASON,StatusReason.TIMEOUT.name());
             sessionManager.killSession(context, session.getId());
         }
     }
