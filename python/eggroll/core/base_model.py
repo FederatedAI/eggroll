@@ -17,6 +17,7 @@ class RpcMessage(object):
         return self.__repr__()
 
 
+
 class NetworkingRpcMessage(RpcMessage):
     pass
 
