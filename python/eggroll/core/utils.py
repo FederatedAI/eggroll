@@ -20,11 +20,10 @@ import traceback
 from datetime import datetime
 from threading import RLock
 
-import numba
 from google.protobuf.text_format import MessageToString
 
 static_er_conf = {}
-stringify_charset = 'iso-8859-1'
+stringify_charset = "iso-8859-1"
 M = 2**31
 
 runtime_storage = {}
@@ -40,8 +39,7 @@ class ErConfKey(object):
         return get_static_er_conf().get(self.key, self.default_value)
 
     def get_with(self, options: dict):
-        result = options.get(self.key,
-                             get_static_er_conf().get(self.key, self.default_value))
+        result = options.get(self.key, get_static_er_conf().get(self.key, self.default_value))
         return result
 
 
@@ -49,10 +47,10 @@ def add_static_er_conf(key, value):
     global static_er_conf
 
     if not static_er_conf:
-        raise RuntimeError('static_er_conf is not initialized yet')
+        raise RuntimeError("static_er_conf is not initialized yet")
 
     if key in static_er_conf:
-        raise RuntimeError(f'key={key} already exists in static_er_conf with value={static_er_conf.get(key)}')
+        raise RuntimeError(f"key={key} already exists in static_er_conf with value={static_er_conf.get(key)}")
 
 
 def set_static_er_conf(a_dict):
@@ -66,14 +64,14 @@ def get_static_er_conf(options: dict = None):
         options = {}
     global static_er_conf
     if not static_er_conf:
-        eggroll_home = os.getenv('EGGROLL_HOME', None)
+        eggroll_home = os.getenv("EGGROLL_HOME", None)
         if not eggroll_home:
-            raise EnvironmentError('EGGROLL_HOME is not set')
+            raise EnvironmentError("EGGROLL_HOME is not set")
         conf_path = options.get("eggroll.static.conf.path", f"{eggroll_home}/conf/eggroll.properties")
         print(f"static conf path: {conf_path}")
         configs = configparser.ConfigParser()
         configs.read(conf_path)
-        set_static_er_conf(configs['eggroll'])
+        set_static_er_conf(configs["eggroll"])
         static_er_conf = get_static_er_conf()
     return static_er_conf
 
@@ -125,6 +123,7 @@ def _map_and_listify(map_func, a_list):
 
 def _stringify(data):
     from eggroll.core.base_model import RpcMessage
+
     if isinstance(data, str):
         return data
     elif isinstance(data, RpcMessage):
@@ -137,7 +136,6 @@ def _stringify(data):
 
 def _stringify_dict(a_dict: dict):
     return {_stringify(k): _stringify(v) for k, v in a_dict.items()}
-
 
 
 def _repr_list(a_list: list):
@@ -178,34 +176,39 @@ def json_loads(src):
 
 
 def current_timestamp():
-    return int(time.time()*1000)
+    return int(time.time() * 1000)
 
 
 def _exception_logger(func):
     def wrapper(*args, **kw):
         try:
             return func(*args, **kw)
-        except:
-            msg = (f"\n\n==== detail start, at {time_now()} ====\n"
-                   f"{traceback.format_exc()}"
-                   f"\n==== detail end ====\n\n")
-            # LOGGER.error(msg)
+        except Exception as e:
+            msg = (
+                f"\n\n==== detail start, at {time_now('%Y-%m-%d %H:%M:%S %f')} ====\n"
+                f"{traceback.format_exc()}"
+                f"\n==== detail end ====\n\n"
+            )
             print(msg)
-            raise RuntimeError(msg)
+            raise RuntimeError(msg) from e
 
     return wrapper
 
 
 def get_stack():
-    return (f"\n\n==== stack start, at {time_now()} ====\n"
-           f"{''.join(traceback.format_stack())}"
-           f"\n==== stack end ====\n\n")
+    return (
+        f"\n\n==== stack start, at {time_now('%Y-%m-%d %H:%M:%S %f')}"
+        f"{''.join(traceback.format_stack())}"
+        f"\n==== stack end ====\n\n"
+    )
 
 
-DEFAULT_DATETIME_FORMAT = '%Y%m%d.%H%M%S.%f'
+DEFAULT_DATETIME_FORMAT = "%Y%m%d.%H%M%S.%f"
+
+
 def time_now(format: str = DEFAULT_DATETIME_FORMAT):
     formatted = datetime.now().strftime(format)
-    if format == DEFAULT_DATETIME_FORMAT or ('%f' in format):
+    if format == DEFAULT_DATETIME_FORMAT or ("%f" in format):
         return formatted[:-3]
     else:
         return formatted
@@ -217,49 +220,29 @@ def time_now_ns(format: str = DEFAULT_DATETIME_FORMAT):
 
 def get_self_ip():
     import socket
+
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         # doesn't even have to be reachable
-        s.connect(('10.255.255.255', 1))
+        s.connect(("10.255.255.255", 1))
         self_ip = s.getsockname()[0]
     except:
-        self_ip = '127.0.0.1'
+        self_ip = "127.0.0.1"
     finally:
         s.close()
     return self_ip
 
 
-# TODO:0: replace uuid with simpler human friendly solution
-def generate_job_id(session_id, tag='', delim='-'):
-    result = delim.join([session_id, 'py', 'job', time_now_ns()])
+def generate_job_id(session_id, tag="", delim="-"):
+    result = delim.join([session_id, "py", "job", time_now_ns()])
     if not tag:
         return result
     else:
-        return f'{result}_{tag}'
+        return f"{result}_{tag}"
 
 
-def generate_task_id(job_id, partition_id, delim='-'):
+def generate_task_id(job_id, partition_id, delim="-"):
     return delim.join([job_id, "task", str(partition_id)])
-
-
-'''AI copy from java ByteString.hashCode(), @see RollPairContext.partitioner'''
-@numba.jit
-def hash_code(s):
-    seed = 31
-    h = len(s)
-    for c in s:
-        # to singed int
-        if c > 127:
-            c = -256 + c
-        h = h * seed
-        if h > 2147483647 or h < -2147483648:
-            h = (h & (M - 1)) - (h & M)
-        h = h + c
-        if h > 2147483647 or h < -2147483648:
-            h = (h & (M - 1)) - (h & M)
-    if h == 0 or h == -2147483648:
-        h = 1
-    return h if h >= 0 else abs(h)
 
 
 def to_one_line_string(msg, as_one_line=True):
@@ -269,14 +252,18 @@ def to_one_line_string(msg, as_one_line=True):
 
 
 _eggroll_home = None
+
+
 def get_eggroll_home():
     global _eggroll_home
     if not _eggroll_home:
-        _eggroll_home = os.getenv("EGGROLL_HOME", os.path.realpath(f'{__file__}/../../../..'))
+        _eggroll_home = os.getenv("EGGROLL_HOME", os.path.realpath(f"{__file__}/../../../.."))
     return _eggroll_home
 
 
 _eggroll_bin_truncate_limit = None
+
+
 def get_eggroll_bin_truncate_limit():
     global _eggroll_bin_truncate_limit
     if not _eggroll_bin_truncate_limit:
