@@ -33,7 +33,7 @@ public class ServerNodeService extends EggRollBaseServiceImpl<ServerNodeMapper, 
     LoadingCache<Long, ErServerNode> cache;
     private final Object readLockTag = new Object();
     private Cache<String, ReentrantLock> nodeLockCache = CacheBuilder.newBuilder()
-            .maximumSize(MetaInfo.EGGROLL_LOCK_CACHE_MAX_SIZE)
+            .maximumSize(1024)
             .expireAfterWrite(MetaInfo.EGGROLL_SESSION_MAX_LIVE_MS, TimeUnit.MILLISECONDS)
             .build();
     ServerNodeService() {
