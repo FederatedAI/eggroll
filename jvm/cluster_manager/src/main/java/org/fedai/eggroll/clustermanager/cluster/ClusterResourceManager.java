@@ -202,6 +202,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                             if (!sessionMain.getStatus().equals(SessionStatus.WAITING_RESOURCE.name())) {
                                 log.error("session " + resourceApplication.getSessionId() + " is already canceled, drop it");
                                 applicationQueue.getBroker().remove();
+                                resourceApplication.countDown();
                                 break;
                             }
                             if (resourceApplication.getWaitingCount().get() == 0) {

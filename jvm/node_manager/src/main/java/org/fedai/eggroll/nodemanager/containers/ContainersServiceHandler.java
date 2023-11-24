@@ -234,7 +234,7 @@ public class ContainersServiceHandler {
 
     public LogStreamHolder createLogStream(Extend.GetLogRequest request, StreamObserver<Extend.GetLogResponse> responseObserver) throws PathNotExistException {
         String sessionId = request.getSessionId();
-        String lineCommand = request.getStartLine() > 0 ? " -n " + request.getStartLine() : " +1 ";
+        long line = request.getStartLine() > 0 ? request.getStartLine() : 200;
         int rank = Integer.valueOf(request.getRank());
 
         // 获取日志文件路径
@@ -245,7 +245,7 @@ public class ContainersServiceHandler {
             throw new PathNotExistException("Can not find file " + path);
         }
 
-        String command = "tail -F " + lineCommand + " " + path.toString();
+        String command = "tail -F -n " + line + " " + path.toString();
         return new LogStreamHolder(System.currentTimeMillis(), command, responseObserver, "running");
     }
 
