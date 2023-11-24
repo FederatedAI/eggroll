@@ -1,6 +1,5 @@
 package org.fedai.eggroll.core.pojo;
 
-import com.webank.eggroll.core.meta.Containers;
 import com.webank.eggroll.core.meta.Meta;
 import lombok.Data;
 import org.apache.commons.collections.CollectionUtils;
@@ -13,6 +12,13 @@ public class ServerCluster implements RpcMessage {
 
     private List<ErServerNode> serverNodes;
 
+    public ServerCluster() {
+
+    }
+
+    public ServerCluster(List<ErServerNode> serverNodes) {
+        this.serverNodes = serverNodes;
+    }
 
     public Meta.ServerCluster toProto() {
         Meta.ServerCluster.Builder builder = Meta.ServerCluster.newBuilder();

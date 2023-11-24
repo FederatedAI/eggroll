@@ -206,7 +206,7 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     }
 
     @URI(value = checkResourceEnough)
-    public CheckResourceEnoughResponse checkResourceEnough(Context context , CheckResourceEnoughRequest request) throws InterruptedException {
+    public CheckResourceEnoughResponse queryClusterResourceInfo(Context context , CheckResourceEnoughRequest request) throws InterruptedException {
         return clusterResourceManager.checkResourceEnoughForFlow(context, request);
     }
 
