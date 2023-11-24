@@ -96,5 +96,11 @@ public class ClusterManagerClient {
         return response;
     }
 
+    public CheckResourceEnoughResponse checkResourceEnough(Context context , CheckResourceEnoughRequest request){
+        byte[] responseData = cc.call(context, endpoint, CommandUri.checkResourceEnough, request.serialize());
+        CheckResourceEnoughResponse response = new CheckResourceEnoughResponse();
+        response.deserialize(responseData);
+        return response;
+    }
 
 }

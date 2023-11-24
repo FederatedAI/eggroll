@@ -9,7 +9,7 @@ public class CheckResourceEnoughResponse implements RpcMessage {
 
     private boolean isEnough = false;
 
-    private ServerCluster serverCluster;
+    private ServerCluster serverCluster = new ServerCluster();
 
     @Override
     public byte[] serialize() {

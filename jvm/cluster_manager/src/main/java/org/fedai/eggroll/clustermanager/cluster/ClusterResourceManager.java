@@ -144,7 +144,10 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
         if (Dict.CHECK_RESOURCE_ENOUGH_CHECK_TYPE_CLUSTER.equals(request.getCheckType())) {
             result = globalRemainResource >= request.getRequiredResourceCount();
         }
+        List<ErServerNode> clusterNodeWithResource = getClusterNodeWithResource();
+        ServerCluster serverCluster = new ServerCluster(clusterNodeWithResource);
         response.setEnough(result);
+        response.setServerCluster(serverCluster);
         return response;
     }
 

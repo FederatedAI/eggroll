@@ -51,7 +51,7 @@ public class CommandUri {
     public static final String rendezvousSet = "v1/cluster-manager/job/rendezvous/set";
 
 
-    public static final String checkResourceEnough = "v1/cluster-manager/resource/checkResourceEnough";
+    public static final String checkResourceEnough = "v1/cluster-manager/resource/queryClusterResourceInfo";
 
 
 }
