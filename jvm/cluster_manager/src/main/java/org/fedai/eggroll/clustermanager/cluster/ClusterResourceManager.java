@@ -46,7 +46,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
 
 
     private Cache<String, ReentrantLock> sessionLockCache = CacheBuilder.newBuilder()
-            .maximumSize(MetaInfo.EGGROLL_LOCK_CACHE_MAX_SIZE)
+            .maximumSize(1024)
             .expireAfterWrite(MetaInfo.EGGROLL_SESSION_MAX_LIVE_MS, TimeUnit.MILLISECONDS)
             .build();
 
