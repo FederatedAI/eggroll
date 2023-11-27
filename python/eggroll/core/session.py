@@ -227,7 +227,7 @@ class ErSession(object):
                 raise ValueError(f'processor type {processor_type} not supported in roll pair')
 
     def get_rank_in_node(self, partition_id, server_node_id):
-        if self._eggs.get(server_node_id,None):
+        if self._eggs.get(server_node_id,None) is None:
             raise ValueError(f'store node has been lost , server_node_id = {server_node_id}')
         processor_count_of_node = len(self._eggs[server_node_id])
         cluster_node_count = len(self._eggs)
