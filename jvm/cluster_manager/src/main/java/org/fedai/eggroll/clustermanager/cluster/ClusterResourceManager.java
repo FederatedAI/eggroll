@@ -308,6 +308,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
     private Boolean checkResourceEnough(List<ErServerNode> erServerNodes, ResourceApplication resourceApplication) {
         boolean result = true;
         Map<String, Long> globalRemainResourceMap = new HashMap<>();
+        Map<String, Long> globalMaxResourceMap = new HashMap<>();
         Map<Long, Map<String, Long>> nodeRemainResourceMap = new HashMap<>();
 
         for (ErServerNode n : erServerNodes) {
@@ -316,6 +317,7 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                 long remain = nodeMap.getOrDefault(r.getResourceType(), 0L);
                 long unAllocated = r.getUnAllocatedResource();
                 nodeMap.put(r.getResourceType(), remain + unAllocated);
+                globalMaxResourceMap.put(r.getResourceType(),r.getTotal()+globalMaxResourceMap.getOrDefault(r.getResourceType(),0L));
             }
             nodeRemainResourceMap.put(n.getId(), nodeMap);
         }
@@ -356,6 +358,11 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                 }
                 for (Map.Entry<String, Long> r : requestResourceMap.entrySet()) {
                     Long globalResourceRemain = globalRemainResourceMap.getOrDefault(r.getKey(), -1L);
+                    if(r.getValue()>globalMaxResourceMap.getOrDefault(r.getKey(), -1L)){
+                        result = false;
+                        resourceApplication.setResourceExhaustedStrategy(Dict.THROW_ERROR);
+                        break;
+                    }
                     if (globalResourceRemain.intValue() > -1) {
                         log.info("check resource " + r.getKey() + " request " + r.getValue() + " remain " + globalResourceRemain);
                         if (r.getValue() > globalResourceRemain) {
