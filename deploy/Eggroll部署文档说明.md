@@ -1,8 +1,8 @@
 # Eggroll部署文档说明
 
-## 1.    环境初始化
+## 1    环境初始化
 
-### 1.1.  环境要求
+### 1.1  环境要求
 
 | **操作系统** | CentOS 7.2                                                   |
 | :----------- | :----------------------------------------------------------- |
@@ -10,13 +10,13 @@
 | **操作用户** | 用户名: app 组:apps                                          |
 | **系统配置** | 1. 挂载300G可用磁盘空间到/data目录    2. 创建/data/projects目录，属主app用户 |
 
-### 1.2.  安装软件包
+### 1.2  安装软件包
 
 集群所有节点都需要安装：jdk1.8、virtualenv独立运行环境（可进入python3.6版本）
 
 数据库节点：mysql8.0
 
-## 2.    项目拉取及打包
+## 2    项目拉取及打包
 
 从github拉取Eggroll项目，通过执行auto-packaging.sh自动打包脚本在同目录下生成eggroll.tar.gz
 
@@ -29,9 +29,9 @@ linux : sh deploy/auto-packaging.sh
 
 
 
-## 3.    部署发送
+## 3    部署发送
 
-### 3.1.  解压
+### 3.1  解压
 
 将eggroll.tar.gz移到或发送到eggroll的安装目录下，然后执行：
 
@@ -56,7 +56,7 @@ tar -xzf eggroll.tar.gz
  |--create-eggroll-meta-tables.sql
 ```
 
-### 3.2.  修改配置文件
+### 3.2  修改配置文件
 
 各配置文件修改说明如下：
 
@@ -118,52 +118,23 @@ eggroll.rollpair.transferpair.sendbuf.size=4150000		<--rollpair传输块大小�
 <--以上几项默认即可-->
 ```
 
-### 3.3.  多节点部署
+### 3.3  nodemanager多节点部署
+```properties
+<-- 数据库配置要跟集群内clustermanager一致>
+eggroll.resourcemanager.clustermanager.jdbc.driver.class.name=com.mysql.cj.jdbc.Driver
+eggroll.resourcemanager.clustermanager.jdbc.url=jdbc:mysql://数据库服务器ip:端口/数据库名称?useSSL=false&serverTimezone=UTC&characterEncoding=utf8&allowPublicKeyRetrieval=true
+eggroll.resourcemanager.clustermanager.jdbc.username=数据库用户名
+eggroll.resourcemanager.clustermanager.jdbc.password=数据库密码
 
-按上述说明修改完配置文件后，若集群内需多节点部署，可使用部署脚本进行打包部署：
+<--ip port 配置>
+eggroll.resourcemanager.clustermanager.host=127.0.0.1	<--集群内clustermanager服务ip地址-->
+eggroll.resourcemanager.clustermanager.port=4670	<--集群内clustermanager服务端口-->
+eggroll.resourcemanager.nodemanager.host=127.0.0.1	<--nodemanager服务ip地址-->
+eggroll.resourcemanager.nodemanager.port=4671	<--nodemanager服务端口-->
 
-- 修改部署配置文件deploy/conf.sh
-
-```shell
-vi deploy/conf.sh
-
-export EGGROLL_HOME=/data/projects/eggroll		<--部署到目标服务器的eggroll路径，修改为EGGROLL要部署的绝对路径-->
-export MYSQL_HOME=/data/projects/mysql		<--mysql服务器上的mysql安装路径，直到mysql目录-->
-iplist=(127.0.0.xxx 127.0.0.xxx)		<--本集群内所以节点的ip列表-->
 ```
 
-- 执行部署脚本deploy/deploy.sh
-
-```shell
-cd deploy
-sh deploy.sh
-```
-
-
-
-## 4.    添加元信息
-
-集群多节点之间的服务之间是通过查询数据库存储的元信息来感知的，因此执行上述步骤需要登录数据库服务器对数据库进行检查节点信息，查询server_node表检查数据是否准确：
-
-```sql
-登录数据库执行：
->>use 数据库名称					<--切换到部署的数据库-->
->>show tables;					<--检查是否有以下7个表-->
-    | server_node                       |
-    | session_main                      |
-    | session_option                    |
-    | session_processor                 |
-    | store_locator                     |
-    | store_option                      |
-    | store_partition                   |
-    
->>select * from server_node;	<--检查是否包含所有节点及角色元信息-->
->>exit
-```
-
-
-
-## 5.    服务启动
+## 4   服务启动
 
 Eggroll的bin目录中附带启动脚本bin/eggroll.sh使用说明：
 
@@ -171,8 +142,8 @@ Eggroll的bin目录中附带启动脚本bin/eggroll.sh使用说明：
 source ${EGGROLL_HOME}/init_env.sh       --${EGGROLL_HOME} means the absolute path of eggroll
 sh bin/eggroll.sh $1 $2		
 <--
-	$1：需要执行操作的服务名称，例如clustermanager，nodemanager，rollsite，all(表示所有服务)；
-	$2：需要执行的操作，例如start(启动)，starting(阻塞启动)，status（查看状态），stop（关闭），kill(杀掉服务,stop失效时使用)，restart（重启），restarting（阻塞重启）
+	$1：需要执行操作的服务名称，例如clustermanager，nodemanage，dashboard，all(表示所有服务)；
+	$2：需要执行的操作，例如start(启动)，status（查看状态），stop（关闭），kill(杀掉服务,stop失效时使用)，restart（重启），restarting（阻塞重启）
 -->
 ```
 
@@ -183,17 +154,11 @@ source ${EGGROLL_HOME}/init_env.sh       --${EGGROLL_HOME} means the absolute pa
 <--启动所有服务-->
 sh bin/eggroll.sh all start
 
-<--阻塞启动clustermanager服务-->
-sh bin/eggroll.sh clustermanager starting
-
 <--查看clustermanager服务状态-->
 sh bin/eggroll.sh clustermanager status
 
 <--重启clustermanager服务-->
-sh bin/eggroll.sh clustermanager restart
-
-<--阻塞重启clustermanager服务-->
-sh bin/eggroll.sh clustermanager restarting
+sh bin/eggroll.sh dashboard restart
 
 <--关闭nodemanager服务-->
 sh bin/eggroll.sh nodemanager stop
@@ -206,9 +171,9 @@ sh bin/eggroll.sh nodemanager kill
 
 
 
-## 6.    测试
+## 5    测试
 
-### 6.1.  初始化环境变量
+### 5.1  初始化环境变量
 
 登录服务器进行测试时需要执行以下语句进行环境变量初始化
 
@@ -228,66 +193,3 @@ python -m unittest test_roll_pair.TestRollPairCluster			--集群模式
 
 
 
-### 6.3.  roll_site测试
-
-- **通信测试**
-
-(a). guest方执行
-
-```shell
-cd ${EGGROLL_HOME}/python/eggroll/roll_site/test
-python -m unittest test_roll_site.TestRollSiteCluster.test_remote
-```
-
-等待执行完成出现"OK"字段为guest方发送成功。
-
-(b). host方执行
-
-```shell
-cd ${EGGROLL_HOME}/python/eggroll/roll_site/test
-python -m unittest test_roll_site.TestRollSiteCluster.test_get
-```
-
-等待执行完成出现"OK"字段为host方接收成功。
-
-- **多partition通信测试**
-
-(a). guest方执行
-
-```shell
-cd ${EGGROLL_HOME}/python/eggroll/roll_site/test
-python -m unittest test_roll_site.TestRollSiteCluster.test_remote_rollpair_big
-```
-
-等待执行完成出现"OK"字段为guest方发送成功。
-
-(b). host方执行
-
-```shell
-cd ${EGGROLL_HOME}/python/eggroll/roll_site/test
-python -m unittest test_roll_site.TestRollSiteCluster.test_get_rollpair_big
-```
-
-等待执行完成出现"OK"字段为host方接收成功。
-
-- **rollpair通信测试**
-
-(a). guest方执行
-
-```shell
-cd ${EGGROLL_HOME}/python/eggroll/roll_site/test
-python -m unittest test_roll_site.TestRollSiteCluster.test_remote_rollpair
-```
-
-等待执行完成出现"OK"字段为guest方发送成功。
-
-(b). host方执行
-
-```shell
-cd ${EGGROLL_HOME}/python/eggroll/roll_site/test
-python -m unittest test_roll_site.TestRollSiteCluster.test_get_rollpair
-```
-
-等待执行完成出现"OK"字段为host方接收成功。
-
-至此测试完成。
