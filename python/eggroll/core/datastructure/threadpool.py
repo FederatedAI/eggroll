@@ -16,14 +16,12 @@
 
 import atexit
 import itertools
+import logging
 import os
 import threading
-
 from concurrent.futures import _base
 
-from eggroll.utils.log_utils import get_logger
-
-L = get_logger()
+L = logging.getLogger(__name__)
 _shutdown = False
 
 
@@ -97,7 +95,7 @@ class ErThreadUnpooledExecutor(_base.Executor):
             self, *args = args
         else:
             raise TypeError('submit expected at least 1 positional argument, '
-                            'got %d' % (len(args)-1))
+                            'got %d' % (len(args) - 1))
 
         with self._shutdown_lock:
             if self._shutdown:
@@ -109,10 +107,12 @@ class ErThreadUnpooledExecutor(_base.Executor):
             thread_name = f'{self._thread_name_prefix or self}_{self._num_threads}'
             f = _base.Future()
             w = _ErWorkItem(f, fn, args, kwargs)
-            t = threading.Thread(name=thread_name, target=w.run, kwargs={"on_join": self.decrease_thread_count}, daemon=True)
+            t = threading.Thread(name=thread_name, target=w.run, kwargs={"on_join": self.decrease_thread_count},
+                                 daemon=True)
             t.start()
 
             return f
+
     submit.__doc__ = _base.Executor.submit.__doc__
 
     def increase_thread_count(self):
@@ -129,7 +129,8 @@ class ErThreadUnpooledExecutor(_base.Executor):
                         self._empty_event.clear()
                         break
             else:
-                L.debug(f"waiting for thread to release. thread_name_prefix={self._thread_name_prefix}, self._num_threads={self._num_threads}, max_workers={self._max_workers}")
+                L.debug(
+                    f"waiting for thread to release. thread_name_prefix={self._thread_name_prefix}, self._num_threads={self._num_threads}, max_workers={self._max_workers}")
 
     def decrease_thread_count(self):
         with self._num_threads_lock:
@@ -138,10 +139,12 @@ class ErThreadUnpooledExecutor(_base.Executor):
             if self._num_threads == 0:
                 self._empty_event.set()
             elif self._num_threads < 0:
-                raise OverflowError(f'num thread of {self._thread_name_prefix} < 0 after decrease. _num_threads={self._num_threads}')
+                raise OverflowError(
+                    f'num thread of {self._thread_name_prefix} < 0 after decrease. _num_threads={self._num_threads}')
 
     def shutdown(self, wait=True):
-        L.info(f"shutting down threadpool. wait={wait}, thread_name_prefix={self._thread_name_prefix}, self._num_threads={self._num_threads}, max_workers={self._max_workers}")
+        L.info(
+            f"shutting down threadpool. wait={wait}, thread_name_prefix={self._thread_name_prefix}, self._num_threads={self._num_threads}, max_workers={self._max_workers}")
         with self._shutdown_lock:
             self._shutdown = True
             self._accept_event.clear()

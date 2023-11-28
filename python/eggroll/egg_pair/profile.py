@@ -15,13 +15,12 @@
 #
 
 import json
+import logging
 from time import sleep
 
 import psutil
 
-from eggroll.utils.log_utils import get_logger
-
-L = get_logger(filename='profile')
+L = logging.getLogger(__name__)
 
 
 def get_system_metric(interval=1):
