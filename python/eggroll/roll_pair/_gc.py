@@ -1,12 +1,11 @@
+import logging
 import os
 import queue
 from threading import Thread
 
 from eggroll.core.constants import StoreTypes
-from eggroll.core.meta_model import ErStore
 from eggroll.core.datastructure import create_simple_queue
-from eggroll.utils.log_utils import get_logger
-import logging
+from eggroll.core.meta_model import ErStore
 
 L = logging.getLogger(__name__)
 

@@ -16,10 +16,9 @@
 import argparse
 import configparser
 import gc
+import logging
 import os
-import platform
 import signal
-import threading
 import time
 
 import grpc
@@ -39,28 +38,46 @@ from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErProcessor, ErEndpoint
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc, deepspeed_download_pb2_grpc
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, GrpcDsDownloadServicer
-from eggroll.core.utils import add_runtime_storage
-from eggroll.core.utils import set_static_er_conf, get_static_er_conf
-from eggroll.utils.log_utils import get_logger
-from eggroll.utils.profile import get_system_metric
+from eggroll.core.utils import set_static_er_conf
+from eggroll.egg_pair.profile import get_system_metric
 
-L = get_logger()
+L = logging.getLogger(__name__)
 
 
 def serve(args):
     prefix = "v1/eggs-pair"
     service_name = f"{prefix}/runTask"
 
-    from eggroll.roll_pair.tasks import EggTaskHandler
+    from eggroll.egg_pair.task_handler import TaskHandler
+    from eggroll.egg_pair.tasks import EnvOptions
+    from eggroll.core.config import Config
+    env_options = EnvOptions(data_dir=args.data_dir)
 
     CommandRouter.get_instance().register_handler(
         service_name=service_name,
-        route_to_method=EggTaskHandler.run_task,
-        route_to_call_based_class_instance=EggTaskHandler(args.data_dir),
+        route_to_method=TaskHandler.exec,
+        route_to_call_based_class_instance=TaskHandler(env_options),
     )
 
-    max_workers = int(RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_SERVER_EXECUTOR_POOL_MAX_SIZE.get())
-    executor_pool_type = CoreConfKeys.EGGROLL_CORE_DEFAULT_EXECUTOR_POOL.get()
+    # config
+    config = Config()
+
+    # load from default
+    config.load_default()
+
+    # load config from properties
+    EGGROLL_HOME = os.environ["EGGROLL_HOME"]
+    if not os.path.isabs(EGGROLL_HOME):
+        EGGROLL_HOME = os.path.realpath(EGGROLL_HOME)
+    if os.path.exists(f"{EGGROLL_HOME}/conf/eggroll.properties"):
+        properties_file = f"{EGGROLL_HOME}/conf/eggroll.properties"
+        config.load_properties(properties_file)
+
+    # load config from env
+    config.load_env()
+
+    max_workers = int(config.eggroll.rollpair.eggpair.server.executor.pool.max.size)
+    executor_pool_type = config.eggroll.core.default.executor.pool
     command_server = grpc.server(
         create_executor_pool(
             canonical_name=executor_pool_type, max_workers=max_workers, thread_name_prefix="eggpair-command-server"
@@ -171,8 +188,7 @@ def serve(args):
     if cluster_manager:
         session_id = args.session_id
         server_node_id = int(args.server_node_id)
-        static_er_conf = get_static_er_conf()
-        static_er_conf["server_node_id"] = server_node_id
+        env_options.server_node_id = server_node_id
 
         if not session_id:
             raise ValueError("session id is missing")
@@ -205,11 +221,6 @@ def serve(args):
 
         # cluster_manager_client.heartbeat(myself)
         # node_manager_client.heartbeat(myself)
-        add_runtime_storage("er_session_id", session_id)
-
-        if platform.system() == "Windows":
-            t1 = threading.Thread(target=stop_processor, args=[node_manager_client, myself])
-            t1.start()
 
     L.info(f"egg_pair started at port={port}, transfer_port={transfer_port}")
 
@@ -239,12 +250,6 @@ def serve(args):
 
     GrpcChannelFactory.shutdown_all_now()
 
-    # todo:1: move to RocksdbAdapter and provide a cleanup method
-    from eggroll.core.pair_store.rocksdb import RocksdbAdapter
-
-    RocksdbAdapter.release_db_resource()
-    L.info(f"closed RocksDB open dbs")
-
     gc.collect()
 
     L.info(f"system metric at exit: {get_system_metric(1)}")
@@ -272,25 +277,38 @@ if __name__ == "__main__":
     args_parser.add_argument("-c", "--config")
 
     args = args_parser.parse_args()
-
+    prid = args.processor_id
     EGGROLL_HOME = os.environ["EGGROLL_HOME"]
-    configs = configparser.ConfigParser()
-    if args.config:
-        conf_file = args.config
-        L.info(f"reading config path: {conf_file}")
-    else:
-        conf_file = f"{EGGROLL_HOME}/conf/eggroll.properties"
-        L.info(f"reading default config: {conf_file}")
+    LOG_DIR = os.environ.get("EGGROLL_LOGS_DIR", os.path.join(EGGROLL_HOME, "logs"))
 
-    configs.read(conf_file)
-    set_static_er_conf(configs["eggroll"])
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format=f"[{prid}]%(asctime)s %(levelname)s %(filename)s:%(lineno)d %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        filename=os.path.join(LOG_DIR, f"egg_pair.log"),
+    )
+    try:
 
-    if configs:
-        if not args.data_dir:
-            args.data_dir = configs["eggroll"]["eggroll.data.dir"]
-    if not os.path.isabs(args.data_dir):
-        args.data_dir = os.path.join(EGGROLL_HOME, args.data_dir)
-        args.data_dir = os.path.realpath(args.data_dir)
+        configs = configparser.ConfigParser()
+        if args.config:
+            conf_file = args.config
+            L.info(f"reading config path: {conf_file}")
+        else:
+            conf_file = f"{EGGROLL_HOME}/conf/eggroll.properties"
+            L.info(f"reading default config: {conf_file}")
 
-    L.info(args)
-    serve(args)
+        configs.read(conf_file)
+        set_static_er_conf(configs["eggroll"])
+
+        if configs:
+            if not args.data_dir:
+                args.data_dir = configs["eggroll"]["eggroll.data.dir"]
+        if not os.path.isabs(args.data_dir):
+            args.data_dir = os.path.join(EGGROLL_HOME, args.data_dir)
+            args.data_dir = os.path.realpath(args.data_dir)
+
+        L.info(args)
+        serve(args)
+    except Exception as e:
+        L.exception(f"egg_pair {args.processor_id} at port={args.port}, transfer_port={args.transfer_port} failed")
+        raise e

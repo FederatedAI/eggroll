@@ -12,21 +12,19 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import logging
+from concurrent.futures import _base
 from importlib import import_module
-from concurrent.futures import _base, ThreadPoolExecutor
+
 from eggroll.core.datastructure.threadpool import ErThreadUnpooledExecutor
-from eggroll.core.datastructure.queue import _PySimpleQueue
-from eggroll.utils.log_utils import get_logger
 
-L = get_logger()
+from queue import SimpleQueue
 
-try:
-    from queue import SimpleQueue
-except ImportError:
-    SimpleQueue = _PySimpleQueue
+L = logging.getLogger(__name__)
 
 
-def create_executor_pool(canonical_name: str = None, max_workers=None, thread_name_prefix=None, *args, **kwargs) -> _base.Executor:
+def create_executor_pool(canonical_name: str = None, max_workers=None, thread_name_prefix=None, *args,
+                         **kwargs) -> _base.Executor:
     if not canonical_name:
         canonical_name = "concurrent.futures.ThreadPoolExecutor"
     module_name, class_name = canonical_name.rsplit(".", 1)

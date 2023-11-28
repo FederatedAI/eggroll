@@ -13,10 +13,12 @@
 #  limitations under the License.
 import time
 import unittest
+
+from eggroll.core.constants import StoreTypes
 from eggroll.core.pair_store import *
 from eggroll.core.pair_store.adapter import PairAdapter
 from eggroll.core.pair_store.format import ArrayByteBuffer, PairBinReader, PairBinWriter
-from eggroll.core.constants import StoreTypes
+
 
 class TestPairStore(unittest.TestCase):
     dir = "./"

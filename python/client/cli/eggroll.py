@@ -18,10 +18,9 @@ import os
 import click
 import yaml
 
-from client.sdk import EggrollClient
 from client.cli.commands import task
 from client.cli.utils.cli_utils import prettify
-
+from client.sdk import EggrollClient
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 

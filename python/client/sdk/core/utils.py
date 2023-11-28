@@ -12,23 +12,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import configparser
 import json
 import os
 import time
 import traceback
 from datetime import datetime
-from threading import RLock
 
-import numba
 from google.protobuf.text_format import MessageToString
 
 static_er_conf = {}
 stringify_charset = 'iso-8859-1'
-M = 2**31
-
-runtime_storage = {}
-runtime_storage_lock = RLock()
+M = 2 ** 31
 
 
 class ErConfKey(object):
@@ -65,32 +59,6 @@ def get_static_er_conf(options: dict = None):
     return {}
 
 
-def add_runtime_storage(k, v, overwrite=True):
-    global runtime_storage
-    global runtime_storage_lock
-    with runtime_storage_lock:
-        if not overwrite and k in runtime_storage:
-            raise RuntimeError(f"failed to add runtime storage: {k} already exists")
-        runtime_storage[k] = v
-
-
-def get_runtime_storage(k=None, default_value=None):
-    global runtime_storage
-    global runtime_storage_lock
-    with runtime_storage_lock:
-        if k:
-            return runtime_storage.get(k, default_value)
-        else:
-            return runtime_storage
-
-
-def contains_runtime_storage(k):
-    global runtime_storage
-    global runtime_storage_lock
-    with runtime_storage_lock:
-        return k in runtime_storage
-
-
 def _to_proto(rpc_message):
     if rpc_message is not None:
         return rpc_message.to_proto()
@@ -124,7 +92,6 @@ def _stringify(data):
 
 def _stringify_dict(a_dict: dict):
     return {_stringify(k): _stringify(v) for k, v in a_dict.items()}
-
 
 
 def _repr_list(a_list: list):
@@ -165,7 +132,7 @@ def json_loads(src):
 
 
 def current_timestamp():
-    return int(time.time()*1000)
+    return int(time.time() * 1000)
 
 
 def _exception_logger(func):
@@ -185,11 +152,13 @@ def _exception_logger(func):
 
 def get_stack():
     return (f"\n\n==== stack start, at {time_now()} ====\n"
-           f"{''.join(traceback.format_stack())}"
-           f"\n==== stack end ====\n\n")
+            f"{''.join(traceback.format_stack())}"
+            f"\n==== stack end ====\n\n")
 
 
 DEFAULT_DATETIME_FORMAT = '%Y%m%d.%H%M%S.%f'
+
+
 def time_now(format: str = DEFAULT_DATETIME_FORMAT):
     formatted = datetime.now().strftime(format)
     if format == DEFAULT_DATETIME_FORMAT or ('%f' in format):
@@ -230,23 +199,6 @@ def generate_task_id(job_id, partition_id, delim='-'):
 
 
 '''AI copy from java ByteString.hashCode(), @see RollPairContext.partitioner'''
-@numba.jit
-def hash_code(s):
-    seed = 31
-    h = len(s)
-    for c in s:
-        # to singed int
-        if c > 127:
-            c = -256 + c
-        h = h * seed
-        if h > 2147483647 or h < -2147483648:
-            h = (h & (M - 1)) - (h & M)
-        h = h + c
-        if h > 2147483647 or h < -2147483648:
-            h = (h & (M - 1)) - (h & M)
-    if h == 0 or h == -2147483648:
-        h = 1
-    return h if h >= 0 else abs(h)
 
 
 def to_one_line_string(msg, as_one_line=True):
@@ -256,6 +208,8 @@ def to_one_line_string(msg, as_one_line=True):
 
 
 _eggroll_home = None
+
+
 def get_eggroll_home():
     global _eggroll_home
     if not _eggroll_home:
@@ -264,6 +218,8 @@ def get_eggroll_home():
 
 
 _eggroll_bin_truncate_limit = None
+
+
 def get_eggroll_bin_truncate_limit():
     global _eggroll_bin_truncate_limit
     if not _eggroll_bin_truncate_limit:

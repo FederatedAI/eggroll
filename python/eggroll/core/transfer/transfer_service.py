@@ -12,11 +12,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import io
+import logging
 import os
 import queue
 import zipfile
 from threading import Thread, Lock, Event
-from time import sleep
 from typing import Iterable
 from zipfile import ZIP_DEFLATED, ZIP_STORED
 
@@ -28,15 +28,11 @@ from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint
-from eggroll.core.proto import transfer_pb2_grpc, transfer_pb2, deepspeed_download_pb2_grpc ,deepspeed_download_pb2
-from eggroll.core.proto.command_pb2 import CommandRequest
+from eggroll.core.proto import transfer_pb2_grpc, transfer_pb2, deepspeed_download_pb2_grpc, deepspeed_download_pb2
 from eggroll.core.proto.containers_pb2 import ContentType, ContainerContent
-
 from eggroll.core.utils import _exception_logger, get_static_er_conf
-from eggroll.utils.log_utils import get_logger
 
-L = get_logger()
-
+L = logging.getLogger(__name__)
 
 TRANSFER_BROKER_NAME = 'transfer_broker_name'
 
@@ -98,7 +94,8 @@ class TransferService(object):
                     L.trace(f'result is None. tag={key}')
             retry += 1
             if retry > 5:
-                raise RuntimeError(f"cannot get broker={key}, result={result}, data_buffer={TransferService.data_buffer}, event_buffer={TransferService.event_buffer}")
+                raise RuntimeError(
+                    f"cannot get broker={key}, result={result}, data_buffer={TransferService.data_buffer}, event_buffer={TransferService.event_buffer}")
         return result
 
     @staticmethod
@@ -143,49 +140,49 @@ class TransferService(object):
             except BrokerClosed as e:
                 break
             except Exception as e:
-                #todo:1: remove print here
+                # todo:1: remove print here
                 print(e)
+
 
 class GrpcDsDownloadServicer(deepspeed_download_pb2_grpc.DsDownloadServiceServicer):
 
+    def get_container_workspace(self, session_id, rank):
 
-    def  get_container_workspace(self,session_id,rank):
+        data_dir = get_static_er_conf().get("eggroll.resourcemanager.nodemanager.containers.data.dir", None)
+        return data_dir + "/" + session_id + "/" + rank
 
-        data_dir = get_static_er_conf().get("eggroll.resourcemanager.nodemanager.containers.data.dir",None)
-        return data_dir+"/"+session_id+"/"+rank
-    def  get_container_models_dir(self,session_id,rank):
-        return self.get_container_workspace(session_id,rank)+"/"+"models"
+    def get_container_models_dir(self, session_id, rank):
+        return self.get_container_workspace(session_id, rank) + "/" + "models"
 
-    def  get_container_logs_dir(self,session_id,rank):
-        return self.get_container_workspace(session_id,rank)+"/"+"logs"
-    def  get_container_path(self,content_type,session_id,rank):
+    def get_container_logs_dir(self, session_id, rank):
+        return self.get_container_workspace(session_id, rank) + "/" + "logs"
+
+    def get_container_path(self, content_type, session_id, rank):
         # case ContentType.ALL => getContainerWorkspace(containerId)
         # case ContentType.MODELS => getContainerModelsDir(containerId)
         # case ContentType.LOGS => getContainerLogsDir(containerId)
         #
 
         if content_type == ContentType.ALL:
-                return self.get_container_workspace(session_id,rank)
-        elif  content_type ==ContentType.MODELS:
-                return self.get_container_models_dir(session_id,rank)
-        elif  content_type ==ContentType.LOGS:
-                return self.get_container_logs_dir(session_id,rank)
+            return self.get_container_workspace(session_id, rank)
+        elif content_type == ContentType.MODELS:
+            return self.get_container_models_dir(session_id, rank)
+        elif content_type == ContentType.LOGS:
+            return self.get_container_logs_dir(session_id, rank)
         else:
-                raise RuntimeError(f"download content type {content_type} is not support ")
-
-
+            raise RuntimeError(f"download content type {content_type} is not support ")
 
     @_exception_logger
     def download(self, request: deepspeed_download_pb2.DsDownloadRequest, context):
         L.info(f"receive download request  {request}")
         result = []
         try:
-            for  rank in  request.ranks:
+            for rank in request.ranks:
                 L.info(f"prepare to download container_id {rank}")
-                path = self.get_container_path(request.content_type,request.session_id,str(rank))
+                path = self.get_container_path(request.content_type, request.session_id, str(rank))
                 L.info(f"prepare to download path {path}")
                 content = zip2bytes(startdir=path)
-                compress_content = ContainerContent(rank=rank,content=content)
+                compress_content = ContainerContent(rank=rank, content=content)
                 # message ContainerContent
                 # {
                 #     int64 container_id = 1;
@@ -195,27 +192,25 @@ class GrpcDsDownloadServicer(deepspeed_download_pb2_grpc.DsDownloadServiceServic
                 result.append(compress_content)
         except Exception as e:
             L.exception(f"download error request  {request}")
-            raise  e
-        return deepspeed_download_pb2.DsDownloadResponse(session_id=request.session_id,container_content=result)
+            raise e
+        return deepspeed_download_pb2.DsDownloadResponse(session_id=request.session_id, container_content=result)
 
     @_exception_logger
     def download_by_split(self, request, context):
         L.info(f"receive download_by_split request  {request}")
         result = []
         try:
-            for  rank in  request.ranks:
+            for rank in request.ranks:
                 L.info(f"prepare to download container_id {rank}")
-                path = self.get_container_path(request.content_type,request.session_id,str(rank))
+                path = self.get_container_path(request.content_type, request.session_id, str(rank))
                 L.info(f"prepare to download path {path}")
                 content = zip2bytes(startdir=path)
-                result.append((rank,content))
+                result.append((rank, content))
         except Exception as e:
             L.exception(f"download error request  {request}")
-            raise  e
+            raise e
 
-        return chunker2(result,1024*1024*1024)
-
-
+        return chunker2(result, 1024 * 1024 * 1024)
 
 
 class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
@@ -234,12 +229,14 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
                     broker = TransferService.get_broker(base_tag)
                     # response_header = request.header
                     # linux error:TypeError: Parameter to MergeFrom() must be instance of same class: expected TransferHeader got TransferHeader. for field TransferBatch.header
-                    response_header = transfer_pb2.TransferHeader(tag=base_tag, id=request.header.id, ext=request.header.ext)
+                    response_header = transfer_pb2.TransferHeader(tag=base_tag, id=request.header.id,
+                                                                  ext=request.header.ext)
                     inited = True
 
                 broker.put(request)
             if inited:
-                L.trace(f'GrpcTransferServicer stream finished. tag={base_tag}, remaining write count={broker,broker.__dict__}, stream not empty')
+                L.trace(
+                    f'GrpcTransferServicer stream finished. tag={base_tag}, remaining write count={broker, broker.__dict__}, stream not empty')
                 result = transfer_pb2.TransferBatch(header=response_header)
             else:
                 raise ValueError('error in GrpcTransferServicer.send: empty request_iterator')
@@ -297,8 +294,8 @@ class GrpcTransferService(TransferService):
 class TransferClient(object):
     def __init__(self):
         self.__grpc_channel_factory = GrpcChannelFactory()
-        #self.__bin_packet_len = 32 << 20
-        #self.__chunk_size = 100
+        # self.__bin_packet_len = 32 << 20
+        # self.__chunk_size = 100
 
     @_exception_logger
     def send(self, broker, endpoint: ErEndpoint, tag):
@@ -327,6 +324,7 @@ class TransferClient(object):
         for cur_retry in range(3):
             try:
                 L.trace(f'TransferClient.recv for endpoint={endpoint}, tag={tag}')
+
                 @_exception_logger
                 def fill_broker(iterable: Iterable, broker):
                     try:
@@ -342,10 +340,10 @@ class TransferClient(object):
 
                 stub = transfer_pb2_grpc.TransferServiceStub(channel)
                 request = transfer_pb2.TransferBatch(
-                        header=transfer_pb2.TransferHeader(id=1, tag=tag))
+                    header=transfer_pb2.TransferHeader(id=1, tag=tag))
 
                 response_iter = stub.recv(
-                        request, metadata=[(TRANSFER_BROKER_NAME, tag)])
+                    request, metadata=[(TRANSFER_BROKER_NAME, tag)])
 
                 if broker is None:
                     return response_iter
@@ -362,33 +360,31 @@ class TransferClient(object):
             L.exception(f'fail to {endpoint} in TransferClient.recv, cur_retry={cur_retry}', exc_info=e)
             raise exception
 
-def zip2bytes(startdir,compression=ZIP_DEFLATED,compresslevel=1, **kwargs) -> bytes:
+
+def zip2bytes(startdir, compression=ZIP_DEFLATED, compresslevel=1, **kwargs) -> bytes:
     L.info(f"download start dir {startdir}")
     if compression == ZIP_STORED:
         compresslevel = None
         # kwargs["compression"] = compression
         # kwargs["compresslevel"] = compresslevel
     buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, "w", compression=compression,compresslevel=compresslevel) as z:
+    with zipfile.ZipFile(buffer, "w", compression=compression, compresslevel=compresslevel) as z:
         for dirpath, dirnames, filenames in os.walk(startdir):
             for filename in filenames:
                 subpath = os.path.join(dirpath, filename)
 
-                with  open(subpath,'rb') as subfile:
+                with  open(subpath, 'rb') as subfile:
                     z.writestr(filename, subfile.read())
     buffer.seek(0)
     return buffer.read()
 
-def chunker(iterable, size):
 
+def chunker(iterable, size):
     for i in range(0, len(iterable), size):
-        yield  deepspeed_download_pb2.DsDownloadSplitResponse(data=iterable[i:i + size])
+        yield deepspeed_download_pb2.DsDownloadSplitResponse(data=iterable[i:i + size])
 
 
 def chunker2(iterable, size):
     for j in iterable:
         for i in range(0, len(j[1]), size):
             yield deepspeed_download_pb2.DsDownloadSplitResponse(data=j[1][i:i + size], rank=j[0])
-
-
-

@@ -1,14 +1,18 @@
+import logging
+
 from eggroll.core.meta_model import ErJob
 from eggroll.core.meta_model import ErTask
 from eggroll.core.model.task import WithStoresResponse
-from eggroll.utils.log_utils import get_logger
+from ._task import Task, EnvOptions
 
-L = get_logger()
+L = logging.getLogger(__name__)
 
 
-class _WithStores(object):
+class _WithStores(Task):
     @classmethod
-    def run(cls, data_dir: str, job: ErJob, task: ErTask):
+    def run(cls,
+            env_options: EnvOptions,
+            job: ErJob, task: ErTask):
         f = job.first_functor.func
-        value = f(data_dir, task)
+        value = f(env_options.data_dir, task)
         return WithStoresResponse(id=task.first_input.id, value=value)
