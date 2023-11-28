@@ -41,7 +41,7 @@ public class JettyServer {
         MetaInfo.init(environment);
 
         Injector injector = Guice.createInjector(new MyServletModule());
-        Server server = new Server(MetaInfo.JETTY_SERVER_PORT);
+        Server server = new Server(MetaInfo.DASHBOARD_SERVER_PORT);
         SessionHandler sessionHandler = new SessionHandler();
         DefaultSessionCache sessionCache = new DefaultSessionCache(sessionHandler);
         DefaultSessionIdManager sessionIdManager = new DefaultSessionIdManager(server);

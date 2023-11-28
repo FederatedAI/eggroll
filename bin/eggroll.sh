@@ -64,7 +64,7 @@ main() {
 			;;
 	  dashboard)
   		main_class=org.fedai.eggroll.webapp.JettyServer
-      get_property "eggroll.jetty.server.port"
+      get_property "eggroll.dashboard.server.port"
       port=${property_value}
   		;;
 		*)
