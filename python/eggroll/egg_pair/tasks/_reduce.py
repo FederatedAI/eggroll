@@ -1,17 +1,23 @@
 import contextlib
+import logging
 
 from eggroll.core.meta_model import ErJob, ErTask
 from eggroll.core.model.task import ReduceResponse
+from ._task import Task, EnvOptions
+
+L = logging.getLogger(__name__)
 
 
-class _Reduce(object):
+class _Reduce(Task):
     @classmethod
-    def run(cls, data_dir: str, job: ErJob, task: ErTask):
+    def run(cls,
+            env_options: EnvOptions,
+            job: ErJob, task: ErTask):
         seq_op = job.first_functor.func
         first = True
         seq_op_result = None
         with contextlib.ExitStack() as stack:
-            input_adapter = stack.enter_context(task.first_input.get_adapter(data_dir))
+            input_adapter = stack.enter_context(task.first_input.get_adapter(env_options.data_dir))
             input_iter = stack.enter_context(input_adapter.iteritems())
             for k_bytes, v_bytes in input_iter:
                 if first:

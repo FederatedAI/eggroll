@@ -15,11 +15,10 @@
 #
 
 import inspect
+import logging
 from time import time, perf_counter
 
-from eggroll.utils.log_utils import get_logger
-
-L = get_logger(filename='profile')
+L = logging.getLogger(__name__)
 
 
 def _method_profile_logger(func):
@@ -37,16 +36,17 @@ def _method_profile_logger(func):
             outerframes = inspect.getouterframes(inspect.currentframe(), 2)
             real_caller = outerframes[1]
             L.trace(f'{{"metric_type": "func_profile", '
-                   f'"qualname": "{func.__qualname__}", '
-                   f'"caller": "{real_caller.filename.rsplit("/", 1)[-1]}:{real_caller.lineno}", '
-                   f'"cpu_time": {end_cpu_time - start_cpu_time}, '
-                   f'"wall_time": {end_wall_time - start_wall_time}}}')
+                    f'"qualname": "{func.__qualname__}", '
+                    f'"caller": "{real_caller.filename.rsplit("/", 1)[-1]}:{real_caller.lineno}", '
+                    f'"cpu_time": {end_cpu_time - start_cpu_time}, '
+                    f'"wall_time": {end_wall_time - start_wall_time}}}')
 
             return result
         except Exception as e:
             L.trace(f'{{"metric_type": "func_profile", '
-                   f'"qualname": "{func.__qualname__}", '
-                   f'"caller": "unknown", '
-                   f'"cpu_time": {end_cpu_time - start_cpu_time}, '
-                   f'"wall_time": {end_wall_time - start_wall_time}}}')
+                    f'"qualname": "{func.__qualname__}", '
+                    f'"caller": "unknown", '
+                    f'"cpu_time": {end_cpu_time - start_cpu_time}, '
+                    f'"wall_time": {end_wall_time - start_wall_time}}}')
+
     return wrapper

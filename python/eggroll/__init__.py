@@ -13,5 +13,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+import logging
 
 __version__ = "3.0.0"
+
+logging.TRACE = logging.DEBUG - 5
+logging.addLevelName(logging.DEBUG - 5, "TRACE")
+logging.Logger.trace = lambda inst, msg, *args, **kwargs: inst.log(logging.TRACE, msg, *args, **kwargs)

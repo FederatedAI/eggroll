@@ -13,19 +13,19 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import logging
 import uuid
+from typing import Callable, Iterable
 
 from eggroll.core.client import CommandClient
 from eggroll.core.command.command_model import CommandURI
 from eggroll.core.conf_keys import RollPairConfKeys
-from eggroll.core.constants import StoreTypes, PartitionerTypes
+from eggroll.core.constants import StoreTypes
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErTask, ErPartition, ErJobIO
 from eggroll.core.session import ErSession
-from eggroll.core.utils import generate_job_id, generate_task_id, get_runtime_storage
-from eggroll.roll_pair._roll_pair import RollPair
+from eggroll.core.utils import generate_job_id, generate_task_id
 from eggroll.roll_pair._gc import GcRecorder
-from typing import Callable, Iterable
-import logging
+from eggroll.roll_pair._roll_pair import RollPair
 
 L = logging.getLogger(__name__)
 
@@ -60,28 +60,26 @@ class RollPairContext(object):
         self.__command_client = CommandClient()
 
         eggs = session.get_eggs()
-        self._broadcast_eggs(eggs, session.get_eggs_count())
-
-    def _broadcast_eggs(self, eggs, count):
-        rp = self.create_rp(
-            id=-1,
-            name=self.session_id,
-            namespace=f"er_session_meta",
-            total_partitions=count,
-            store_type=StoreTypes.ROLLPAIR_CACHE,
-            key_serdes_type=0,
-            value_serdes_type=0,
-            partitioner_type=0,
-            options={},
-        )
-
-        def _bc_eggs(_data_dir, _task: ErTask):
-            from eggroll.core.utils import add_runtime_storage
-
-            add_runtime_storage("__eggs", eggs)
-            L.debug(f"runtime_storage={get_runtime_storage('__eggs')}")
-
-        rp.with_stores(func=_bc_eggs, description="broadcast eggs")
+    #     self._broadcast_eggs(eggs, session.get_eggs_count())
+    #
+    # def _broadcast_eggs(self, eggs, count):
+    #     rp = self.create_rp(
+    #         id=-1,
+    #         name=self.session_id,
+    #         namespace=f"er_session_meta",
+    #         total_partitions=count,
+    #         store_type=StoreTypes.ROLLPAIR_CACHE,
+    #         key_serdes_type=0,
+    #         value_serdes_type=0,
+    #         partitioner_type=0,
+    #         options={},
+    #     )
+    #
+    #     def _bc_eggs(_data_dir, _task: ErTask):
+    #
+    #         # add_runtime_storage("__eggs", eggs)
+    #
+    #     rp.with_stores(func=_bc_eggs, description="broadcast eggs")
 
     def set_store_type(self, store_type: str):
         self.default_store_type = store_type
