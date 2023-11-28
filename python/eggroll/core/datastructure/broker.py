@@ -12,15 +12,15 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import logging
 import queue
 import time
 from queue import Queue
-
-from eggroll.core.conf_keys import CoreConfKeys
-from eggroll.utils.log_utils import get_logger
 from threading import Lock
 
-L = get_logger()
+from eggroll.core.conf_keys import CoreConfKeys
+
+L = logging.getLogger(__name__)
 
 
 class Broker(object):
@@ -74,9 +74,9 @@ class FifoBroker(Broker):
 
     # todo:1: make maxsize configurable
     def __init__(self,
-            maxsize=CoreConfKeys.EGGROLL_CORE_FIFOBROKER_DEFAULT_SIZE.default_value,
-            writers=1,
-            name=f"fifobroker-{time.time()}-{__broker_seq}"):
+                 maxsize=CoreConfKeys.EGGROLL_CORE_FIFOBROKER_DEFAULT_SIZE.default_value,
+                 writers=1,
+                 name=f"fifobroker-{time.time()}-{__broker_seq}"):
         FifoBroker.__broker_seq += 1
         self.__max_capacity = maxsize
         self.__queue = Queue(maxsize=maxsize)

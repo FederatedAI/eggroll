@@ -13,15 +13,15 @@
 #  limitations under the License.
 
 import ipaddress
+import logging
 import threading
 
 import grpc
 
 from eggroll.core.conf_keys import CoreConfKeys
 from eggroll.core.meta_model import ErEndpoint
-from eggroll.utils.log_utils import get_logger
 
-L = get_logger()
+L = logging.getLogger(__name__)
 
 
 def wrap_host_scheme(host):

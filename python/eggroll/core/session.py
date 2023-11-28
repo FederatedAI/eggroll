@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import configparser
+import logging
 import os
 import random
 import time
@@ -34,8 +35,6 @@ from eggroll.core.utils import generate_task_id, calculate_rank_in_node
 from eggroll.core.utils import get_self_ip, time_now, DEFAULT_DATETIME_FORMAT
 from eggroll.core.utils import get_stack
 from eggroll.core.utils import set_static_er_conf
-
-import logging
 
 L = logging.getLogger(__name__)
 
@@ -460,11 +459,3 @@ class ErSession(object):
         for k, v in self._eggs.items():
             egg_count += len(v)
         return egg_count
-
-
-class JobRunner(object):
-    def __init__(self, session: ErSession):
-        self._session = session
-
-    def run(self, job: ErJob):
-        tasks = self.decompose_job()
