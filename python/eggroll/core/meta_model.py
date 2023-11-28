@@ -13,12 +13,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import typing
 from copy import deepcopy
 from threading import Lock
+from typing import List
 
+from eggroll.core._data_path import get_db_path_expanded
 from eggroll.core.base_model import RpcMessage
 from eggroll.core.constants import SessionStatus
-from eggroll.core._data_path import get_db_path_expanded
 from eggroll.core.pair_store import create_pair_adapter
 from eggroll.core.proto import meta_pb2
 from eggroll.core.utils import (
@@ -31,9 +33,6 @@ from eggroll.core.utils import (
     _stringify_dict,
 )
 from eggroll.core.utils import time_now_ns
-import typing
-from typing import List
-
 
 DEFAULT_PATH_DELIM = "/"
 DEFAULT_FORK_DELIM = "_"

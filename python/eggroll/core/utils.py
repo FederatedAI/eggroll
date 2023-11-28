@@ -18,16 +18,12 @@ import os
 import time
 import traceback
 from datetime import datetime
-from threading import RLock
 
 from google.protobuf.text_format import MessageToString
 
 static_er_conf = {}
 stringify_charset = "iso-8859-1"
-M = 2**31
-
-runtime_storage = {}
-runtime_storage_lock = RLock()
+M = 2 ** 31
 
 
 class ErConfKey(object):
@@ -74,32 +70,6 @@ def get_static_er_conf(options: dict = None):
         set_static_er_conf(configs["eggroll"])
         static_er_conf = get_static_er_conf()
     return static_er_conf
-
-
-def add_runtime_storage(k, v, overwrite=True):
-    global runtime_storage
-    global runtime_storage_lock
-    with runtime_storage_lock:
-        if not overwrite and k in runtime_storage:
-            raise RuntimeError(f"failed to add runtime storage: {k} already exists")
-        runtime_storage[k] = v
-
-
-def get_runtime_storage(k=None, default_value=None):
-    global runtime_storage
-    global runtime_storage_lock
-    with runtime_storage_lock:
-        if k:
-            return runtime_storage.get(k, default_value)
-        else:
-            return runtime_storage
-
-
-def contains_runtime_storage(k):
-    global runtime_storage
-    global runtime_storage_lock
-    with runtime_storage_lock:
-        return k in runtime_storage
 
 
 def _to_proto(rpc_message):

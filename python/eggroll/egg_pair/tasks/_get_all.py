@@ -1,3 +1,5 @@
+import logging
+
 from eggroll.core.meta_model import ErJob
 from eggroll.core.meta_model import ErTask
 from eggroll.core.model.task import (
@@ -5,19 +7,21 @@ from eggroll.core.model.task import (
 )
 from eggroll.core.transfer.transfer_service import TransferService
 from eggroll.roll_pair.transfer_pair import TransferPair
-from eggroll.utils.log_utils import get_logger
+from ._task import EnvOptions, Task
 
-L = get_logger()
+L = logging.getLogger(__name__)
 
 
-class _GetAll(object):
+class _GetAll(Task):
     @classmethod
-    def run(cls, data_dir: str, job: ErJob, task: ErTask):
+    def run(cls,
+            env_options: EnvOptions,
+            job: ErJob, task: ErTask):
         tag = task.id
         request = job.first_functor.deserialized_as(GetAllRequest)
 
         def generate_broker():
-            with task.first_input.get_adapter(data_dir) as db, db.iteritems() as rb:
+            with task.first_input.get_adapter(env_options.data_dir) as db, db.iteritems() as rb:
                 limit = None if request.limit < 0 else request.limit
                 try:
                     yield from TransferPair.pair_to_bin_batch(rb, limit=limit)

@@ -16,10 +16,10 @@
 # this operation is dangerous if not used carefully.
 # we will not use shutil in eggroll, but provide a wrapper to make it safer to use and easier to track.
 
+import logging
 import shutil
-from eggroll.utils.log_utils import get_logger
 
-L = get_logger()
+L = logging.getLogger(__name__)
 
 
 def rmtree(path, ignore_errors=False, onerror=None):

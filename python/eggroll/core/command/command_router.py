@@ -18,9 +18,8 @@ from importlib import import_module
 
 from eggroll.core.meta_model import ErTask
 from eggroll.core.proto import meta_pb2
-from eggroll.utils.log_utils import get_logger
 
-L = get_logger()
+L = logging.getLogger(__name__)
 
 
 class CommandRouter(object):
@@ -40,15 +39,15 @@ class CommandRouter(object):
             self._service_route_table = dict()  # key: service_name, value: (instance, class, method)
 
     def register(
-        self,
-        service_name: str,
-        service_param_deserializers: list = None,
-        service_result_serializers: list = None,
-        route_to_module_name: str = "",
-        route_to_class_name: str = "",
-        route_to_method_name: str = "",
-        route_to_call_based_class_instance=None,
-        call_based_class_instance_init_arg=None,
+            self,
+            service_name: str,
+            service_param_deserializers: list = None,
+            service_result_serializers: list = None,
+            route_to_module_name: str = "",
+            route_to_class_name: str = "",
+            route_to_method_name: str = "",
+            route_to_call_based_class_instance=None,
+            call_based_class_instance_init_arg=None,
     ):
         if service_param_deserializers is None:
             service_param_deserializers = []
@@ -68,10 +67,10 @@ class CommandRouter(object):
         L.info("service:{} has registered".format(service_name))
 
     def register_handler(
-        self,
-        service_name: str,
-        route_to_method,
-        route_to_call_based_class_instance,
+            self,
+            service_name: str,
+            route_to_method,
+            route_to_call_based_class_instance,
     ):
         if service_name in self._service_route_table:
             raise ValueError(

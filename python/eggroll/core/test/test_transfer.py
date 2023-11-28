@@ -17,7 +17,6 @@ import queue
 import threading
 import unittest
 
-
 from eggroll.core.conf_keys import TransferConfKeys
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed

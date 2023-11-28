@@ -1,20 +1,19 @@
 import datetime
 import enum
 import json
+import queue
+import threading
 import time
 import typing
-import threading
-import queue
 from contextlib import ExitStack
 from multiprocessing.pool import ThreadPool
 from typing import Dict, List, Optional
 
-from ..submit.base import BaseClient
+from ..core.command.commands import SessionCommands
 from ..core.conf_keys import SessionConfKeys
 from ..core.constants import SessionStatus
-from ..core.command.commands import SessionCommands
 from ..core.proto import containers_pb2, deepspeed_pb2, extend_pb2, extend_pb2_grpc, deepspeed_download_pb2, meta_pb2
-
+from ..submit.base import BaseClient
 from ..submit.commands import JobCommands
 from ..utils.base_utils import BaseEggrollAPI
 from ..utils.params_utils import filter_invalid_params
