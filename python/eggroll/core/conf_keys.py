@@ -119,8 +119,6 @@ class RollPairConfKeys(object):
     EGGROLL_ROLLPAIR_DEFAULT_STORE_TYPE = ErConfKey("eggroll.rollpair.default.store.type", "ROLLPAIR_LMDB")
     EGGROLL_ROLLPAIR_ROCKSDB_WRITEBATCH_SIZE = ErConfKey("eggroll.rollpair.rocksdb.writebatch.size", 500)
     EGGROLL_ROLLPAIR_REMOTE_WRITEBATCH_SIZE = ErConfKey("eggroll.rollpair.remote.writebatch.size", 1_000_000)
-    EGGROLL_ROLLPAIR_STORAGE_REPLICA_COUNT = ErConfKey("eggroll.rollpair.storage.replica.count", 1)
-    EGGROLL_ROLLPAIR_STORAGE_REPLICATE_ENABLED = ErConfKey("eggroll.rollpair.storage.replicate.enabled", False)
     EGGROLL_ROLLPAIR_STORAGE_REPLICATE_TEMP_FILES = ErConfKey("eggroll.rollpair.storage.replicate.temp.files", False)
     EGGROLL_ROLLPAIR_IN_MEMORY_OUTPUT = ErConfKey("eggroll.rollpair.inmemory_output", False)
 

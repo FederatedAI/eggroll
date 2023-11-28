@@ -5,20 +5,19 @@ import threading
 import time
 import typing
 from contextlib import ExitStack
-from typing import Dict, List, Optional
-
 from multiprocessing.dummy import Pool as ThreadPool
+from typing import Dict, List, Optional
 
 from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import SessionStatus
 from eggroll.core.proto import containers_pb2, deepspeed_pb2, deepspeed_download_pb2, meta_pb2, \
     extend_pb2_grpc, extend_pb2
-from eggroll.core.proto.command_pb2 import CommandRequest
-from eggroll.core.proto.deepspeed_download_pb2 import DsDownloadResponse
-from ..client import BaseClient
 from .commands import JobCommands
+from ..client import BaseClient
 from ..store.client import destroy
 from ...core.command.commands import SessionCommands
+
+
 # from eggroll.deepspeed.client import BaseClient
 # from eggroll.deepspeed.submit.commands import JobCommands
 # from eggroll.deepspeed.store.client import destroy

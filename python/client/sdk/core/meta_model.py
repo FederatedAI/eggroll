@@ -18,7 +18,7 @@ from threading import Lock
 
 from .base_model import RpcMessage
 from .proto import meta_pb2
-from .utils import _map_and_listify, _repr_list, _repr_bytes, _elements_to_proto, _to_proto, _from_proto,\
+from .utils import _map_and_listify, _repr_list, _repr_bytes, _elements_to_proto, _to_proto, _from_proto, \
     _stringify_dict, time_now_ns
 
 DEFAULT_PATH_DELIM = '/'

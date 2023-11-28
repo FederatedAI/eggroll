@@ -12,6 +12,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import logging
 import os
 import platform
 import sys
@@ -20,10 +21,8 @@ import threading
 import lmdb
 
 from eggroll.core.pair_store.adapter import PairIterator, PairWriteBatch, PairAdapter
-from eggroll.utils.log_utils import get_logger
 
-L = get_logger()
-
+L = logging.getLogger(__name__)
 # 64 * 1024 * 1024
 LMDB_MAP_SIZE = 16 * 4_096 * 244_140  # follows storage-service-cxx's config here
 LMDB_MAP_SIZE_WINDOWS_OS = 40 * 1024 * 1024

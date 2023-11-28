@@ -1,11 +1,11 @@
 from datetime import timedelta
 
-from eggroll.core.proto import deepspeed_pb2
 from google.protobuf.duration_pb2 import Duration
 from torch.distributed import Store
 
-from ..client import BaseClient
+from eggroll.core.proto import deepspeed_pb2
 from .commands import RendezvousStoreCommands
+from ..client import BaseClient
 
 
 class EggrollStore(Store):

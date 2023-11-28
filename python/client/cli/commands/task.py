@@ -13,13 +13,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+import datetime
 import os
 import tempfile
-import datetime
+
 import click
 
-from ..utils.cli_utils import load_yaml, prettify, unzip
 from client.sdk import EggrollClient
+from ..utils.cli_utils import prettify, unzip
 
 
 @click.group(short_help="Task Operations")

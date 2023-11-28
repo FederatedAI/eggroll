@@ -1,7 +1,5 @@
 import os
 
-import torch.cuda
-
 
 def init_deepspeed():
     import torch.distributed as distributed

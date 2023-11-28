@@ -13,24 +13,22 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import functools
+import contextlib
+import logging
 import queue
 import threading
+import time
 
 from eggroll.core.conf_keys import CoreConfKeys, RollPairConfKeys
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
+from eggroll.core.meta_model import ErPartition, ErStore
 from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, ArrayByteBuffer
 from eggroll.core.transfer.transfer_service import TransferClient, TransferService
 from eggroll.core.utils import _exception_logger
-from eggroll.core.meta_model import ErPartition, ErStore
-
 from eggroll.core.utils import generate_task_id
-from eggroll.utils.log_utils import get_logger
-import time
-import contextlib
 
-L = get_logger()
+L = logging.getLogger(__name__)
 
 
 class CompositeFuture(object):
@@ -75,7 +73,8 @@ class CompositeFuture(object):
 
 class BatchBroker(object):
     def __init__(
-        self, broker, batch_size=RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_BATCHBROKER_DEFAULT_SIZE.default_value
+            self, broker,
+            batch_size=RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_BATCHBROKER_DEFAULT_SIZE.default_value
     ):
         self.broker = broker
         self.batch = []
@@ -223,7 +222,7 @@ class TransferPair(object):
             nonlocal writer
             bin_batch = None
             if ba:
-                bin_batch = bytes(ba[0 : writer.get_offset()])
+                bin_batch = bytes(ba[0: writer.get_offset()])
             # if ba:
             #     bin_batch = bytes(ba[0:buffer.get_offset()])
             ba = bytearray(bs)

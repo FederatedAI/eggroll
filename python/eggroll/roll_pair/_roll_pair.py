@@ -13,15 +13,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import functools
-import queue
+import logging
 import os
+import queue
 import time
 import typing
-from typing import Callable, Tuple, Iterable, List, Type
 import uuid
 from concurrent.futures import wait, FIRST_EXCEPTION
 from threading import Thread
-
+from typing import Callable, Tuple, Iterable, List, Type
 
 from eggroll.core.aspects import _method_profile_logger
 from eggroll.core.client import CommandClient
@@ -29,16 +29,6 @@ from eggroll.core.command.command_model import CommandURI
 from eggroll.core.constants import StoreTypes
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import ErJob, ErStore, ErFunctor, ErTask, ErPartitioner, ErJobIO, ErSerdes
-from eggroll.core.utils import generate_job_id, generate_task_id
-from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
-from eggroll.core.transfer_model import (
-    ErRollSitePullGetHeaderRequest,
-    ErRollSitePullGetHeaderResponse,
-    ErRollSitePullGetPartitionStatusRequest,
-    ErRollSitePullGetPartitionStatusResponse,
-    ErRollSitePullClearStatusRequest,
-)
-from eggroll.utils.log_utils import get_logger
 from eggroll.core.model.task import (
     CountResponse,
     GetRequest,
@@ -52,11 +42,13 @@ from eggroll.core.model.task import (
     ReduceResponse,
     WithStoresResponse,
 )
+from eggroll.core.utils import generate_job_id, generate_task_id
+from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
 
 if typing.TYPE_CHECKING:
     from .roll_pair import RollPairContext
 
-L = get_logger()
+L = logging.getLogger(__name__)
 
 T = typing.TypeVar("T")
 
@@ -74,19 +66,13 @@ class RollPair(object):
     DESTROY = "destroy"
     GET = "get"
     GET_ALL = "getAll"
-    GLOM = "glom"
     MAP_REDUCE_PARTITIONS_WITH_INDEX = "mapReducePartitionsWithIndex"
     BINARY_SORTED_MAP_PARTITIONS_WITH_INDEX = "binarySortedMapPartitionsWithIndex"
     PUT = "put"
     PUT_ALL = "putAll"
-    PUT_BATCH = "putBatch"
     REDUCE = "reduce"
 
     WITH_STORES = "withStores"
-    PullGetHeader = "pullGetHeader"
-    PullGetPartitionStatus = "pullGetPartitionStatus"
-    PullClearStatus = "pullClearStatus"
-
     RUN_TASK_URI = CommandURI(f"{EGG_PAIR_URI_PREFIX}/{RUN_TASK}")
 
     def __setstate__(self, state):
@@ -160,9 +146,9 @@ class RollPair(object):
         return self._store.store_locator.store_type
 
     def _run_unary_unit_job(
-        self,
-        job: ErJob,
-        output_types: List[Type[T]] = None,
+            self,
+            job: ErJob,
+            output_types: List[Type[T]] = None,
     ) -> List[List[T]]:
         if output_types is None:
             output_types = [ErTask]
@@ -368,26 +354,26 @@ class RollPair(object):
 
     @_method_profile_logger
     def map_reduce_partitions_with_index(
-        self,
-        map_partition_op,
-        reduce_partition_op,
-        shuffle,
-        input_key_serdes,
-        input_key_serdes_type,
-        input_value_serdes,
-        input_value_serdes_type,
-        input_partitioner,
-        input_partitioner_type,
-        output_key_serdes,
-        output_key_serdes_type,
-        output_value_serdes,
-        output_value_serdes_type,
-        output_partitioner,
-        output_partitioner_type,
-        output_num_partitions,
-        output_namespace=None,
-        output_name=None,
-        output_store_type=None,
+            self,
+            map_partition_op,
+            reduce_partition_op,
+            shuffle,
+            input_key_serdes,
+            input_key_serdes_type,
+            input_value_serdes,
+            input_value_serdes_type,
+            input_partitioner,
+            input_partitioner_type,
+            output_key_serdes,
+            output_key_serdes_type,
+            output_value_serdes,
+            output_value_serdes_type,
+            output_partitioner,
+            output_partitioner_type,
+            output_num_partitions,
+            output_namespace=None,
+            output_name=None,
+            output_store_type=None,
     ):
         if output_namespace is None:
             output_namespace = self.get_namespace()
@@ -464,19 +450,19 @@ class RollPair(object):
 
     @_method_profile_logger
     def binary_sorted_map_partitions_with_index(
-        self,
-        other: "RollPair",
-        binary_map_partitions_with_index_op: Callable[[int, Iterable, Iterable], Iterable],
-        key_serdes,
-        key_serdes_type,
-        partitioner,
-        partitioner_type,
-        first_input_value_serdes,
-        first_input_value_serdes_type,
-        second_input_value_serdes,
-        second_input_value_serdes_type,
-        output_value_serdes,
-        output_value_serdes_type,
+            self,
+            other: "RollPair",
+            binary_map_partitions_with_index_op: Callable[[int, Iterable, Iterable], Iterable],
+            key_serdes,
+            key_serdes_type,
+            partitioner,
+            partitioner_type,
+            first_input_value_serdes,
+            first_input_value_serdes_type,
+            second_input_value_serdes,
+            second_input_value_serdes_type,
+            output_value_serdes,
+            output_value_serdes_type,
     ):
         output_store = self._store.fork()
         output_store = self.ctx.get_session().get_or_create_store(output_store)
@@ -521,82 +507,6 @@ class RollPair(object):
             response = response[0]
             results.append((response.id, response.value))
         return results
-
-    @_method_profile_logger
-    def pull_get_header(self, tag: str, timeout: float, description: str = None):
-        job_tag = f"{RollPair.PullGetHeader}-{description}" if description else RollPair.PullGetHeader
-        stores = [self._store]
-        job_id = generate_job_id(self._session_id, tag=job_tag)
-        job = ErJob(
-            id=job_id,
-            name=RollPair.PullGetHeader,
-            inputs=[ErJobIO(store) for store in stores],
-            functors=[
-                ErFunctor(
-                    name=RollPair.PullGetHeader,
-                    body=ErRollSitePullGetHeaderRequest(tag=tag, timeout=timeout).to_proto_string(),
-                )
-            ],
-            options={},
-        )
-        responses = self._run_unary_unit_job(job=job, output_types=[ErRollSitePullGetHeaderResponse])
-        results = []
-        for response in responses:
-            response = response[0]
-            results.append(response.header)
-        return results
-
-    @_method_profile_logger
-    def pull_get_partition_status(self, tag: str, timeout: float, description: str = None):
-        job_tag = (
-            f"{RollPair.PullGetPartitionStatus}-{description}" if description else RollPair.PullGetPartitionStatus
-        )
-        stores = [self._store]
-        job_id = generate_job_id(self._session_id, tag=job_tag)
-        job = ErJob(
-            id=job_id,
-            name=RollPair.PullGetPartitionStatus,
-            inputs=[ErJobIO(store) for store in stores],
-            functors=[
-                ErFunctor(
-                    name=RollPair.PullGetPartitionStatus,
-                    body=ErRollSitePullGetPartitionStatusRequest(tag=tag, timeout=timeout).to_proto_string(),
-                )
-            ],
-            options={},
-        )
-        responses = self._run_unary_unit_job(job=job, output_types=[ErRollSitePullGetPartitionStatusResponse])
-        all_finished = True
-        pull_status = {}
-        total_batches = 0
-        total_pairs = 0
-        for task_response in responses:
-            response = task_response[0]
-            if not response.is_finished:
-                all_finished = False
-            pull_status[response.partition_id] = response
-            total_batches += response.total_batches
-            total_pairs += response.total_pairs
-        return pull_status, all_finished, total_batches, total_pairs
-
-    @_method_profile_logger
-    def pull_clear_status(self, tag: str, description: str = None):
-        job_tag = f"{RollPair.PullClearStatus}-{description}" if description else RollPair.PullClearStatus
-        stores = [self._store]
-        job_id = generate_job_id(self._session_id, tag=job_tag)
-        job = ErJob(
-            id=job_id,
-            name=RollPair.PullClearStatus,
-            inputs=[ErJobIO(store) for store in stores],
-            functors=[
-                ErFunctor(
-                    name=RollPair.PullClearStatus,
-                    body=ErRollSitePullClearStatusRequest(tag=tag).to_proto_string(),
-                )
-            ],
-            options={},
-        )
-        self._run_unary_unit_job(job=job, output_types=[ErRollSitePullGetPartitionStatusResponse])
 
 
 class DaemonThreadWithExceptionPropagate:

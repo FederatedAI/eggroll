@@ -13,8 +13,9 @@
 #  limitations under the License.
 
 
-import time
+import logging
 import threading
+import time
 import typing
 
 from eggroll.core.base_model import RpcMessage
@@ -30,9 +31,8 @@ from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.utils import _to_proto_string, _map_and_listify
 from eggroll.core.utils import get_static_er_conf
 from eggroll.core.utils import time_now_ns
-from eggroll.utils.log_utils import get_logger
 
-L = get_logger()
+L = logging.getLogger(__name__)
 
 
 class CommandCallError(Exception):
@@ -65,11 +65,11 @@ class CommandClient(object):
                     )
 
     def simple_sync_send(
-        self,
-        input: RpcMessage,
-        output_type: typing.Type[T],
-        endpoint: ErEndpoint,
-        command_uri: CommandURI,
+            self,
+            input: RpcMessage,
+            output_type: typing.Type[T],
+            endpoint: ErEndpoint,
+            command_uri: CommandURI,
     ) -> T:
         results = self.sync_send(
             inputs=[input],
@@ -84,11 +84,11 @@ class CommandClient(object):
             return None
 
     def sync_send(
-        self,
-        inputs: list,
-        output_types: list,
-        endpoint: ErEndpoint,
-        command_uri: CommandURI,
+            self,
+            inputs: list,
+            output_types: list,
+            endpoint: ErEndpoint,
+            command_uri: CommandURI,
     ):
         request = None
         try:
