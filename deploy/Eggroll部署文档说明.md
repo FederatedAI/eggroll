@@ -143,7 +143,7 @@ source ${EGGROLL_HOME}/init_env.sh       --${EGGROLL_HOME} means the absolute pa
 sh bin/eggroll.sh $1 $2		
 <--
 	$1：需要执行操作的服务名称，例如clustermanager，nodemanage，dashboard，all(表示所有服务)；
-	$2：需要执行的操作，例如start(启动)，status（查看状态），stop（关闭），kill(杀掉服务,stop失效时使用)，restart（重启），restarting（阻塞重启）
+	$2：需要执行的操作，例如start(启动)，status（查看状态），stop（关闭），restart（重启）
 -->
 ```
 
@@ -163,9 +163,6 @@ sh bin/eggroll.sh dashboard restart
 <--关闭nodemanager服务-->
 sh bin/eggroll.sh nodemanager stop
 
-<--杀掉nodemanager服务，当stop不成功时使用-->
-sh bin/eggroll.sh nodemanager kill
-```
 
 将各节点对应的服务启动成功后，部署完成，进入测试步骤。
 
