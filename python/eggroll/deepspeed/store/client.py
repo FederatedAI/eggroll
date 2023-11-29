@@ -4,17 +4,19 @@ from google.protobuf.duration_pb2 import Duration
 from torch.distributed import Store
 
 from eggroll.core.proto import deepspeed_pb2
+from eggroll.config import Config
 from .commands import RendezvousStoreCommands
 from ..client import BaseClient
 
 
 class EggrollStore(Store):
-    def __init__(self, host, port, prefix, timeout: timedelta = timedelta(hours=24)):
+    def __init__(self, config: Config, host, port, prefix, timeout: timedelta = timedelta(hours=24)):
+        self._config = config
         self._prefix = prefix
         self._timeout = timeout
         super().__init__()
 
-        self._client = BaseClient(host=host, port=port)
+        self._client = BaseClient(config=config, host=host, port=port)
 
     def get(self, key, timeout: timedelta = None):
         if isinstance(key, str):

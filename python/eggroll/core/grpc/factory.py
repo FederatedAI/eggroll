@@ -20,6 +20,7 @@ import grpc
 
 from eggroll.core.conf_keys import CoreConfKeys
 from eggroll.core.meta_model import ErEndpoint
+from eggroll.config import Config
 
 L = logging.getLogger(__name__)
 
@@ -49,12 +50,12 @@ class GrpcChannelFactory(object):
     _pool_lock = threading.Lock()
 
     @classmethod
-    def create_channel(cls, endpoint: ErEndpoint, is_secure_channel=False, refresh=False):
+    def create_channel(cls, config: Config, endpoint: ErEndpoint, is_secure_channel=False, refresh=False):
         target = endpoint.endpoint_str()
         with GrpcChannelFactory._pool_lock:
             if refresh or cls._should_refresh(target):
                 old_channel = GrpcChannelFactory.pool.get(target, None)
-                GrpcChannelFactory.pool[target] = cls._create_grpc_channel(target)
+                GrpcChannelFactory.pool[target] = cls._create_grpc_channel(config, target)
                 if old_channel is not None:
                     old_channel.close()
             return GrpcChannelFactory.pool[target]
@@ -75,37 +76,37 @@ class GrpcChannelFactory(object):
             channel.close()
 
     @classmethod
-    def _create_grpc_channel(cls, target):
+    def _create_grpc_channel(cls, config: Config, target):
         return grpc.insecure_channel(
             target=target,
             options=[
                 (
                     "grpc.max_send_message_length",
-                    int(CoreConfKeys.EGGROLL_CORE_GRPC_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get()),
+                    config.eggroll.core.grpc.channel.max.inbound.message.size,
                 ),
                 (
                     "grpc.max_receive_message_length",
-                    int(CoreConfKeys.EGGROLL_CORE_GRPC_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get()),
+                    config.eggroll.core.grpc.channel.max.inbound.message.size,
                 ),
                 (
                     "grpc.max_metadata_size",
-                    int(CoreConfKeys.EGGROLL_CORE_GRPC_CHANNEL_MAX_INBOUND_METADATA_SIZE.get()),
+                    config.eggroll.core.grpc.channel.max.inbound.metadata.size,
                 ),
                 (
                     "grpc.keepalive_time_ms",
-                    int(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_TIME_SEC.get()) * 1000,
+                    config.eggroll.core.grpc.channel.keepalive.time.sec * 1000,
                 ),
                 (
                     "grpc.keepalive_timeout_ms",
-                    int(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_TIMEOUT_SEC.get()) * 1000,
+                    config.eggroll.core.grpc.channel.keepalive.timeout.sec * 1000,
                 ),
                 (
                     "grpc.keepalive_permit_without_calls",
-                    int(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED.get()),
+                    int(config.eggroll.core.grpc.channel.keepalive.permit.without.calls.enabled),
                 ),
                 (
                     "grpc.per_rpc_retry_buffer_size",
-                    int(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_RETRY_BUFFER_SIZE.get()),
+                    config.eggroll.core.grpc.channel.retry.buffer.size,
                 ),
                 ("grpc.enable_retries", 1),
                 (
