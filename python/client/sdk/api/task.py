@@ -24,6 +24,7 @@ class ContentType(enum.Enum):
     ALL = 0
     MODELS = 1
     LOGS = 2
+    CONFIGS = 3
 
     def to_proto(self):
         if self == ContentType.ALL:
