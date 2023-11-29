@@ -238,7 +238,7 @@ class RollPair(object):
                 functors=[ErFunctor(name=RollPair.GET_ALL, body=GetAllRequest(limit=limit).to_proto_string())],
             )
         )
-        transfer_pair = TransferPair(transfer_id=job_id)
+        transfer_pair = TransferPair(config=self.config, transfer_id=job_id)
         done_cnt = 0
         for k, v in transfer_pair.gather(config=self.config, store=self._store):
             done_cnt += 1
@@ -261,9 +261,9 @@ class RollPair(object):
 
         th = DaemonThreadWithExceptionPropagate.thread(target=send_command, name=f"put_all-send_command-{job_id}")
         th.start()
-        shuffler = TransferPair(job_id)
+        shuffler = TransferPair(config=self.config, transfer_id=job_id)
         fifo_broker = FifoBroker()
-        bb = BatchBroker(fifo_broker)
+        bb = BatchBroker(config=self.config, broker=fifo_broker)
         scatter_future = shuffler.scatter(self.config, fifo_broker, partitioner, self._store)
 
         with bb:

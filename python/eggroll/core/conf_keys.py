@@ -54,27 +54,10 @@ class CoreConfKeys(object):
     CONFKEY_CORE_LOG_DIR = "eggroll.core.log.dir"
     EGGROLL_CORE_FIFOBROKER_DEFAULT_SIZE = ErConfKey("eggroll.core.fifobroker.default.size", 16)
     EGGROLL_CORE_FIFOBROKER_ITER_TIMEOUT_SEC = ErConfKey("eggroll.core.fifobroker.iter.timeout.sec", 180)
-    EGGROLL_CORE_CLIENT_COMMAND_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.core.client.command.executor.pool.max.size",
-                                                                   500)
     EGGROLL_CORE_DEFAULT_EXECUTOR_POOL = ErConfKey("eggroll.core.default.executor.pool",
                                                    "eggroll.core.datastructure.threadpool.ErThreadUnpooledExecutor")
     EGGROLL_CORE_MALLOC_MMAP_THRESHOLD = ErConfKey("eggroll.core.malloc.mmap.threshold", 4_000)
     EGGROLL_CORE_MALLOC_MMAP_MAX = ErConfKey("eggroll.core.malloc.mmap.max", 200_000)
-
-
-class ClusterManagerConfKeys(object):
-    CONFKEY_CLUSTER_MANAGER_JDBC_DRIVER_CLASS_NAME = "eggroll.resourcemanager.clustermanager.jdbc.driver.class.name"
-    CONFKEY_CLUSTER_MANAGER_JDBC_URL = "eggroll.resourcemanager.clustermanager.jdbc.url"
-    CONFKEY_CLUSTER_MANAGER_JDBC_USERNAME = "eggroll.resourcemanager.clustermanager.jdbc.username"
-    CONFKEY_CLUSTER_MANAGER_JDBC_PASSWORD = "eggroll.resourcemanager.clustermanager.jdbc.password"
-    CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MAX_IDLE = "eggroll.resourcemanager.clustermanager.datasource.db.max.idle"
-    CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MAX_TOTAL = "eggroll.resourcemanager.clustermanager.datasource.db.max.total"
-    CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MAX_WAIT_MS = "eggroll.resourcemanager.clustermanager.datasource.db.max.wait.ms"
-    CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_TIME_BETWEEN_EVICTION_RUNS_MS = "eggroll.resourcemanager.clustermanager.datasource.db.time.between.eviction.runs.ms"
-    CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MIN_EVICTABLE_IDLE_TIME_MS = "eggroll.resourcemanager.clustermanager.datasource.db.min.evictable.idle.time.ms"
-    CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_DEFAULT_AUTO_COMMIT = "eggroll.resourcemanager.clustermanager.datasource.db.default.auto.commit"
-    CONFKEY_CLUSTER_MANAGER_HOST = "eggroll.resourcemanager.clustermanager.host"
-    CONFKEY_CLUSTER_MANAGER_PORT = "eggroll.resourcemanager.clustermanager.port"
 
 
 class SessionConfKeys(object):
@@ -89,23 +72,6 @@ class SessionConfKeys(object):
 class TransferConfKeys(object):
     CONFKEY_TRANSFER_SERVICE_HOST = "eggroll.transfer.service.host"
     CONFKEY_TRANSFER_SERVICE_PORT = "eggroll.transfer.service.port"
-
-
-class RollPairConfKeys(object):
-    EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE = ErConfKey("eggroll.rollpair.transferpair.sendbuf.size", 250_000)
-    EGGROLL_ROLLPAIR_TRANSFERPAIR_BATCHBROKER_DEFAULT_SIZE = ErConfKey(
-        "eggroll.rollpair.transferpair.broker.default.size", 100)
-    EGGROLL_ROLLPAIR_EGGPAIR_SERVER_EXECUTOR_POOL_MAX_SIZE = ErConfKey(
-        "eggroll.rollpair.eggpair.server.executor.pool.max.size", 5_000)
-    EGGROLL_ROLLPAIR_EGGPAIR_DATA_SERVER_EXECUTOR_POOL_MAX_SIZE = ErConfKey(
-        "eggroll.rollpair.eggpair.data.server.executor.pool.max.size", 5_000)
-    EGGROLL_ROLLPAIR_TRANSFERPAIR_EXECUTOR_POOL_MAX_SIZE = ErConfKey(
-        "eggroll.rollpair.transferpair.executor.pool.max.size", 5_000)
-    EGGROLL_ROLLPAIR_DEFAULT_STORE_TYPE = ErConfKey("eggroll.rollpair.default.store.type", "ROLLPAIR_LMDB")
-    EGGROLL_ROLLPAIR_ROCKSDB_WRITEBATCH_SIZE = ErConfKey("eggroll.rollpair.rocksdb.writebatch.size", 500)
-    EGGROLL_ROLLPAIR_REMOTE_WRITEBATCH_SIZE = ErConfKey("eggroll.rollpair.remote.writebatch.size", 1_000_000)
-    EGGROLL_ROLLPAIR_STORAGE_REPLICATE_TEMP_FILES = ErConfKey("eggroll.rollpair.storage.replicate.temp.files", False)
-    EGGROLL_ROLLPAIR_IN_MEMORY_OUTPUT = ErConfKey("eggroll.rollpair.inmemory_output", False)
 
 
 class RollSiteConfKeys(object):
