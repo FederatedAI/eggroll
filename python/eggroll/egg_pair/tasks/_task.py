@@ -1,11 +1,13 @@
 import abc
 
 from eggroll.core.meta_model import ErJob, ErTask
+from eggroll.config import Config
 
 
 class EnvOptions:
-    def __init__(self, data_dir: str):
+    def __init__(self, data_dir: str, config: Config):
         self.data_dir = data_dir
+        self.config = config
         self._server_node_id = None
 
     @property
