@@ -107,7 +107,7 @@ def stop(ctx, **kwargs):
 
 @task.command("download", short_help="Download task output")
 @click.option("--session-id", type=click.STRING, required=True, help="session id")
-@click.option("--content-type", type=click.INT, default=0, required=False, help="ALL:0, MODELS: 1, LOGS: 2, CONFIGS: 3")
+@click.option("--content-type", type=click.INT, default=0, required=False, help="ALL:0, MODELS: 1, LOGS: 2, RESULT: 3")
 @click.option("--download-dir", type=click.STRING, required=True, help="download dir")
 @click.option("--ranks", type=click.STRING, required=False, help="0,1,2..")
 @click.pass_context
