@@ -24,7 +24,7 @@ class DefaultConfig:
             @dataclass
             class NodemanagerConfig:
                 @dataclass
-                class ContainerConfig:
+                class ContainersConfig:
                     @dataclass
                     class DataConfig:
                         dir: str = MISSING
@@ -33,7 +33,7 @@ class DefaultConfig:
 
                 host: str = MISSING
                 port: int = MISSING
-                container: ContainerConfig = ContainerConfig()
+                containers: ContainersConfig = ContainersConfig()
 
             @dataclass
             class ProcessConfig:
@@ -80,6 +80,14 @@ class DefaultConfig:
         @dataclass
         class RollPairConfig:
             @dataclass
+            class DefaultConfig:
+                @dataclass
+                class StoreConfig:
+                    type: str = "ROLLPAIR_LMDB"
+
+                store: StoreConfig = StoreConfig()
+
+            @dataclass
             class DataConfig:
                 @dataclass
                 class ServerConfig:
@@ -102,10 +110,32 @@ class DefaultConfig:
             @dataclass
             class TransferPairConfig:
                 @dataclass
+                class BatchbrokerConfig:
+                    @dataclass
+                    class DefaultConfig:
+                        size: int = 100
+
+                    default: DefaultConfig = DefaultConfig()
+
+                @dataclass
+                class ExecutorConfig:
+                    @dataclass
+                    class PoolConfig:
+                        @dataclass
+                        class MaxConfig:
+                            size: int = 5000
+
+                        max: MaxConfig = MaxConfig()
+
+                    pool: PoolConfig = PoolConfig()
+
+                @dataclass
                 class SendbufConfig:
                     size: int = MISSING
 
                 sendbuf: SendbufConfig = SendbufConfig()
+                executor: ExecutorConfig = ExecutorConfig()
+                batchbroker: BatchbrokerConfig = BatchbrokerConfig()
 
             @dataclass
             class EggPairConfig:
@@ -132,9 +162,11 @@ class DefaultConfig:
 
                 server: ServerConfig = ServerConfig()
 
-            transferpair: TransferPairConfig = TransferPairConfig()
+            ransferpair: TransferPairConfig = TransferPairConfig()
             eggpair: EggPairConfig = EggPairConfig()
             data: DataConfig = DataConfig()
+            default: DefaultConfig = DefaultConfig()
+            transferpair: TransferPairConfig = TransferPairConfig()
 
         @dataclass
         class RollSiteConfig:
@@ -259,6 +291,27 @@ class DefaultConfig:
 
         @dataclass
         class CoreConfig:
+            # command.executor.pool.max.size
+            @dataclass
+            class ClientConfig:
+                @dataclass
+                class CommandConfig:
+                    @dataclass
+                    class ExecutorConfig:
+                        @dataclass
+                        class PoolConfig:
+                            @dataclass
+                            class MaxConfig:
+                                size: int = 500
+
+                            max: MaxConfig = MaxConfig()
+
+                        pool: PoolConfig = PoolConfig()
+
+                    executor: ExecutorConfig = ExecutorConfig()
+
+                command: CommandConfig = CommandConfig()
+
             @dataclass
             class DefaultConfig:
                 @dataclass
@@ -402,6 +455,7 @@ class DefaultConfig:
 
             default: DefaultConfig = DefaultConfig()
             grpc: GrpcConfig = GrpcConfig()
+            client: ClientConfig = ClientConfig()
 
         @dataclass
         class DataConfig:

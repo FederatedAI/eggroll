@@ -18,7 +18,6 @@ import threading
 
 import grpc
 
-from eggroll.core.conf_keys import CoreConfKeys
 from eggroll.core.meta_model import ErEndpoint
 from eggroll.config import Config
 
