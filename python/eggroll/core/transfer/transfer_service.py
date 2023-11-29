@@ -30,7 +30,7 @@ from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint
 from eggroll.core.proto import transfer_pb2_grpc, transfer_pb2, deepspeed_download_pb2_grpc, deepspeed_download_pb2
 from eggroll.core.proto.containers_pb2 import ContentType, ContainerContent
-from eggroll.core.utils import _exception_logger, get_static_er_conf
+from eggroll.core.utils import _exception_logger
 from eggroll.config import Config
 
 L = logging.getLogger(__name__)
@@ -147,16 +147,18 @@ class TransferService(object):
 
 class GrpcDsDownloadServicer(deepspeed_download_pb2_grpc.DsDownloadServiceServicer):
 
-    def get_container_workspace(self, session_id, rank):
+    def __init__(self, config: Config):
+        self.config = config
 
-        data_dir = get_static_er_conf().get("eggroll.resourcemanager.nodemanager.containers.data.dir", None)
-        return data_dir + "/" + session_id + "/" + rank
+    def get_container_workspace(self, session_id, rank):
+        data_dir = self.config.eggroll.resourcemanager.nodemanager.containers.data.dir
+        return os.path.join(data_dir, session_id, rank)
 
     def get_container_models_dir(self, session_id, rank):
-        return self.get_container_workspace(session_id, rank) + "/" + "models"
+        return os.path.join(self.get_container_workspace(session_id, rank), "models")
 
     def get_container_logs_dir(self, session_id, rank):
-        return self.get_container_workspace(session_id, rank) + "/" + "logs"
+        return os.path.join(self.get_container_workspace(session_id, rank), "logs")
 
     def get_container_path(self, content_type, session_id, rank):
         # case ContentType.ALL => getContainerWorkspace(containerId)

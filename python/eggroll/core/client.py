@@ -22,14 +22,12 @@ from eggroll.core.base_model import RpcMessage
 from eggroll.core.command.command_model import CommandURI
 from eggroll.core.command.command_model import ErCommandRequest, ErCommandResponse
 from eggroll.core.command.commands import MetadataCommands, NodeManagerCommands, SessionCommands
-from eggroll.core.conf_keys import ClusterManagerConfKeys, CoreConfKeys
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint, ErServerNode, ErServerCluster, ErProcessor, ErStoreList
 from eggroll.core.meta_model import ErStore, ErSessionMeta
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.utils import _to_proto_string, _map_and_listify
-from eggroll.core.utils import get_static_er_conf
 from eggroll.core.utils import time_now_ns
 from eggroll.config import Config
 
@@ -51,15 +49,15 @@ class CommandClient(object):
     def __init__(self, config: Config):
         self._config = config
         self._channel_factory = GrpcChannelFactory()
-        self._maybe_create_executor_pool()
+        self._maybe_create_executor_pool(config)
 
     @classmethod
-    def _maybe_create_executor_pool(cls):
+    def _maybe_create_executor_pool(cls, config: Config):
         if CommandClient._executor_pool is None:
-            with CommandClient._executor_pool_lock:
+            with (CommandClient._executor_pool_lock):
                 if CommandClient._executor_pool is None:
-                    _executor_pool_type = CoreConfKeys.EGGROLL_CORE_DEFAULT_EXECUTOR_POOL.get()
-                    _max_workers = int(CoreConfKeys.EGGROLL_CORE_CLIENT_COMMAND_EXECUTOR_POOL_MAX_SIZE.get())
+                    _executor_pool_type = config.eggroll.core.default.executor.pool
+                    _max_workers = config.eggroll.core.client.command.executor.pool.max.size
                     CommandClient._executor_pool = create_executor_pool(
                         canonical_name=_executor_pool_type,
                         max_workers=_max_workers,
@@ -134,24 +132,11 @@ class CommandClient(object):
 
 
 class ClusterManagerClient(object):
-    def __init__(self, config, options=None):
-        if options is None:
-            options = {}
-        static_er_conf = get_static_er_conf()
-        host = options.get(
-            ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST,
-            static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, None),
-        )
-        port = options.get(
-            ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,
-            static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, None),
-        )
-
-        if not host or not port:
-            raise ValueError(
-                f"failed to load host or port in creating cluster manager client. host: {host}, port: {port}"
-            )
-
+    def __init__(self, config: Config, host=None, port=None):
+        if host is None:
+            host = config.eggroll.resourcemanager.clustermanager.host
+        if port is None:
+            port = config.eggroll.resourcemanager.clustermanager.port
         self.__endpoint = ErEndpoint(host, int(port))
         self.__command_client = CommandClient(config=config)
 
