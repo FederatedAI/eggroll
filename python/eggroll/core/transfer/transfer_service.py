@@ -159,8 +159,8 @@ class GrpcDsDownloadServicer(deepspeed_download_pb2_grpc.DsDownloadServiceServic
     def  get_container_logs_dir(self,session_id,rank):
         return self.get_container_workspace(session_id,rank)+"/"+"logs"
 
-    def  get_container_conf_dir(self,session_id,rank):
-        return self.get_container_workspace(session_id,rank)+"/"+"configs"
+    def  get_container_result_dir(self,session_id,rank):
+        return self.get_container_workspace(session_id,rank)+"/"+"result"
 
     def  get_container_path(self,content_type,session_id,rank):
         # case ContentType.ALL => getContainerWorkspace(containerId)
@@ -174,8 +174,8 @@ class GrpcDsDownloadServicer(deepspeed_download_pb2_grpc.DsDownloadServiceServic
                 return self.get_container_models_dir(session_id,rank)
         elif  content_type ==ContentType.LOGS:
                 return self.get_container_logs_dir(session_id,rank)
-        elif  content_type ==ContentType.CONFIGS:
-            return self.get_container_conf_dir(session_id,rank)
+        elif  content_type ==ContentType.RESULT:
+            return self.get_container_result_dir(session_id,rank)
         else:
                 raise RuntimeError(f"download content type {content_type} is not support ")
 
