@@ -13,4 +13,4 @@ class _PutAll(Task):
     def run(cls,
             env_options: EnvOptions,
             job: ErJob, task: ErTask):
-        TransferPair(task.id).store_broker(env_options.data_dir, task.first_output, False).result()
+        TransferPair(config=env_options.config, transfer_id=task.id).store_broker(env_options.data_dir, task.first_output, False).result()

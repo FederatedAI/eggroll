@@ -43,7 +43,7 @@ class _MapReducePartitionsWithIndex(Task):
         )
 
         features = []
-        shuffler = TransferPair(transfer_id=job.id)
+        shuffler = TransferPair(config=env_options.config, transfer_id=job.id)
         if task_has_output:
             task_output = task.first_output
             # shuffle gather: source partition broker -> task output store
@@ -75,7 +75,8 @@ class _MapReducePartitionsWithIndex(Task):
                 task_input_iterator = stack.enter_context(
                     stack.enter_context(task.first_input.get_adapter(env_options.data_dir)).iteritems()
                 )
-                task_shuffle_write_batch_broker = stack.enter_context(BatchBroker(shuffle_write_broker))
+                task_shuffle_write_batch_broker = stack.enter_context(
+                    BatchBroker(config=env_options.config, broker=shuffle_write_broker))
                 partition_id = task.first_input.id
                 value = map_op(partition_id, task_input_iterator)
 
