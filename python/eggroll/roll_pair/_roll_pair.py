@@ -87,14 +87,17 @@ class RollPair(object):
             raise ValueError("rp_ctx cannot be None")
         self._store = er_store
         self.ctx = rp_ctx
-        # self.__roll_pair_master = self.ctx.get_roll()
-        self._command_client = CommandClient()
+        self._command_client = CommandClient(config=self.ctx.session.config)
         self._session_id = self.ctx.session_id
         self.gc_enable = rp_ctx.rpc_gc_enable
         self.gc_recorder = rp_ctx.gc_recorder
         self.gc_recorder.record(er_store)
         self.destroyed = False
         self._partitioner = None
+
+    @property
+    def config(self):
+        return self.ctx.session.config
 
     def __del__(self):
         if "EGGROLL_GC_DISABLE" in os.environ and os.environ["EGGROLL_GC_DISABLE"] == "1":
@@ -237,7 +240,7 @@ class RollPair(object):
         )
         transfer_pair = TransferPair(transfer_id=job_id)
         done_cnt = 0
-        for k, v in transfer_pair.gather(self._store):
+        for k, v in transfer_pair.gather(config=self.config, store=self._store):
             done_cnt += 1
             yield k, v
 
@@ -261,7 +264,7 @@ class RollPair(object):
         shuffler = TransferPair(job_id)
         fifo_broker = FifoBroker()
         bb = BatchBroker(fifo_broker)
-        scatter_future = shuffler.scatter(fifo_broker, partitioner, self._store)
+        scatter_future = shuffler.scatter(self.config, fifo_broker, partitioner, self._store)
 
         with bb:
             for k, v in kv_list:
