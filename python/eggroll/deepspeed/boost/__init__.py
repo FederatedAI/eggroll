@@ -1,7 +1,11 @@
 import os
 
 
-def init_deepspeed():
+def init_deepspeed(config=None):
+    from eggroll.config import load_config
+    if config is None:
+        config = load_config(None)
+
     import torch.distributed as distributed
 
     from ..store.client import EggrollStore
@@ -14,7 +18,7 @@ def init_deepspeed():
     if "EGGROLL_DEEPSPEED_STORE_PREFIX" not in os.environ:
         raise RuntimeError("EGGROLL_DEEPSPEED_STORE_PREFIX is not set")
     prefix = os.environ.get("EGGROLL_DEEPSPEED_STORE_PREFIX")
-    store = EggrollStore(host=store_host, port=store_port, prefix=prefix)
+    store = EggrollStore(config=config, host=store_host, port=store_port, prefix=prefix)
 
     if "EGGROLL_DEEPSPEED_BACKEND" not in os.environ:
         raise RuntimeError("EGGROLL_DEEPSPEED_BACKEND is not set")

@@ -35,12 +35,22 @@ from eggroll.core.utils import generate_task_id, calculate_rank_in_node
 from eggroll.core.utils import get_self_ip, time_now, DEFAULT_DATETIME_FORMAT
 from eggroll.core.utils import get_stack
 from eggroll.core.utils import set_static_er_conf
+from eggroll.config import Config
 
 L = logging.getLogger(__name__)
 
 
-def session_init(session_id, options: dict = None) -> "ErSession":
-    er_session = ErSession(session_id=session_id, options=options)
+def session_init(session_id, options: dict = None, config=None, config_properties_file=None) -> "ErSession":
+    if config is None:
+        config = Config().load_default()
+        if config_properties_file:
+            config.load_properties(config_properties_file)
+        elif eggroll_home := os.getenv("EGGROLL_HOME", None):
+            path = f"{eggroll_home}/conf/eggroll.properties"
+            if os.path.exists(path):
+                config.load_properties(path)
+        config.load_env()
+    er_session = ErSession(config=config, session_id=session_id, options=options)
     return er_session
 
 
@@ -50,7 +60,8 @@ class ErSession(object):
         thread_name_prefix="session_server",
     )
 
-    def __init__(self, session_id=None, name="", tag="", processors: list = None, options: dict = None):
+    def __init__(self, config: Config, session_id=None, name="", tag="", processors: list = None, options: dict = None):
+        self._config = config
         if processors is None:
             processors = []
         if options is None:
@@ -60,143 +71,19 @@ class ErSession(object):
         else:
             self.__session_id = session_id
 
-        self.__eggroll_home = os.getenv("EGGROLL_HOME", None)
-        if not self.__eggroll_home:
-            raise EnvironmentError("EGGROLL_HOME is not set")
-
         if "EGGROLL_DEBUG" not in os.environ:
             os.environ["EGGROLL_DEBUG"] = "0"
 
-        conf_path = options.get(CoreConfKeys.STATIC_CONF_PATH, f"{self.__eggroll_home}/conf/eggroll.properties")
-
-        L.info(f"static conf path: {conf_path}")
-        configs = configparser.ConfigParser()
-        configs.read(conf_path)
-        set_static_er_conf(configs["eggroll"])
-
         self.__options = options.copy()
         self.__options[SessionConfKeys.CONFKEY_SESSION_ID] = self.__session_id
-        # self._cluster_manager_client = ClusterManagerClient(options=options)
-
-        self.__is_standalone = options.get(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE, "") == DeployModes.STANDALONE
-        if (
-                self.__is_standalone
-                and not processors
-                and os.environ.get("EGGROLL_RESOURCE_MANAGER_BOOTSTRAP_DEBUG", "0") == "0"
-        ):
-            # port = int(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,
-            #                      static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4689")))
-            port = 0
-            random_value = str(random.random())
-            os.environ["EGGROLL_STANDALONE_TAG"] = random_value
-            if os.name != "nt":
-                startup_command = (
-                    f"{self.__eggroll_home}/bin/eggroll_boot_standalone.sh -p {port} -s {self.__session_id}"
-                )
-            else:
-                startup_command = (
-                    f"{self.__eggroll_home}/bin/eggroll_boot_standalone.py -p {port} -s {self.__session_id}"
-                )
-
-            print("startup_command:", startup_command)
-            import subprocess
-            import atexit
-
-            bootstrap_log_dir = f"{self.__eggroll_home}/logs/eggroll/"
-            os.makedirs(bootstrap_log_dir, mode=0o755, exist_ok=True)
-            with open(f"{bootstrap_log_dir}/standalone-manager.out", "a+") as outfile, open(
-                    f"{bootstrap_log_dir}/standalone-manager.err", "a+"
-            ) as errfile:
-                L.info(f"start up command: {startup_command}")
-                manager_process = subprocess.Popen(startup_command, shell=True, stdout=outfile, stderr=errfile)
-                manager_process.wait()
-                returncode = manager_process.returncode
-                L.info(f"start up returncode: {returncode}")
-
-            def shutdown_standalone_manager(session_id, log_dir):
-                standalone_tag = f"eggroll.standalone.tag={random_value}"
-                if os.name != "nt":
-                    shutdown_command = f"ps aux | grep eggroll | grep Bootstrap | grep '{standalone_tag}' | grep '{session_id}' | grep -v grep | awk '{{print $2}}' | xargs kill"
-                else:
-                    pid_list = psutil.pids()
-                    ret_pid = 0
-                    exception = None
-                    for pid in pid_list:
-                        try:
-                            p = psutil.Process(pid)
-                            exception = None
-                        except Exception as e:
-                            exception = e
-                            continue
-
-                        if "java.exe" not in p.name():
-                            continue
-                        # if it is a system process, call p.cmdline() will dump
-                        cmdline = p.cmdline()
-                        if standalone_tag not in cmdline or "--bootstraps" not in cmdline:
-                            continue
-
-                        ret_pid = pid
-                        break
-                    if exception:
-                        raise RuntimeError("can not find the bootstrap process")
-
-                    shutdown_command = f"taskkill /pid {ret_pid} /f"
-
-                L.info(f"shutdown command: {shutdown_command}")
-                with open(f"{log_dir}/standalone-manager.out", "a+") as outfile, open(
-                        f"{log_dir}/standalone-manager.err", "a+"
-                ) as errfile:
-                    manager_process = subprocess.run(shutdown_command, shell=True, stdout=outfile, stderr=errfile)
-                    returncode = manager_process.returncode
-                    L.info(f"shutdown returncode: {returncode}")
-
-            file_name = f"{self.__eggroll_home}/logs/eggroll/bootstrap-standalone-manager.out"
-            max_retry_cnt = 100
-            for i in range(max_retry_cnt):
-                msg = f"retry get port from bootstrap-standalone-manager.out: retry_cnt: {i},"
-                L.info(msg)
-
-                if os.path.exists(file_name):
-                    break
-                time.sleep(min(0.1 * i, 100))
-
-            try:
-                for i in range(max_retry_cnt):
-                    with open(file_name) as fp:
-                        msg = f"retry get port of ClusterManager and NodeManager: retry_cnt: {i},"
-                        L.info(msg)
-
-                        port = 0
-                        key = f"{random_value} server started at port "
-                        for line in fp.readlines():
-                            if key in line:
-                                port = int(line.rsplit("port ", 2)[1])
-                                if port != 0:
-                                    break
-
-                        if port != 0:
-                            break
-                    time.sleep(min(0.1 * i, 100))
-            except IOError as e:
-                L.info(f"get port from {file_name} failed!")
-                raise e
-
-            if port == 0:
-                raise RuntimeError(f"get port from {file_name} failed!")
-
-            options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = port
-            self.__options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = port
-            atexit.register(shutdown_standalone_manager, self.__session_id, bootstrap_log_dir)
-
-        self._cluster_manager_client = ClusterManagerClient(options=options)
+        self._cluster_manager_client = ClusterManagerClient(options=options, config=config)
         session_meta = ErSessionMeta(
             id=self.__session_id, name=name, status=SessionStatus.NEW, tag=tag, processors=processors, options=options
         )
 
         from time import monotonic, sleep
 
-        timeout = int(SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get_with(options)) / 1000 + 2
+        timeout = config.eggroll.session.start.timeout.ms / 1000 + 2
         endtime = monotonic() + timeout
 
         # TODO:0: ignores exception while starting up in standalone mod
@@ -235,6 +122,10 @@ class ErSession(object):
                 self._rolls.append(processor)
             else:
                 raise ValueError(f"processor type {processor_type} not supported in roll pair")
+
+    @property
+    def config(self):
+        return self._config
 
     @property
     def cluster_manager_client(self):
@@ -299,12 +190,7 @@ class ErSession(object):
             else job
         )
         tasks = self._decompose_job(final_job)
-        command_client = CommandClient()
-        return command_client.async_call(args=tasks, output_types=output_types, command_uri=command_uri)
-
-    @staticmethod
-    def submit_tasks(tasks: List[Tuple[List[ErTask], ErEndpoint]], output_types: List, command_uri: CommandURI):
-        command_client = CommandClient()
+        command_client = CommandClient(config=self._config)
         return command_client.async_call(args=tasks, output_types=output_types, command_uri=command_uri)
 
     def wait_until_job_finished(self, task_futures: list, timeout=None, return_when=FIRST_EXCEPTION):

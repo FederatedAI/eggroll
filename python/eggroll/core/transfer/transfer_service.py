@@ -31,6 +31,7 @@ from eggroll.core.meta_model import ErEndpoint
 from eggroll.core.proto import transfer_pb2_grpc, transfer_pb2, deepspeed_download_pb2_grpc, deepspeed_download_pb2
 from eggroll.core.proto.containers_pb2 import ContentType, ContainerContent
 from eggroll.core.utils import _exception_logger, get_static_er_conf
+from eggroll.config import Config
 
 L = logging.getLogger(__name__)
 
@@ -298,10 +299,10 @@ class TransferClient(object):
         # self.__chunk_size = 100
 
     @_exception_logger
-    def send(self, broker, endpoint: ErEndpoint, tag):
+    def send(self, config: Config, broker, endpoint: ErEndpoint, tag):
         try:
             L.trace(f'TransferClient.send for endpoint={endpoint}, tag={tag}')
-            channel = self.__grpc_channel_factory.create_channel(endpoint)
+            channel = self.__grpc_channel_factory.create_channel(config=config, endpoint=endpoint)
 
             stub = transfer_pb2_grpc.TransferServiceStub(channel)
             import types
@@ -318,7 +319,7 @@ class TransferClient(object):
             raise e
 
     @_exception_logger
-    def recv(self, endpoint: ErEndpoint, tag, broker):
+    def recv(self, config: Config, endpoint: ErEndpoint, tag, broker):
         exception = None
         cur_retry = 0
         for cur_retry in range(3):
@@ -336,7 +337,7 @@ class TransferClient(object):
                         L.exception(f'Fail to fill broker for tag: {tag}, endpoint: {endpoint}')
                         raise e
 
-                channel = self.__grpc_channel_factory.create_channel(endpoint)
+                channel = self.__grpc_channel_factory.create_channel(config=config, endpoint=endpoint)
 
                 stub = transfer_pb2_grpc.TransferServiceStub(channel)
                 request = transfer_pb2.TransferBatch(

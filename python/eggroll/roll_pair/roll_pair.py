@@ -57,9 +57,10 @@ class RollPairContext(object):
         self.__session.add_exit_task(self.context_gc)
         self.rpc_gc_enable = True
         self.gc_recorder = GcRecorder(self)
-        self.__command_client = CommandClient()
+        self.__command_client = CommandClient(config=session.config)
 
         eggs = session.get_eggs()
+
     #     self._broadcast_eggs(eggs, session.get_eggs_count())
     #
     # def _broadcast_eggs(self, eggs, count):
@@ -91,6 +92,10 @@ class RollPairContext(object):
         self.rpc_gc_enable = False
 
     def get_session(self):
+        return self.__session
+
+    @property
+    def session(self):
         return self.__session
 
     def get_roll(self):

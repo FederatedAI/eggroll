@@ -22,7 +22,7 @@ from eggroll.core.base_model import RpcMessage
 from eggroll.core.command.command_model import CommandURI
 from eggroll.core.command.command_model import ErCommandRequest, ErCommandResponse
 from eggroll.core.command.commands import MetadataCommands, NodeManagerCommands, SessionCommands
-from eggroll.core.conf_keys import ClusterManagerConfKeys, NodeManagerConfKeys, CoreConfKeys
+from eggroll.core.conf_keys import ClusterManagerConfKeys, CoreConfKeys
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint, ErServerNode, ErServerCluster, ErProcessor, ErStoreList
@@ -31,6 +31,7 @@ from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.utils import _to_proto_string, _map_and_listify
 from eggroll.core.utils import get_static_er_conf
 from eggroll.core.utils import time_now_ns
+from eggroll.config import Config
 
 L = logging.getLogger(__name__)
 
@@ -47,7 +48,8 @@ class CommandClient(object):
     _executor_pool = None
     _executor_pool_lock = threading.Lock()
 
-    def __init__(self):
+    def __init__(self, config: Config):
+        self._config = config
         self._channel_factory = GrpcChannelFactory()
         self._maybe_create_executor_pool()
 
@@ -97,7 +99,7 @@ class CommandClient(object):
             )
             start = time.time()
             L.trace(f"[CC] calling: {endpoint} {command_uri} {request}")
-            _channel = self._channel_factory.create_channel(endpoint)
+            _channel = self._channel_factory.create_channel(self._config, endpoint)
             _command_stub = command_pb2_grpc.CommandServiceStub(_channel)
             response = _command_stub.call(request.to_proto())
             er_response = ErCommandResponse.from_proto(response)
@@ -132,7 +134,7 @@ class CommandClient(object):
 
 
 class ClusterManagerClient(object):
-    def __init__(self, options=None):
+    def __init__(self, config, options=None):
         if options is None:
             options = {}
         static_er_conf = get_static_er_conf()
@@ -151,7 +153,7 @@ class ClusterManagerClient(object):
             )
 
         self.__endpoint = ErEndpoint(host, int(port))
-        self.__command_client = CommandClient()
+        self.__command_client = CommandClient(config=config)
 
     def get_server_node(self, input: ErServerNode):
         return self.__do_sync_request_internal(
@@ -272,14 +274,12 @@ class ClusterManagerClient(object):
 
 
 class NodeManagerClient(object):
-    def __init__(self, options: dict = None):
-        if options is None:
-            options = {}
+    def __init__(self, config: Config, host, port):
         self.__endpoint = ErEndpoint(
-            options[NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST],
-            int(options[NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT]),
+            host=host,
+            port=port,
         )
-        self.__command_client = CommandClient()
+        self.__command_client = CommandClient(config=config)
 
     """
     def get_or_create_servicer(self, session_meta: ErSessionMeta):
