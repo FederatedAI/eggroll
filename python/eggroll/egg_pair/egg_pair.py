@@ -96,7 +96,7 @@ def serve(config: Config, data_dir, port, transfer_port, cluster_manager, node_m
     command_pb2_grpc.add_CommandServiceServicer_to_server(command_servicer, command_server)
 
     transfer_servicer = GrpcTransferServicer()
-    ds_download_servicer = GrpcDsDownloadServicer()
+    ds_download_servicer = GrpcDsDownloadServicer(config=config)
 
     port = command_server.add_insecure_port(f"[::]:{port}")
 

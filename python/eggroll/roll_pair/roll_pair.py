@@ -19,13 +19,13 @@ from typing import Callable, Iterable
 
 from eggroll.core.client import CommandClient
 from eggroll.core.command.command_model import CommandURI
-from eggroll.core.conf_keys import RollPairConfKeys
 from eggroll.core.constants import StoreTypes
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErTask, ErPartition, ErJobIO
 from eggroll.core.session import ErSession
 from eggroll.core.utils import generate_job_id, generate_task_id
 from eggroll.roll_pair._gc import GcRecorder
 from eggroll.roll_pair._roll_pair import RollPair
+from eggroll.config import Config, ConfigKey
 
 L = logging.getLogger(__name__)
 
@@ -43,15 +43,11 @@ class RollPairContext(object):
             )
         self.__session = session
         self.session_id = session.get_session_id()
-        default_store_type_str = RollPairConfKeys.EGGROLL_ROLLPAIR_DEFAULT_STORE_TYPE.get_with(
-            session.get_all_options()
-        )
+        default_store_type_str = session.config.get_option(session.get_all_options(),
+                                                           ConfigKey.eggroll.rollpair.default.store.type)
         self.default_store_type = getattr(StoreTypes, default_store_type_str, None)
         if not self.default_store_type:
             raise ValueError(f'store type "{default_store_type_str}" not found for roll pair')
-        self.in_memory_output = RollPairConfKeys.EGGROLL_ROLLPAIR_IN_MEMORY_OUTPUT.get_with(session.get_all_options())
-        if not self.default_store_type:
-            raise ValueError(f'in_memory_output "{self.in_memory_output}" not found for roll pair')
 
         self.__session_meta = session.get_session_meta()
         self.__session.add_exit_task(self.context_gc)

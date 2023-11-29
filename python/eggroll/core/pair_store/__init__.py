@@ -14,7 +14,6 @@
 
 import logging
 
-from eggroll.core.conf_keys import RollPairConfKeys
 from eggroll.core.constants import StoreTypes
 
 L = logging.getLogger(__name__)
@@ -24,11 +23,8 @@ def create_pair_adapter(options: dict):
     L.info(f"options={options}")
     if options["store_type"] == StoreTypes.ROLLPAIR_IN_MEMORY:
         # FIXME: convert in-memory store to lmdb
-        actual_store_type = RollPairConfKeys.EGGROLL_ROLLPAIR_DEFAULT_STORE_TYPE.get()
-        if actual_store_type == "ROLLPAIR_IN_MEMORY":
-            raise ValueError('default store type cannot be IN_MEMORY')
         duplicate_options = options.copy()
-        duplicate_options["store_type"] = getattr(StoreTypes, actual_store_type)
+        duplicate_options["store_type"] = StoreTypes.ROLLPAIR_LMDB
         ret = create_pair_adapter(options=duplicate_options)
     elif options["store_type"] == StoreTypes.ROLLPAIR_LMDB:
         from eggroll.core.pair_store.lmdb import LmdbAdapter
