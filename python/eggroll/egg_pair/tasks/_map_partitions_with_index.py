@@ -64,6 +64,7 @@ class _MapReducePartitionsWithIndex(Task):
                 output_partitioner = job.first_output.partitioner.load_with_cloudpickle()
                 features.append(
                     shuffler.scatter(
+                        config=env_options.config,
                         input_broker=shuffle_write_broker,
                         partitioner=output_partitioner,
                         output_store=job.first_output.store,

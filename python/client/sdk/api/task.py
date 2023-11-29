@@ -275,14 +275,14 @@ class Task(BaseEggrollAPI):
             yield build
             time.sleep(10)
 
-    def get_log(self, sessionId: str, rank: str = None, path: str = None, startLine: int = None, logType: str = None):
+    def get_log(self, config, sessionId: str, rank: str = None, path: str = None, startLine: int = None, logType: str = None):
         kwargs = locals()
         params = filter_invalid_params(**kwargs)
         build = extend_pb2.GetLogRequest(**params)
         flag = [0]
         channel = self._get_client().channel_factory
         stub = extend_pb2_grpc.ExtendTransferServerStub(
-            channel.create_channel(BaseClient(self.host, self.port).endpoint)
+            channel.create_channel(config, BaseClient(self.host, self.port).endpoint)
         )
         builds = self.generator_yields(build, flag)
         stream = stub.getLog(builds)

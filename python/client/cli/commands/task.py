@@ -21,6 +21,7 @@ import click
 
 from client.sdk import EggrollClient
 from ..utils.cli_utils import prettify, unzip
+from eggroll.config import Config
 
 
 @click.group(short_help="Task Operations")
@@ -39,6 +40,7 @@ def task(ctx):
 @click.option("--conf", multiple=True)
 @click.pass_context
 def submit(ctx, **kwargs):
+    config = Config().load_default()
     world_size = kwargs.get("num_gpus")
     script_path = kwargs.get("script_path")
     timeout_seconds = kwargs.get("timeout_seconds")
@@ -71,7 +73,7 @@ def submit(ctx, **kwargs):
         if response.status != "NEW":
             break
     log_type = kwargs.get("log_type") if not kwargs.get("log_type") else "stdout"
-    response = client.task.get_log(sessionId=session_id, logType=log_type)
+    response = client.task.get_log(config=config, sessionId=session_id, logType=log_type)
     prettify(response)
 
 
@@ -113,12 +115,14 @@ def download(ctx, **kwargs):
 @click.option("--session-id", type=click.STRING, required=True, help="session id")
 @click.option("--rank", type=click.STRING, required=False, help="0,1,2..", default="0")
 @click.option("--path", type=click.STRING, required=False, help="path")
-@click.option("--tail", type=click.INT, required=False,  help="log tail line", default=100)
+@click.option("--tail", type=click.INT, required=False, help="log tail line", default=100)
 @click.option("--log-type", type=click.Choice(["stdout", "stderr"]), required=False, help="log type", default="stdout")
 @click.pass_context
 def get_log(ctx, **kwargs):
+    config = Config().load_default()
     client: EggrollClient = ctx.obj["client"]
     response = client.task.get_log(
+        config=config,
         sessionId=kwargs.get("session_id"),
         rank=kwargs.get("rank"),
         path=kwargs.get("path"),
