@@ -19,7 +19,6 @@ import queue
 import threading
 import time
 
-from eggroll.core.conf_keys import CoreConfKeys, RollPairConfKeys
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
 from eggroll.core.meta_model import ErPartition, ErStore
@@ -74,11 +73,12 @@ class CompositeFuture(object):
 
 class BatchBroker(object):
     def __init__(
-            self, broker,
-            batch_size=RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_BATCHBROKER_DEFAULT_SIZE.default_value
+            self, config: Config, broker, batch_size=None
     ):
         self.broker = broker
         self.batch = []
+        if batch_size is None:
+            batch_size = config.eggroll.rollpair.transferpair.batchbroker.default.size
         self.batch_size = batch_size
 
     def _commit(self, block=True, timeout=None):
@@ -131,14 +131,14 @@ class TransferPair(object):
     _executor_pool = None
     _executor_pool_lock = threading.Lock()
 
-    def __init__(self, transfer_id: str):
+    def __init__(self, config: Config, transfer_id: str):
         # params from __init__ params
         self.__transfer_id = transfer_id
         if TransferPair._executor_pool is None:
-            with TransferPair._executor_pool_lock:
+            with (TransferPair._executor_pool_lock):
                 if TransferPair._executor_pool is None:
-                    _max_workers = int(RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_EXECUTOR_POOL_MAX_SIZE.get())
-                    _thread_pool_type = CoreConfKeys.EGGROLL_CORE_DEFAULT_EXECUTOR_POOL.get()
+                    _max_workers = config.eggroll.rollpair.transferpair.executor.pool.max.size
+                    _thread_pool_type = config.eggroll.core.default.executor.pool
                     TransferPair._executor_pool = create_executor_pool(
                         canonical_name=_thread_pool_type,
                         max_workers=_max_workers,
@@ -173,9 +173,10 @@ class TransferPair(object):
             done_count = 0
             with contextlib.ExitStack() as stack:
                 shuffle_write_target_batch_brokers = {
-                    k: stack.enter_context(BatchBroker(v)) for k, v in shuffle_write_targets.items()
+                    k: stack.enter_context(BatchBroker(config=config, broker=v)) for k, v in
+                    shuffle_write_targets.items()
                 }
-                for k, v in BatchBroker(input_broker):
+                for k, v in BatchBroker(config=config, broker=input_broker):
                     partition_id = partitioner(k, total_partitions)
                     shuffle_write_target_batch_brokers[partition_id].put((k, v))
                     done_count += 1
@@ -196,7 +197,9 @@ class TransferPair(object):
                 L.trace(f"do_shuffle_send for tag={tag}, " f"active thread count={threading.active_count()}")
                 future = client.send(
                     config=config,
-                    broker=TransferPair.pair_to_bin_batch(BatchBroker(shuffle_write_targets[i])),
+                    broker=TransferPair.pair_to_bin_batch(config=config,
+                                                          input_iter=BatchBroker(config=config,
+                                                                                 broker=shuffle_write_targets[i])),
                     endpoint=partition.transfer_endpoint,
                     tag=tag,
                 )
@@ -208,9 +211,9 @@ class TransferPair(object):
 
     @staticmethod
     @_exception_logger
-    def pair_to_bin_batch(input_iter, limit=None, sendbuf_size=-1):
+    def pair_to_bin_batch(config: Config, input_iter, limit=None, sendbuf_size=-1):
         if sendbuf_size <= 0:
-            sendbuf_size = int(RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE.get())
+            sendbuf_size = config.eggroll.rollpair.transferpair.sendbuf.size
 
         L.trace(f"pair_to_bin_batch start")
         pair_count = 0

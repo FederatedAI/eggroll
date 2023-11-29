@@ -39,16 +39,6 @@ class ErConfKey(object):
         return result
 
 
-def add_static_er_conf(key, value):
-    global static_er_conf
-
-    if not static_er_conf:
-        raise RuntimeError("static_er_conf is not initialized yet")
-
-    if key in static_er_conf:
-        raise RuntimeError(f"key={key} already exists in static_er_conf with value={static_er_conf.get(key)}")
-
-
 def set_static_er_conf(a_dict):
     global static_er_conf
 
@@ -56,6 +46,7 @@ def set_static_er_conf(a_dict):
 
 
 def get_static_er_conf(options: dict = None):
+    raise ValueError()
     if not options:
         options = {}
     global static_er_conf

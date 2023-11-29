@@ -11,30 +11,22 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import configparser
 import logging
 import os
-import random
-import time
 from concurrent.futures import wait, FIRST_EXCEPTION
 from copy import deepcopy
-from typing import List, Tuple
-
-import psutil
 
 from eggroll.core.client import ClusterManagerClient
 from eggroll.core.client import CommandClient
 from eggroll.core.command.command_model import CommandURI
-from eggroll.core.conf_keys import CoreConfKeys
-from eggroll.core.conf_keys import SessionConfKeys, ClusterManagerConfKeys
-from eggroll.core.constants import SessionStatus, ProcessorTypes, DeployModes
+from eggroll.core.conf_keys import SessionConfKeys
+from eggroll.core.constants import SessionStatus, ProcessorTypes
 from eggroll.core.datastructure.threadpool import ErThreadUnpooledExecutor
 from eggroll.core.meta_model import ErJob, ErTask
-from eggroll.core.meta_model import ErSessionMeta, ErPartition, ErStore, ErEndpoint
+from eggroll.core.meta_model import ErSessionMeta, ErPartition, ErStore
 from eggroll.core.utils import generate_task_id, calculate_rank_in_node
 from eggroll.core.utils import get_self_ip, time_now, DEFAULT_DATETIME_FORMAT
 from eggroll.core.utils import get_stack
-from eggroll.core.utils import set_static_er_conf
 from eggroll.config import Config
 
 L = logging.getLogger(__name__)
@@ -55,11 +47,6 @@ def session_init(session_id, options: dict = None, config=None, config_propertie
 
 
 class ErSession(object):
-    executor = ErThreadUnpooledExecutor(
-        max_workers=int(CoreConfKeys.EGGROLL_CORE_CLIENT_COMMAND_EXECUTOR_POOL_MAX_SIZE.get()),
-        thread_name_prefix="session_server",
-    )
-
     def __init__(self, config: Config, session_id=None, name="", tag="", processors: list = None, options: dict = None):
         self._config = config
         if processors is None:
@@ -76,9 +63,13 @@ class ErSession(object):
 
         self.__options = options.copy()
         self.__options[SessionConfKeys.CONFKEY_SESSION_ID] = self.__session_id
-        self._cluster_manager_client = ClusterManagerClient(options=options, config=config)
+        self._cluster_manager_client = ClusterManagerClient(config=config)
         session_meta = ErSessionMeta(
             id=self.__session_id, name=name, status=SessionStatus.NEW, tag=tag, processors=processors, options=options
+        )
+        self.executor = ErThreadUnpooledExecutor(
+            max_workers=config.eggroll.core.client.command.executor.pool.max.size,
+            thread_name_prefix="session_server",
         )
 
         from time import monotonic, sleep
