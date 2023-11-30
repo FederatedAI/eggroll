@@ -71,8 +71,8 @@ public class ClusterModule extends AbstractModule {
         conf.put("JDBC.password", MetaInfo.CONFKEY_CLUSTER_MANAGER_JDBC_PASSWORD);
         conf.put("mybatis.environment.id", "cluster-manager-mybatis");
         conf.put("hikaricp.maxPoolSize",MetaInfo.CONFKEY_CLUSTER_MANAGER_JDBC_INITIALIZATION_RETRY_TIME.toString());
+        conf.put("hikaricp.connectionTimeoutMs",MetaInfo.CONFKEY_CLUSTER_MANAGER_JDBC_CONNECTION_CONNECTION.toString());
 //        conf.put("hikaricp.scheduledExecutorService", MetaInfo.CONFKEY_HIKARICP_SCHEDULEDEXECUTORSERVICE);
-//        conf.put("hikaricp.connectionTimeoutMs","99999");
 //        conf.put("hikaricp.initializationFailTimeout","1000");
 //        conf.put("JDBC.loginTimeout","1");
         Names.bindProperties(binder(), conf);
