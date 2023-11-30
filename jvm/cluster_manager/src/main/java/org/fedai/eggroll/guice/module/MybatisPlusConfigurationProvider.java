@@ -9,6 +9,7 @@ import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.extension.MybatisMapWrapperFactory;
 import com.google.inject.Inject;
 import com.google.inject.ProvisionException;
+import com.zaxxer.hikari.HikariDataSource;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import org.apache.ibatis.executor.ErrorContext;
 import org.apache.ibatis.io.ResolverUtil;
@@ -160,6 +161,8 @@ public class MybatisPlusConfigurationProvider implements Provider<Configuration>
 
     @Override
     public Configuration get() {
+        HikariDataSource dataSource = (HikariDataSource)environment.getDataSource();
+        dataSource.setMaximumPoolSize(MetaInfo.CONFKEY_CLUSTER_MANAGER_JDBC_HIKARICP_MAXPOOLSIZE);
         MybatisConfiguration configuration = this.newConfiguration(this.environment);
         configuration.setLazyLoadingEnabled(this.lazyLoadingEnabled);
         configuration.setAggressiveLazyLoading(this.aggressiveLazyLoading);
@@ -179,7 +182,7 @@ public class MybatisPlusConfigurationProvider implements Provider<Configuration>
 
         configuration.setLogImpl(Log4j2Impl.class);
 
-        configuration.setCacheEnabled(MetaInfo.EGGROLL_MYBATIS_cache_enabled);
+        configuration.setCacheEnabled(MetaInfo.EGGROLL_MYBATIS_CACHE_ENABLED);
 
         Set<Class<?>> classes = getClasses(MetaInfo.EGGROLL_MYBATIS_MAPPER_PACKAGE);
 

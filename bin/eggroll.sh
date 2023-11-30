@@ -178,6 +178,7 @@ start() {
 			exec $cmd >> ${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.out 2>>${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.err &
 		fi
 
+    inspect_pid 5 $!
 		getpid
 		if [[ $? -eq 0 ]]; then
 			echo "service start sucessfully. pid=${pid}"
