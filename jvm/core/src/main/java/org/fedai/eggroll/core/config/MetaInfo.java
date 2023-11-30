@@ -221,6 +221,13 @@ public class MetaInfo {
     public static String CONFKEY_CLUSTER_MANAGER_JDBC_USERNAME;
     @Config(confKey = "eggroll.resourcemanager.clustermanager.jdbc.password")
     public static String CONFKEY_CLUSTER_MANAGER_JDBC_PASSWORD;
+    @Config(confKey = "eggroll.resourcemanager.clustermanager.jdbc.connection.timeout")
+    public static Integer CONFKEY_CLUSTER_MANAGER_JDBC_CONNECTION_CONNECTION = 3000;
+    @Config(confKey = "eggroll.resourcemanager.clustermanager.jdbc.initialization.retry.time")
+    public static Integer CONFKEY_CLUSTER_MANAGER_JDBC_INITIALIZATION_RETRY_TIME = 1;
+    @Config(confKey = "eggroll.resourcemanager.clustermanager.jdbc.hikaricp.maxPoolSize")
+    public static Integer CONFKEY_CLUSTER_MANAGER_JDBC_HIKARICP_MAXPOOLSIZE = 10;
+
     @Config(confKey = "eggroll.resourcemanager.clustermanager.host")
     public static String CONFKEY_CLUSTER_MANAGER_HOST;
     @Config(confKey = "eggroll.resourcemanager.clustermanager.jdbc.password.decryptor")
@@ -331,7 +338,7 @@ public class MetaInfo {
     public static String EGGROLL_DASHBOARD_MYBATIS_MAPPER_PACKAGE = "org.fedai.eggroll.webapp.dao.mapper";
 
     @Config(confKey = "eggroll.mybatis.cache.enabled")
-    public static Boolean EGGROLL_MYBATIS_cache_enabled = true;
+    public static Boolean EGGROLL_MYBATIS_CACHE_ENABLED = true;
     @Config(confKey = "eggroll.flowlog.print.client")
     public static Boolean EGGROLL_FLOWLOG_PRINT_CLIENT = false;
     @Config(confKey = "eggroll.request.print")
