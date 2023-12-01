@@ -44,9 +44,10 @@ from eggroll.core.model.task import (
 )
 from eggroll.core.utils import generate_job_id, generate_task_id
 from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
+import threading
 
 if typing.TYPE_CHECKING:
-    from .roll_pair import RollPairContext
+    from ._roll_pair_context import RollPairContext
 
 L = logging.getLogger(__name__)
 
@@ -100,8 +101,8 @@ class RollPair(object):
         return self.ctx.session.config
 
     def __del__(self):
-        if "EGGROLL_GC_DISABLE" in os.environ and os.environ["EGGROLL_GC_DISABLE"] == "1":
-            L.trace("global RollPair gc is disable")
+        if self.config.eggroll.gc.disabled:
+            L.debug("gc is disabled")
             return
         if not hasattr(self, "gc_enable") or not hasattr(self, "ctx"):
             return

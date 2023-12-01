@@ -30,11 +30,6 @@ from eggroll.config import Config, ConfigKey
 L = logging.getLogger(__name__)
 
 
-def runtime_init(session: ErSession):
-    rpc = RollPairContext(session=session)
-    return rpc
-
-
 class RollPairContext(object):
     def __init__(self, session: ErSession):
         if not session.get_session_meta().is_active():
