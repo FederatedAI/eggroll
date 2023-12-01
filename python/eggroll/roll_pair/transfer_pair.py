@@ -49,26 +49,28 @@ class CompositeFuture(object):
         return all(f.done() for f in self._futures)
 
     def result(self, timeout=None):
-        results = [None] * len(self._futures)
-        uncompleted_futures = set(self._futures)
-        start_time = time.time()
-
-        while uncompleted_futures:
-            for f in list(uncompleted_futures):
-                if f.done():
-                    index = self._futures.index(f)
-                    if f.exception():
-                        raise f.exception()
-                    results[index] = f.result()
-                    uncompleted_futures.remove(f)
-
-            # Check for timeout
-            if timeout is not None and time.time() - start_time > timeout:
-                raise TimeoutError("Operation timed out after {} seconds".format(timeout))
-
-            time.sleep(0.1)
-
-        return results
+        # TODO: sp3: use wait instead of busy loop
+        return [f.result(timeout) for f in self._futures]
+        # results = [None] * len(self._futures)
+        # uncompleted_futures = set(self._futures)
+        # start_time = time.time()
+        #
+        # while uncompleted_futures:
+        #     for f in list(uncompleted_futures):
+        #         if f.done():
+        #             index = self._futures.index(f)
+        #             if f.exception():
+        #                 raise f.exception()
+        #             results[index] = f.result()
+        #             uncompleted_futures.remove(f)
+        #
+        #     # Check for timeout
+        #     if timeout is not None and time.time() - start_time > timeout:
+        #         raise TimeoutError("Operation timed out after {} seconds".format(timeout))
+        #
+        #     time.sleep(0.001)
+        #
+        # return results
 
 
 class BatchBroker(object):
@@ -135,7 +137,7 @@ class TransferPair(object):
         # params from __init__ params
         self.__transfer_id = transfer_id
         if TransferPair._executor_pool is None:
-            with (TransferPair._executor_pool_lock):
+            with TransferPair._executor_pool_lock:
                 if TransferPair._executor_pool is None:
                     _max_workers = config.eggroll.rollpair.transferpair.executor.pool.max.size
                     _thread_pool_type = config.eggroll.core.default.executor.pool

@@ -16,9 +16,7 @@ L = logging.getLogger(__name__)
 
 class _MapReducePartitionsWithIndex(Task):
     @classmethod
-    def run(cls,
-            env_options: EnvOptions,
-            job: ErJob, task: ErTask):
+    def run(cls, env_options: EnvOptions, job: ErJob, task: ErTask):
         shuffle = job.second_functor.deserialized_as(MapPartitionsWithIndexRequest).shuffle
         map_op = job.first_functor.func
         reduce_op = job.third_functor.func
@@ -42,19 +40,17 @@ class _MapReducePartitionsWithIndex(Task):
                 env_options.server_node_id is None or task.first_output.is_on_node(env_options.server_node_id)
         )
 
-        features = []
         shuffler = TransferPair(config=env_options.config, transfer_id=job.id)
+        store_broker_future = None
         if task_has_output:
             task_output = task.first_output
             # shuffle gather: source partition broker -> task output store
-            features.append(
-                shuffler.store_broker(
-                    data_dir=env_options.data_dir,
-                    store_partition=task_output,
-                    is_shuffle=True,
-                    total_writers=job.first_input.num_partitions,
-                    reduce_op=reduce_op,
-                )
+            store_broker_future = shuffler.store_broker(
+                data_dir=env_options.data_dir,
+                store_partition=task_output,
+                is_shuffle=True,
+                total_writers=job.first_input.num_partitions,
+                reduce_op=reduce_op,
             )
         if task_has_input:
             with contextlib.ExitStack() as stack:
@@ -62,13 +58,10 @@ class _MapReducePartitionsWithIndex(Task):
 
                 # shuffle scatter: shuffle_write_broker -> target partition broker
                 output_partitioner = job.first_output.partitioner.load_with_cloudpickle()
-                features.append(
-                    shuffler.scatter(
-                        config=env_options.config,
-                        input_broker=shuffle_write_broker,
-                        partitioner=output_partitioner,
-                        output_store=job.first_output.store,
-                    )
+                scatter_future = shuffler.scatter(
+                    input_broker=shuffle_write_broker,
+                    partitioner=output_partitioner,
+                    output_store=job.first_output.store,
                 )
 
                 # shuffle write: input_iterator -> shuffle_write_broker
@@ -87,18 +80,22 @@ class _MapReducePartitionsWithIndex(Task):
                     key = task_input_iterator.key()
                     task_shuffle_write_batch_broker.put((key, value))
 
-        # TODO: cycle through features and check for exceptions
-        while True:
-            should_break = True
-            for feature in features:
-                feature: Future
-                if feature.done():
-                    feature.result()
-                else:
-                    should_break = False
-            if should_break:
-                break
-            time.sleep(0.1)
+            scatter_future.result()
+        if store_broker_future is not None:
+            store_broker_future.result()
+        # TODO: sp3: check exceptions
+        # # TODO: cycle through features and check for exceptions
+        # while True:
+        #     should_break = True
+        #     for feature in features:
+        #         feature: Future
+        #         if feature.done():
+        #             feature.result()
+        #         else:
+        #             should_break = False
+        #     if should_break:
+        #         break
+        #     time.sleep(0.001)
 
     @classmethod
     def _run_non_shuffle(cls, env_options: EnvOptions, job: ErJob, task: ErTask, map_op):
