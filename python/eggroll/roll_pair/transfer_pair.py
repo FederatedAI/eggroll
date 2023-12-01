@@ -49,32 +49,33 @@ class CompositeFuture(object):
         return all(f.done() for f in self._futures)
 
     def result(self, timeout=None):
-        results = [None] * len(self._futures)
-        uncompleted_futures = set(self._futures)
-        start_time = time.time()
-
-        while uncompleted_futures:
-            for f in list(uncompleted_futures):
-                if f.done():
-                    index = self._futures.index(f)
-                    if f.exception():
-                        raise f.exception()
-                    results[index] = f.result()
-                    uncompleted_futures.remove(f)
-
-            # Check for timeout
-            if timeout is not None and time.time() - start_time > timeout:
-                raise TimeoutError("Operation timed out after {} seconds".format(timeout))
-
-            time.sleep(0.1)
-
-        return results
+        # TODO: sp3: use wait instead of busy loop
+        return [f.result(timeout) for f in self._futures]
+        # results = [None] * len(self._futures)
+        # uncompleted_futures = set(self._futures)
+        # start_time = time.time()
+        #
+        # while uncompleted_futures:
+        #     for f in list(uncompleted_futures):
+        #         if f.done():
+        #             index = self._futures.index(f)
+        #             if f.exception():
+        #                 raise f.exception()
+        #             results[index] = f.result()
+        #             uncompleted_futures.remove(f)
+        #
+        #     # Check for timeout
+        #     if timeout is not None and time.time() - start_time > timeout:
+        #         raise TimeoutError("Operation timed out after {} seconds".format(timeout))
+        #
+        #     time.sleep(0.001)
+        #
+        # return results
 
 
 class BatchBroker(object):
     def __init__(
-            self, broker,
-            batch_size=RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_BATCHBROKER_DEFAULT_SIZE.default_value
+        self, broker, batch_size=RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_BATCHBROKER_DEFAULT_SIZE.default_value
     ):
         self.broker = broker
         self.batch = []
@@ -222,7 +223,7 @@ class TransferPair(object):
             nonlocal writer
             bin_batch = None
             if ba:
-                bin_batch = bytes(ba[0: writer.get_offset()])
+                bin_batch = bytes(ba[0 : writer.get_offset()])
             # if ba:
             #     bin_batch = bytes(ba[0:buffer.get_offset()])
             ba = bytearray(bs)
