@@ -150,9 +150,9 @@ class RollPair(object):
         return self._store.store_locator.store_type
 
     def _run_unary_unit_job(
-            self,
-            job: ErJob,
-            output_types: List[Type[T]] = None,
+        self,
+        job: ErJob,
+        output_types: List[Type[T]] = None,
     ) -> List[List[T]]:
         if output_types is None:
             output_types = [ErTask]
@@ -271,7 +271,11 @@ class RollPair(object):
             for k, v in kv_list:
                 bb.put(item=(k, v))
 
-        _wait_all_done(scatter_future, th)
+        # TODO: sp3: check exceptions
+        scatter_future.result()
+        th.result()
+
+        # _wait_all_done(scatter_future, th)
         return RollPair(self._store, self.ctx)
 
     @_method_profile_logger
@@ -358,26 +362,26 @@ class RollPair(object):
 
     @_method_profile_logger
     def map_reduce_partitions_with_index(
-            self,
-            map_partition_op,
-            reduce_partition_op,
-            shuffle,
-            input_key_serdes,
-            input_key_serdes_type,
-            input_value_serdes,
-            input_value_serdes_type,
-            input_partitioner,
-            input_partitioner_type,
-            output_key_serdes,
-            output_key_serdes_type,
-            output_value_serdes,
-            output_value_serdes_type,
-            output_partitioner,
-            output_partitioner_type,
-            output_num_partitions,
-            output_namespace=None,
-            output_name=None,
-            output_store_type=None,
+        self,
+        map_partition_op,
+        reduce_partition_op,
+        shuffle,
+        input_key_serdes,
+        input_key_serdes_type,
+        input_value_serdes,
+        input_value_serdes_type,
+        input_partitioner,
+        input_partitioner_type,
+        output_key_serdes,
+        output_key_serdes_type,
+        output_value_serdes,
+        output_value_serdes_type,
+        output_partitioner,
+        output_partitioner_type,
+        output_num_partitions,
+        output_namespace=None,
+        output_name=None,
+        output_store_type=None,
     ):
         if output_namespace is None:
             output_namespace = self.get_namespace()
@@ -454,19 +458,19 @@ class RollPair(object):
 
     @_method_profile_logger
     def binary_sorted_map_partitions_with_index(
-            self,
-            other: "RollPair",
-            binary_map_partitions_with_index_op: Callable[[int, Iterable, Iterable], Iterable],
-            key_serdes,
-            key_serdes_type,
-            partitioner,
-            partitioner_type,
-            first_input_value_serdes,
-            first_input_value_serdes_type,
-            second_input_value_serdes,
-            second_input_value_serdes_type,
-            output_value_serdes,
-            output_value_serdes_type,
+        self,
+        other: "RollPair",
+        binary_map_partitions_with_index_op: Callable[[int, Iterable, Iterable], Iterable],
+        key_serdes,
+        key_serdes_type,
+        partitioner,
+        partitioner_type,
+        first_input_value_serdes,
+        first_input_value_serdes_type,
+        second_input_value_serdes,
+        second_input_value_serdes_type,
+        output_value_serdes,
+        output_value_serdes_type,
     ):
         output_store = self._store.fork()
         output_store = self.ctx.get_session().get_or_create_store(output_store)
@@ -556,4 +560,4 @@ def _wait_all_done(*futures):
             if not has_call_result[i] and f.done():
                 f.result()
                 has_call_result[i] = True
-        time.sleep(0.1)
+        time.sleep(0.001)
