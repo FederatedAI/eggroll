@@ -41,18 +41,18 @@ print_ok() {
     local overwrite=$2
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     if [ "$overwrite" == "overwrite" ]; then
-        echo -ne "\r${ok_c}[${timestamp}][OK]${esc_c} $1"
+        echo -ne "\r${ok_c}[${timestamp}][ OK ]${esc_c} $1"
     else
-        echo -e "${ok_c}[${timestamp}][OK]${esc_c} $1"
+        echo -e "${ok_c}[${timestamp}][ OK ]${esc_c} $1"
     fi
 }
 print_error() {
     local overwrite=$3
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     if [ "$overwrite" == "overwrite" ]; then
-        echo -ne "\r${error_c}[${timestamp}][ER]${esc_c} $1: $2"
+        echo -ne "\r${error_c}[${timestamp}][ ER ]${esc_c} $1: $2"
     else
-        echo -e "${error_c}[${timestamp}][ER]${esc_c} $1: $2"
+        echo -e "${error_c}[${timestamp}][ ER ]${esc_c} $1: $2"
     fi
 }
 
