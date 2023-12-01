@@ -7,6 +7,10 @@ class DefaultConfig:
     @dataclass
     class EggrollConfig:
         @dataclass
+        class GCConfig:
+            disabled: bool = False
+
+        @dataclass
         class ResourcemanagerConfig:
             @dataclass
             class ClustermanagerConfig:
@@ -486,5 +490,6 @@ class DefaultConfig:
         logs: LogsConfig = LogsConfig()
         bootstrap: BootstrapConfig = BootstrapConfig()
         home: str = MISSING
+        gc: GCConfig = GCConfig()
 
     eggroll: EggrollConfig = EggrollConfig()
