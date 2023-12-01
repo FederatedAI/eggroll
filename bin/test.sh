@@ -22,7 +22,7 @@
 #highlight_c="\e[43m"
 esc_c="\033[0m"
 error_c="\033[31m"
-ok_c="\033[34m"
+ok_c="\033[32m"
 highlight_c="\033[43m"
 
 # --------------- Logging Functions ---------------
@@ -86,6 +86,16 @@ getpid() {
 	else
 		return 1
 	fi
+}
+
+# Get the PID of the process using a specific port
+get_port_pid() {
+  pid=$(lsof -i:${port} | grep 'LISTEN' | awk 'NR==1 {print $2}')
+  if [[ -n ${pid} ]]; then
+  	return 0
+  else
+  	return 1
+  fi
 }
 
 # --------------- Functions for stop---------------
@@ -191,10 +201,11 @@ usage() {
       echo -e "${ok_c}Usage:${esc_c}"
       echo -e "  `basename ${0}` [component] start          - Start the server application."
       echo -e "  `basename ${0}` [component] stop           - Stop the server application."
+      echo -e "  `basename ${0}` [component] shut           - Force kill the server application."
       echo -e "  `basename ${0}` [component] status         - Check and report the status of the server application."
       echo -e "  `basename ${0}` [component] restart [time] - Restart the server application. Optionally, specify a sleep time (in seconds) between stop and start."
       echo -e "  `basename ${0}` [component] debug          - Start the server application in debug mode."
-      echo "component include: {clustermanager | nodemanager | dashboard | all} "
+      echo -e "  ${ok_c}The component${esc_c} include: {clustermanager | nodemanager | dashboard | all} "
       echo ""
       echo -e "${ok_c}Examples:${esc_c}"
       echo "  `basename ${0}` clustermanager start"
@@ -219,57 +230,57 @@ multiple() {
 	done
 }
 
-# --------------- Functions for start---------------
-# Check if the service is up and running
-check_service_up() {
-    local timeout_ms=$1 #2
-    local interval_ms=$2 #3
-    local http_port=$3 #4
-    local cluster_pid=0
-    local node_pid=0
-    local elapsed_ms=0
-    local spin_state=0
-    # 查找包含 "clustermanager" 关键词的进程，并获取其 PID 赋值给变量 cluster_pid
-    cluster_pid=$(ps aux | grep '[c]lustermanager' | grep -v grep | grep -v $$ | awk '{print $2}')
-    # 查找包含 "nodemanager" 关键词的进程，并获取其 PID 赋值给变量 node_pid
-    node_pid=$(ps aux | grep '[n]odemanager' | grep -v grep | grep -v $$ | awk '{print $2}')
-    while ((elapsed_ms < timeout_ms)); do
-        if ! kill -0 "${cluster_pid}" 2>/dev/null; then
-            print_error "Process clustermanager with PID ${cluster_pid} is not running." "" "overwrite"
-            echo
-            return 1
-        fi
-        if ! kill -0 "${node_pid}" 2>/dev/null; then
-            print_error "Process nodemanager with PID ${node_pid} is not running." "" "overwrite"
-            echo
-            return 1
-        fi
-
-        if lsof -i :${http_port} | grep -q LISTEN; then
-            print_ok "All service started successfully!" "overwrite"
-            echo
-            return 0
-        else
-            print_error "Process dashboard is not running" "overwrite"
-            return 1
-        fi
-
-        # Update spinning wheel
-        case $spin_state in
-            0) spinner_char="/" ;;
-            1) spinner_char="-" ;;
-            2) spinner_char="\\" ;;
-            3) spinner_char="|" ;;
-        esac
-        print_info "$spinner_char" "overwrite"
-        spin_state=$(((spin_state + 1) % 4))
-        sleep $((interval_ms / 1000)).$((interval_ms % 1000))
-        elapsed_ms=$((elapsed_ms + interval_ms))
-    done
-    print_error "Service did not start up within the expected time." "" "overwrite"
-    echo
-    return 1
-}
+## --------------- Functions for start---------------
+## Check if the service is up and running
+#check_service_up() {
+#    local timeout_ms=$1 #2
+#    local interval_ms=$2 #3
+#    local http_port=$3 #4
+#    local cluster_pid=0
+#    local node_pid=0
+#    local elapsed_ms=0
+#    local spin_state=0
+#    # 查找包含 "clustermanager" 关键词的进程，并获取其 PID 赋值给变量 cluster_pid
+#    cluster_pid=$(ps aux | grep '[c]lustermanager' | grep -v grep | grep -v $$ | awk '{print $2}')
+#    # 查找包含 "nodemanager" 关键词的进程，并获取其 PID 赋值给变量 node_pid
+#    node_pid=$(ps aux | grep '[n]odemanager' | grep -v grep | grep -v $$ | awk '{print $2}')
+#    while ((elapsed_ms < timeout_ms)); do
+#        if ! kill -0 "${cluster_pid}" 2>/dev/null; then
+#            print_error "Process clustermanager with PID ${cluster_pid} is not running." "" "overwrite"
+#            echo
+#            return 1
+#        fi
+#        if ! kill -0 "${node_pid}" 2>/dev/null; then
+#            print_error "Process nodemanager with PID ${node_pid} is not running." "" "overwrite"
+#            echo
+#            return 1
+#        fi
+#
+#        if lsof -i :${http_port} | grep -q LISTEN; then
+#            print_ok "All service started successfully!" "overwrite"
+#            echo
+#            return 0
+#        else
+#            print_error "Process dashboard is not running" "overwrite"
+#            return 1
+#        fi
+#
+#        # Update spinning wheel
+#        case $spin_state in
+#            0) spinner_char="/" ;;
+#            1) spinner_char="-" ;;
+#            2) spinner_char="\\" ;;
+#            3) spinner_char="|" ;;
+#        esac
+#        print_info "$spinner_char" "overwrite"
+#        spin_state=$(((spin_state + 1) % 4))
+#        sleep $((interval_ms / 1000)).$((interval_ms % 1000))
+#        elapsed_ms=$((elapsed_ms + interval_ms))
+#    done
+#    print_error "Service did not start up within the expected time." "" "overwrite"
+#    echo
+#    return 1
+#}
 
 mklogsdir() {
 	if [[ ! -d "${EGGROLL_HOME}/logs/eggroll" ]]; then
@@ -281,19 +292,17 @@ mklogsdir() {
 # Check the status of the service
 status() {
   print_info "---------------------------------status---------------------------------"
-	getpid
+	if [ "${module}" = "dashboard" ]; then
+    get_port_pid
+  else
+    getpid
+  fi
 	# check service is up and running
 	if [[ -n ${pid} ]]; then
-	  port_occupied=$(lsof -i :8083 | awk 'NR==2 {print $2}')
-	  if [ "${module}" = "dashboard" ] && { [ -z "$port_occupied" ] || [ "$port_occupied" != "${pid}" ]; }; then
-        print_error "The ${highlight_c}${module}${esc_c} service is start failed, Unable to bind to port ${highlight_c}${port}${esc_c}, please check the port."
-        return 1
-    else
-       print_ok "Check service ${highlight_c}${module}${esc_c} is started: PID=${highlight_c}${pid}${esc_c}"
-      		print_info "The service status is:
-      		`ps aux | grep ${pid} | grep ${processor_tag} | grep ${main_class} | grep -v grep`"
-      		return 0
-	  fi
+    print_ok "Check service ${highlight_c}${module}${esc_c} is started: PID=${highlight_c}${pid}${esc_c}"
+    print_info "The service status is:
+    `ps aux | grep ${pid} | grep ${processor_tag} | grep ${main_class} | grep -v grep`"
+    return 0
 	else
 		print_error "The ${module} service is not running"
 		return 1
@@ -303,7 +312,7 @@ status() {
 # Start service
 start() {
   print_info "--------------------------------starting--------------------------------"
-  print_info "Checking ${highlight_c}Java${esc_c} environment..."
+  print_info "Checking Java environment..."
   # check the java environment
   if [[ -n ${JAVA_HOME} ]]; then
     print_ok "JAVA_HOME is already set, service starting..."
@@ -311,7 +320,11 @@ start() {
     print_error "JAVA_HOME is not set, please set it first"
     exit 1
   fi
-	getpid
+	if [ "${module}" = "dashboard" ]; then
+    get_port_pid
+  else
+    getpid
+  fi
 	if [[ $? -eq 1 ]]; then
 		mklogsdir
 		export EGGROLL_LOG_FILE=${module}
@@ -325,15 +338,16 @@ start() {
 		else
 			exec $cmd >> ${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.out 2>>${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.err &
 		fi
-
-		getpid
+    # wait for connect DB
+    print_info "Waiting for connect DB..."
+    sleep 5
+    if [ "${module}" = "dashboard" ]; then
+      get_port_pid
+    else
+      getpid
+    fi
 		if [[ $? -eq 0 ]]; then
-		  port_occupied=$(lsof -i :8083 | awk 'NR==2 {print $2}')
-		  if [ "${module}" = "dashboard" ] && { [ -z "$port_occupied" ] || [ "$port_occupied" != "${pid}" ]; }; then
-		      print_error "The ${highlight_c}${module}${esc_c} service start failed."
-		  else
-			      print_ok "The ${highlight_c}${module}${esc_c} service start sucessfully. PID=${pid}"
-		  fi
+      print_ok "The ${highlight_c}${module}${esc_c} service start sucessfully. PID=${pid}"
 		else
 			print_error "The ${highlight_c}${module}${esc_c} service start failed"
 		fi
@@ -344,7 +358,11 @@ start() {
 
 debug() {
   print_info "--------------------------------debugging--------------------------------"
-	getpid
+	if [ "${module}" = "dashboard" ]; then
+    get_port_pid
+  else
+    getpid
+  fi
 	if [[ $? -eq 1 ]]; then
 		mklogsdir
 		export EGGROLL_LOG_FILE=${module}
@@ -358,7 +376,11 @@ debug() {
 			exec $cmd >> ${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.out 2>>${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.err &
 		fi
 
-		getpid
+		if [ "${module}" = "dashboard" ]; then
+      get_port_pid
+    else
+      getpid
+    fi
 		if [[ $? -eq 0 ]]; then
 			print_ok "The ${highlight_c}${module}${esc_c} service debug sucessfully. PID=${pid}"
 		else
@@ -373,7 +395,11 @@ debug() {
 # Stop service
 stop() {
   print_info "--------------------------------stopping--------------------------------"
-	getpid
+	 if [ "${module}" = "dashboard" ]; then
+     get_port_pid
+   else
+     getpid
+   fi
 	if [[ -n ${pid} ]]; then
 		print_info "The system is stopping the ${highlight_c}${module}${esc_c} service. PID=${pid}"
 		print_info "The more information:
@@ -381,9 +407,13 @@ stop() {
 	  for _ in {1..100}; do
         sleep 0.1
         kill_process "${pid}"
-        getpid
+        if [ "${module}" = "dashboard" ]; then
+          get_port_pid
+        else
+          getpid
+        fi
         if [ -z "${pid}" ]; then
-            print_ok "Stop $name ${highlight_c}${port}${esc_c} success (SIGTERM)"
+            print_ok "Stop ${port} success (SIGTERM)"
             return
         fi
     done
@@ -392,12 +422,16 @@ stop() {
 		print_ok "The ${highlight_c}${module}${esc_c} service is not running(NOT ACTIVE))"
 	fi
 }
-# Shut service(FORCE KILL)
+# Shut service(FORCE KILL). now not use, stop has force kill
 shut() {
   print_info "--------------------------------shutting--------------------------------"
-	getpid
+	if [ "${module}" = "dashboard" ]; then
+    get_port_pid
+  else
+    getpid
+  fi
 	if [[ -n ${pid} ]]; then
-	  print_info "The ${highlight_c}${module}${esc_c} service is being forcibly killed. PID=${pid}"
+	  print_info "The ${highlight_c}${module}${esc_c} service is force killing. PID=${pid}"
 		print_info "The more information:
 		`ps aux | grep ${pid} | grep ${processor_tag} | grep ${main_class} | grep -v grep`"
 		kill -9 ${pid}
@@ -405,12 +439,16 @@ shut() {
 		flag=0
 		while [ $flag -eq 0 ]
 		do
-			getpid
+			if [ "${module}" = "dashboard" ]; then
+        get_port_pid
+      else
+        getpid
+      fi
 			flag=$?
 		done
-		echo "killed"
+		print_info "The ${highlight_c}${module}${esc_c} service is force kill success"
 	else
-		echo "service not running"
+		print_info "The ${highlight_c}${module}${esc_c} service is not running"
 	fi
 }
 
