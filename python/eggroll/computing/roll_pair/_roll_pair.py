@@ -275,3 +275,19 @@ class RollPair(object):
         return tasks.WithStores.submit(
             self, func, others=others, options=options, description=description
         )
+
+    @roll_pair_method_trace
+    def pull_get_header(self, tag: str, timeout: float, description: str = None):
+        return tasks.PullGetHeader.submit(self, tag, timeout, description=description)
+
+    @roll_pair_method_trace
+    def pull_get_partition_status(
+        self, tag: str, timeout: float, description: str = None
+    ):
+        return tasks.PullGetPartitionStatus.submit(
+            self, tag, timeout, description=description
+        )
+
+    @roll_pair_method_trace
+    def pull_clear_status(self, tag: str, description: str = None):
+        return tasks.PullClearStatus.submit(self, tag, description=description)
