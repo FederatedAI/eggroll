@@ -1,7 +1,7 @@
 import abc
 
-from eggroll.core.meta_model import ErJob, ErTask
 from eggroll.config import Config
+from eggroll.core.meta_model import ErJob, ErTask
 
 
 class EnvOptions:
