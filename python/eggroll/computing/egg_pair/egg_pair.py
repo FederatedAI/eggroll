@@ -17,12 +17,13 @@ import argparse
 import gc
 import logging
 import os
+import pathlib
 import signal
 import threading
-import pathlib
 
 import grpc
 
+from eggroll.config import Config
 from eggroll.core.client import NodeManagerClient
 from eggroll.core.command.command_router import CommandRouter
 from eggroll.core.command.command_service import CommandServicer
@@ -31,35 +32,45 @@ from eggroll.core.constants import ProcessorTypes, ProcessorStatus
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErProcessor, ErEndpoint
-from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc, deepspeed_download_pb2_grpc
-from eggroll.core.transfer.transfer_service import GrpcTransferServicer, GrpcDsDownloadServicer
-from eggroll.egg_pair.profile import get_system_metric
-from eggroll.config import Config
+from eggroll.core.proto import (
+    command_pb2_grpc,
+    transfer_pb2_grpc,
+    deepspeed_download_pb2_grpc,
+)
+from eggroll.core.transfer.transfer_service import (
+    GrpcTransferServicer,
+    GrpcDsDownloadServicer,
+)
+from eggroll.trace import get_system_metric
 
 L = logging.getLogger(__name__)
 
 
-def serve(config: Config, data_dir, port, transfer_port, cluster_manager, node_manager, session_id,
-          server_node_id, processor_id):
-    from eggroll.egg_pair.tasks import EnvOptions
-    env_options = EnvOptions(data_dir=data_dir, config=config)
+def serve(
+    config: Config,
+    data_dir: str,
+    port: int,
+    transfer_port: int,
+    cluster_manager,
+    node_manager,
+    session_id: str,
+    server_node_id: int,
+    processor_id: int,
+):
+    # register tasks
+    from eggroll.computing import tasks
 
-    # task handler
-    from eggroll.egg_pair.task_handler import TaskHandler
-    prefix = "v1/eggs-pair"
-    service_name = f"{prefix}/runTask"
+    env_options = tasks.EnvOptions(data_dir=data_dir, config=config)
+    tasks.register(CommandRouter.get_instance(), env_options)
 
-    CommandRouter.get_instance().register_handler(
-        service_name=service_name,
-        route_to_method=TaskHandler.exec,
-        route_to_call_based_class_instance=TaskHandler(env_options),
-    )
-
+    # start command server
     max_workers = config.eggroll.rollpair.eggpair.server.executor.pool.max.size
     executor_pool_type = config.eggroll.core.default.executor.pool
     command_server = grpc.server(
         create_executor_pool(
-            canonical_name=executor_pool_type, max_workers=max_workers, thread_name_prefix="eggpair-command-server"
+            canonical_name=executor_pool_type,
+            max_workers=max_workers,
+            thread_name_prefix="eggpair-command-server",
         ),
         options=[
             (
@@ -74,15 +85,19 @@ def serve(config: Config, data_dir, port, transfer_port, cluster_manager, node_m
                 "grpc.max_receive_message_length",
                 config.eggroll.core.grpc.server.channel.max.inbound.message.size,
             ),
-            ("grpc.keepalive_time_ms",
-             config.eggroll.core.grpc.channel.keepalive.time.sec * 1000),
+            (
+                "grpc.keepalive_time_ms",
+                config.eggroll.core.grpc.channel.keepalive.time.sec * 1000,
+            ),
             (
                 "grpc.keepalive_timeout_ms",
                 config.eggroll.core.grpc.channel.keepalive.timeout.sec * 1000,
             ),
             (
                 "grpc.keepalive_permit_without_calls",
-                int(config.eggroll.core.grpc.channel.keepalive.permit.without.calls.enabled),
+                int(
+                    config.eggroll.core.grpc.channel.keepalive.permit.without.calls.enabled
+                ),
             ),
             (
                 "grpc.per_rpc_retry_buffer_size",
@@ -93,7 +108,9 @@ def serve(config: Config, data_dir, port, transfer_port, cluster_manager, node_m
     )
 
     command_servicer = CommandServicer()
-    command_pb2_grpc.add_CommandServiceServicer_to_server(command_servicer, command_server)
+    command_pb2_grpc.add_CommandServiceServicer_to_server(
+        command_servicer, command_server
+    )
 
     transfer_servicer = GrpcTransferServicer()
     ds_download_servicer = GrpcDsDownloadServicer(config=config)
@@ -103,10 +120,16 @@ def serve(config: Config, data_dir, port, transfer_port, cluster_manager, node_m
     if transfer_port == "-1":
         transfer_server = command_server
         transfer_port = port
-        transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer, transfer_server)
-        deepspeed_download_pb2_grpc.add_DsDownloadServiceServicer_to_server(ds_download_servicer, transfer_server)
+        transfer_pb2_grpc.add_TransferServiceServicer_to_server(
+            transfer_servicer, transfer_server
+        )
+        deepspeed_download_pb2_grpc.add_DsDownloadServiceServicer_to_server(
+            ds_download_servicer, transfer_server
+        )
     else:
-        transfer_server_max_workers = config.eggroll.rollpair.data.server.executor.pool.max.size
+        transfer_server_max_workers = (
+            config.eggroll.rollpair.data.server.executor.pool.max.size
+        )
         transfer_server = grpc.server(
             create_executor_pool(
                 canonical_name=executor_pool_type,
@@ -136,7 +159,9 @@ def serve(config: Config, data_dir, port, transfer_port, cluster_manager, node_m
                 ),
                 (
                     "grpc.keepalive_permit_without_calls",
-                    int(config.eggroll.core.grpc.channel.keepalive.permit.without.calls.enabled),
+                    int(
+                        config.eggroll.core.grpc.channel.keepalive.permit.without.calls.enabled
+                    ),
                 ),
                 (
                     "grpc.per_rpc_retry_buffer_size",
@@ -146,13 +171,19 @@ def serve(config: Config, data_dir, port, transfer_port, cluster_manager, node_m
             ],
         )
         transfer_port = transfer_server.add_insecure_port(f"[::]:{transfer_port}")
-        transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer, transfer_server)
+        transfer_pb2_grpc.add_TransferServiceServicer_to_server(
+            transfer_servicer, transfer_server
+        )
 
-        deepspeed_download_pb2_grpc.add_DsDownloadServiceServicer_to_server(ds_download_servicer, transfer_server)
+        deepspeed_download_pb2_grpc.add_DsDownloadServiceServicer_to_server(
+            ds_download_servicer, transfer_server
+        )
         transfer_server.start()
     pid = os.getpid()
 
-    L.info(f"starting egg_pair service, port: {port}, transfer port: {transfer_port}, pid: {pid}")
+    L.info(
+        f"starting egg_pair service, port: {port}, transfer port: {transfer_port}, pid: {pid}"
+    )
     command_server.start()
 
     myself = None
@@ -212,7 +243,9 @@ def serve(config: Config, data_dir, port, transfer_port, cluster_manager, node_m
     gc.collect()
 
     L.info(f"system metric at exit: {get_system_metric(1)}")
-    L.info(f"egg_pair {processor_id} at port={port}, transfer_port={transfer_port}, pid={pid} stopped gracefully")
+    L.info(
+        f"egg_pair {processor_id} at port={port}, transfer_port={transfer_port}, pid={pid} stopped gracefully"
+    )
 
 
 def send_heartbeat(node_manager_client: NodeManagerClient, myself: ErProcessor):
@@ -222,7 +255,7 @@ def send_heartbeat(node_manager_client: NodeManagerClient, myself: ErProcessor):
         L.exception(f"eggpair send heartbeat to nodemanager error")
 
 
-if __name__ == "__main__":
+def main():
     L.info(f"system metric at start: {get_system_metric(0.1)}")
     args_parser = argparse.ArgumentParser()
     args_parser.add_argument("-d", "--data-dir")
@@ -271,9 +304,21 @@ if __name__ == "__main__":
     if not os.path.isabs(data_dir):
         raise ValueError(f"data dir {data_dir} is not absolute path")
     try:
-        serve(config=config, data_dir=data_dir, port=args.port, transfer_port=args.transfer_port,
-              cluster_manager=args.cluster_manager, node_manager=args.node_manager, session_id=session_id,
-              server_node_id=args.server_node_id, processor_id=args.processor_id)
+        serve(
+            config=config,
+            data_dir=data_dir,
+            port=args.port,
+            transfer_port=args.transfer_port,
+            cluster_manager=args.cluster_manager,
+            node_manager=args.node_manager,
+            session_id=session_id,
+            server_node_id=args.server_node_id,
+            processor_id=args.processor_id,
+        )
     except Exception as e:
         L.exception(f"egg_pair server error: {e}")
         raise e
+
+
+if __name__ == "__main__":
+    main()
