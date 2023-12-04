@@ -12,7 +12,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import configparser
 import json
 import os
 import time
@@ -23,44 +22,44 @@ from google.protobuf.text_format import MessageToString
 
 static_er_conf = {}
 stringify_charset = "iso-8859-1"
-M = 2 ** 31
+M = 2**31
 
 
-class ErConfKey(object):
-    def __init__(self, key, default_value=None):
-        self.key = key
-        self.default_value = default_value
-
-    def get(self):
-        return get_static_er_conf().get(self.key, self.default_value)
-
-    def get_with(self, options: dict):
-        result = options.get(self.key, get_static_er_conf().get(self.key, self.default_value))
-        return result
-
-
-def set_static_er_conf(a_dict):
-    global static_er_conf
-
-    static_er_conf.update(a_dict)
+# class ErConfKey(object):
+#     def __init__(self, key, default_value=None):
+#         self.key = key
+#         self.default_value = default_value
+#
+#     def get(self):
+#         return get_static_er_conf().get(self.key, self.default_value)
+#
+#     def get_with(self, options: dict):
+#         result = options.get(self.key, get_static_er_conf().get(self.key, self.default_value))
+#         return result
 
 
-def get_static_er_conf(options: dict = None):
-    raise ValueError()
-    if not options:
-        options = {}
-    global static_er_conf
-    if not static_er_conf:
-        eggroll_home = os.getenv("EGGROLL_HOME", None)
-        if not eggroll_home:
-            raise EnvironmentError("EGGROLL_HOME is not set")
-        conf_path = options.get("eggroll.static.conf.path", f"{eggroll_home}/conf/eggroll.properties")
-        print(f"static conf path: {conf_path}")
-        configs = configparser.ConfigParser()
-        configs.read(conf_path)
-        set_static_er_conf(configs["eggroll"])
-        static_er_conf = get_static_er_conf()
-    return static_er_conf
+# def set_static_er_conf(a_dict):
+#     global static_er_conf
+#
+#     static_er_conf.update(a_dict)
+#
+
+# def get_static_er_conf(options: dict = None):
+#     raise ValueError()
+#     if not options:
+#         options = {}
+#     global static_er_conf
+#     if not static_er_conf:
+#         eggroll_home = os.getenv("EGGROLL_HOME", None)
+#         if not eggroll_home:
+#             raise EnvironmentError("EGGROLL_HOME is not set")
+#         conf_path = options.get("eggroll.static.conf.path", f"{eggroll_home}/conf/eggroll.properties")
+#         print(f"static conf path: {conf_path}")
+#         configs = configparser.ConfigParser()
+#         configs.read(conf_path)
+#         set_static_er_conf(configs["eggroll"])
+#         static_er_conf = get_static_er_conf()
+#     return static_er_conf
 
 
 def _to_proto(rpc_message):
@@ -218,7 +217,9 @@ _eggroll_home = None
 def get_eggroll_home():
     global _eggroll_home
     if not _eggroll_home:
-        _eggroll_home = os.getenv("EGGROLL_HOME", os.path.realpath(f"{__file__}/../../../.."))
+        _eggroll_home = os.getenv(
+            "EGGROLL_HOME", os.path.realpath(f"{__file__}/../../../..")
+        )
     return _eggroll_home
 
 

@@ -19,7 +19,6 @@ import queue
 import threading
 import time
 
-from eggroll.core.conf_keys import CoreConfKeys, RollPairConfKeys
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
 from eggroll.core.meta_model import ErPartition, ErStore
@@ -27,6 +26,7 @@ from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, ArrayBy
 from eggroll.core.transfer.transfer_service import TransferClient, TransferService
 from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import generate_task_id
+from eggroll.config import Config
 
 L = logging.getLogger(__name__)
 
@@ -74,11 +74,11 @@ class CompositeFuture(object):
 
 
 class BatchBroker(object):
-    def __init__(
-        self, broker, batch_size=RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_BATCHBROKER_DEFAULT_SIZE.default_value
-    ):
+    def __init__(self, config: Config, broker, batch_size=None):
         self.broker = broker
         self.batch = []
+        if batch_size is None:
+            batch_size = config.eggroll.rollpair.transferpair.batchbroker.default.size
         self.batch_size = batch_size
 
     def _commit(self, block=True, timeout=None):
@@ -131,14 +131,16 @@ class TransferPair(object):
     _executor_pool = None
     _executor_pool_lock = threading.Lock()
 
-    def __init__(self, transfer_id: str):
+    def __init__(self, config: Config, transfer_id: str):
         # params from __init__ params
         self.__transfer_id = transfer_id
         if TransferPair._executor_pool is None:
             with TransferPair._executor_pool_lock:
                 if TransferPair._executor_pool is None:
-                    _max_workers = int(RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_EXECUTOR_POOL_MAX_SIZE.get())
-                    _thread_pool_type = CoreConfKeys.EGGROLL_CORE_DEFAULT_EXECUTOR_POOL.get()
+                    _max_workers = (
+                        config.eggroll.rollpair.transferpair.executor.pool.max.size
+                    )
+                    _thread_pool_type = config.eggroll.core.default.executor.pool
                     TransferPair._executor_pool = create_executor_pool(
                         canonical_name=_thread_pool_type,
                         max_workers=_max_workers,
@@ -150,7 +152,7 @@ class TransferPair(object):
         return generate_task_id(job_id=self.__transfer_id, partition_id=partition_id)
 
     @_exception_logger
-    def scatter(self, input_broker, partitioner, output_store):
+    def scatter(self, config: Config, input_broker, partitioner, output_store):
         """
         scatter input_broker to output_store
 
@@ -164,7 +166,7 @@ class TransferPair(object):
         L.trace(
             f"scatter starts for transfer_id={self.__transfer_id}, total_partitions={total_partitions}, output_store={output_store}"
         )
-        shuffle_write_targets = {i: FifoBroker() for i in range(total_partitions)}
+        shuffle_write_targets = {i: FifoBroker(config) for i in range(total_partitions)}
         futures = []
 
         @_exception_logger
@@ -173,9 +175,10 @@ class TransferPair(object):
             done_count = 0
             with contextlib.ExitStack() as stack:
                 shuffle_write_target_batch_brokers = {
-                    k: stack.enter_context(BatchBroker(v)) for k, v in shuffle_write_targets.items()
+                    k: stack.enter_context(BatchBroker(config=config, broker=v))
+                    for k, v in shuffle_write_targets.items()
                 }
-                for k, v in BatchBroker(input_broker):
+                for k, v in BatchBroker(config=config, broker=input_broker):
                     partition_id = partitioner(k, total_partitions)
                     shuffle_write_target_batch_brokers[partition_id].put((k, v))
                     done_count += 1
@@ -193,9 +196,18 @@ class TransferPair(object):
             do_shuffle_send_futures = []
             for i, partition in enumerate(output_partitions):
                 tag = self.__generate_tag(i)
-                L.trace(f"do_shuffle_send for tag={tag}, " f"active thread count={threading.active_count()}")
+                L.trace(
+                    f"do_shuffle_send for tag={tag}, "
+                    f"active thread count={threading.active_count()}"
+                )
                 future = client.send(
-                    TransferPair.pair_to_bin_batch(BatchBroker(shuffle_write_targets[i])),
+                    config=config,
+                    broker=TransferPair.pair_to_bin_batch(
+                        config=config,
+                        input_iter=BatchBroker(
+                            config=config, broker=shuffle_write_targets[i]
+                        ),
+                    ),
                     endpoint=partition.transfer_endpoint,
                     tag=tag,
                 )
@@ -207,9 +219,9 @@ class TransferPair(object):
 
     @staticmethod
     @_exception_logger
-    def pair_to_bin_batch(input_iter, limit=None, sendbuf_size=-1):
+    def pair_to_bin_batch(config: Config, input_iter, limit=None, sendbuf_size=-1):
         if sendbuf_size <= 0:
-            sendbuf_size = int(RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE.get())
+            sendbuf_size = config.eggroll.rollpair.transferpair.sendbuf.size
 
         L.trace(f"pair_to_bin_batch start")
         pair_count = 0
@@ -267,7 +279,15 @@ class TransferPair(object):
             L.trace(f"bin_batch_to_pair batch ends. total write count={write_count}")
         L.trace(f"bin_batch_to_pair total_written count={write_count}")
 
-    def store_broker(self, data_dir, store_partition, is_shuffle, total_writers=1, reduce_op=None):
+    def store_broker(
+        self,
+        config: Config,
+        data_dir,
+        store_partition,
+        is_shuffle,
+        total_writers=1,
+        reduce_op=None,
+    ):
         """
         is_shuffle=True: all partition in one broker
         is_shuffle=False: just save broker to store, for put_all
@@ -277,16 +297,30 @@ class TransferPair(object):
         #     return merge_func(old_value, update_value)
 
         @_exception_logger
-        def do_store(store_partition_inner: ErPartition, is_shuffle_inner, total_writers_inner, reduce_op_inner):
+        def do_store(
+            _config: Config,
+            store_partition_inner: ErPartition,
+            is_shuffle_inner,
+            total_writers_inner,
+            reduce_op_inner,
+        ):
             done_cnt = 0
-            tag = self.__generate_tag(store_partition_inner._id) if is_shuffle_inner else self.__transfer_id
+            tag = (
+                self.__generate_tag(store_partition_inner._id)
+                if is_shuffle_inner
+                else self.__transfer_id
+            )
             try:
-                broker = TransferService.get_or_create_broker(tag, write_signals=total_writers_inner)
+                broker = TransferService.get_or_create_broker(
+                    config=_config, key=tag, write_signals=total_writers_inner
+                )
                 L.trace(f"do_store start for tag={tag}")
                 batches = TransferPair.bin_batch_to_pair(b.data for b in broker)
 
                 with store_partition_inner.get_adapter(data_dir) as db:
-                    L.trace(f"do_store create_db for tag={tag} for partition={store_partition_inner}")
+                    L.trace(
+                        f"do_store create_db for tag={tag} for partition={store_partition_inner}"
+                    )
                     with db.new_batch() as wb:
                         if reduce_op_inner is None:
                             for k, v in batches:
@@ -298,7 +332,9 @@ class TransferPair(object):
                                 # TODO: why error raise here block the whole process?
                                 wb.merge(reduce_op_inner, k, v)
                                 done_cnt += 1
-                        L.trace(f"do_store done for tag={tag} for partition={store_partition_inner}")
+                        L.trace(
+                            f"do_store done for tag={tag} for partition={store_partition_inner}"
+                        )
             except Exception as e:
                 L.exception(f"Error in do_store for tag={tag}")
                 raise e
@@ -306,9 +342,11 @@ class TransferPair(object):
                 TransferService.remove_broker(tag)
             return done_cnt
 
-        return self._executor_pool.submit(do_store, store_partition, is_shuffle, total_writers, reduce_op)
+        return self._executor_pool.submit(
+            do_store, config, store_partition, is_shuffle, total_writers, reduce_op
+        )
 
-    def gather(self, store: ErStore):
+    def gather(self, config: Config, store: ErStore):
         L.trace(f"gather start for transfer_id={self.__transfer_id}, store={store}")
         client = TransferClient()
         for i in range(store.num_partitions):
@@ -316,5 +354,10 @@ class TransferPair(object):
             tag = self.__generate_tag(partition.id)
             L.trace(f"gather for tag={tag}, partition={partition}")
             target_endpoint = partition.processor.transfer_endpoint
-            batches = (b.data for b in client.recv(endpoint=target_endpoint, tag=tag, broker=None))
+            batches = (
+                b.data
+                for b in client.recv(
+                    config=config, endpoint=target_endpoint, tag=tag, broker=None
+                )
+            )
             yield from TransferPair.bin_batch_to_pair(batches)
