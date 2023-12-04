@@ -7,6 +7,14 @@ class DefaultConfig:
     @dataclass
     class EggrollConfig:
         @dataclass
+        class TransferConfig:
+            @dataclass
+            class ServiceConfig:
+                port: int = 0
+
+            service: ServiceConfig = ServiceConfig()
+
+        @dataclass
         class GCConfig:
             disabled: bool = False
 
@@ -80,6 +88,7 @@ class DefaultConfig:
 
             processors: ProcessorsConfig = ProcessorsConfig()
             start: StartConfig = StartConfig()
+            id: str = MISSING
 
         @dataclass
         class RollPairConfig:
@@ -295,6 +304,14 @@ class DefaultConfig:
 
         @dataclass
         class CoreConfig:
+            @dataclass
+            class FifoBrokerConfig:
+                @dataclass
+                class DefaultConfig:
+                    size: int = 16
+
+                default: DefaultConfig = DefaultConfig()
+
             # command.executor.pool.max.size
             @dataclass
             class ClientConfig:
@@ -320,7 +337,9 @@ class DefaultConfig:
             class DefaultConfig:
                 @dataclass
                 class ExecutorConfig:
-                    pool: str = "eggroll.core.datastructure.threadpool.ErThreadUnpooledExecutor"
+                    pool: str = (
+                        "eggroll.core.datastructure.threadpool.ErThreadUnpooledExecutor"
+                    )
 
                 executor: ExecutorConfig = ExecutorConfig()
 
@@ -460,6 +479,7 @@ class DefaultConfig:
             default: DefaultConfig = DefaultConfig()
             grpc: GrpcConfig = GrpcConfig()
             client: ClientConfig = ClientConfig()
+            fifobroker: FifoBrokerConfig = FifoBrokerConfig()
 
         @dataclass
         class DataConfig:
@@ -491,5 +511,6 @@ class DefaultConfig:
         bootstrap: BootstrapConfig = BootstrapConfig()
         home: str = MISSING
         gc: GCConfig = GCConfig()
+        transfer: TransferConfig = TransferConfig()
 
     eggroll: EggrollConfig = EggrollConfig()
