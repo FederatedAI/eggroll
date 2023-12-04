@@ -18,7 +18,7 @@ import time
 from queue import Queue
 from threading import Lock
 
-from eggroll.core.conf_keys import CoreConfKeys
+from eggroll.config import Config
 
 L = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ class Broker(object):
 
 
 class BrokerClosed(Exception):
-    'Exception raised by eggroll Broker'
+    "Exception raised by eggroll Broker"
     pass
 
 
@@ -73,10 +73,11 @@ class FifoBroker(Broker):
     __broker_seq = 0
 
     # todo:1: make maxsize configurable
-    def __init__(self,
-                 maxsize=CoreConfKeys.EGGROLL_CORE_FIFOBROKER_DEFAULT_SIZE.default_value,
-                 writers=1,
-                 name=f"fifobroker-{time.time()}-{__broker_seq}"):
+    def __init__(self, config: Config, maxsize=None, writers=1, name=None):
+        if maxsize is None:
+            maxsize = config.eggroll.core.fifobroker.default.size
+        if name is None:
+            name = f"fifobroker-{time.time()}-{self.__broker_seq}"
         FifoBroker.__broker_seq += 1
         self.__max_capacity = maxsize
         self.__queue = Queue(maxsize=maxsize)
@@ -95,7 +96,8 @@ class FifoBroker(Broker):
     def signal_write_finish(self):
         if self.is_write_finished():
             raise ValueError(
-                f"finish signaling overflows. initial value: {self.__total_writers}")
+                f"finish signaling overflows. initial value: {self.__total_writers}"
+            )
         else:
             with self.__active_writers_lock:
                 self.__active_writers -= 1
@@ -121,7 +123,7 @@ class FifoBroker(Broker):
 
     def put(self, item, block=True, timeout=None):
         if self.is_write_finished():
-            raise ValueError(f'Broker write finished. id={hex(id(self))}')
+            raise ValueError(f"Broker write finished. id={hex(id(self))}")
 
         self.__queue.put(item=item, block=block, timeout=timeout)
 
@@ -132,10 +134,10 @@ class FifoBroker(Broker):
         return self.__queue.get(block=block, timeout=timeout)
 
     def drain_to(self, target, max_elements=10000):
-        if hasattr(target, 'append'):
-            func = getattr(target, 'append')
-        elif hasattr(target, 'put'):
-            func = getattr(target, 'put')
+        if hasattr(target, "append"):
+            func = getattr(target, "append")
+        elif hasattr(target, "put"):
+            func = getattr(target, "put")
 
         cur_count = 0
         while self.is_read_ready() and cur_count < max_elements:
