@@ -94,7 +94,10 @@ class PutAll(Task):
     @classmethod
     def run(cls, env_options: EnvOptions, job: ErJob, task: ErTask):
         TransferPair(config=env_options.config, transfer_id=task.id).store_broker(
-            env_options.data_dir, task.first_output, False
+            config=env_options.config,
+            data_dir=env_options.data_dir,
+            store_partition=task.first_output,
+            is_shuffle=False,
         ).result()
 
     @classmethod
@@ -126,7 +129,7 @@ class PutAll(Task):
         )
         th.start()
         shuffler = TransferPair(config=rp.config, transfer_id=job_id)
-        fifo_broker = FifoBroker()
+        fifo_broker = FifoBroker(config=rp.config)
         bb = BatchBroker(config=rp.config, broker=fifo_broker)
         scatter_future = shuffler.scatter(
             rp.config, fifo_broker, partitioner, rp.get_store()

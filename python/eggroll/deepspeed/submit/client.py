@@ -8,7 +8,6 @@ from contextlib import ExitStack
 from multiprocessing.dummy import Pool as ThreadPool
 from typing import Dict, List, Optional
 
-from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import SessionStatus
 from eggroll.core.proto import containers_pb2, deepspeed_pb2, deepspeed_download_pb2, meta_pb2, \
     extend_pb2_grpc, extend_pb2
@@ -16,7 +15,7 @@ from .commands import JobCommands
 from ..client import BaseClient
 from ..store.client import destroy
 from ...core.command.commands import SessionCommands
-from eggroll.config import load_config
+from eggroll.config import load_config, ConfigKey
 
 
 class ContentType(enum.Enum):
@@ -74,7 +73,7 @@ class DeepspeedJob:
         if not name:
             name = f"session_{self._session_id}"
         options = options.copy()
-        options[SessionConfKeys.CONFKEY_SESSION_ID] = self._session_id
+        options[ConfigKey.eggroll.session.id] = self._session_id
         environment_variables = {} if environment_variables is None else environment_variables
 
         files = {} if files is None else files

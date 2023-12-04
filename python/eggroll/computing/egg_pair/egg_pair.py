@@ -23,11 +23,10 @@ import threading
 
 import grpc
 
-from eggroll.config import Config
+from eggroll.config import Config, ConfigKey
 from eggroll.core.client import NodeManagerClient
 from eggroll.core.command.command_router import CommandRouter
 from eggroll.core.command.command_service import CommandServicer
-from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import ProcessorTypes, ProcessorStatus
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.grpc.factory import GrpcChannelFactory
@@ -194,7 +193,7 @@ def serve(
 
         if not session_id:
             raise ValueError("session id is missing")
-        options = {SessionConfKeys.CONFKEY_SESSION_ID: session_id}
+        options = {ConfigKey.eggroll.session.id: session_id}
         myself = ErProcessor(
             id=processor_id,
             server_node_id=server_node_id,

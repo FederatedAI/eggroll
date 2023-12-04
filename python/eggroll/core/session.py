@@ -19,7 +19,6 @@ from copy import deepcopy
 from eggroll.core.client import ClusterManagerClient
 from eggroll.core.client import CommandClient
 from eggroll.core.command.command_model import CommandURI
-from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import SessionStatus, ProcessorTypes
 from eggroll.core.datastructure.threadpool import ErThreadUnpooledExecutor
 from eggroll.core.meta_model import ErJob, ErTask
@@ -27,7 +26,7 @@ from eggroll.core.meta_model import ErSessionMeta, ErPartition, ErStore
 from eggroll.core.utils import generate_task_id, calculate_rank_in_node
 from eggroll.core.utils import get_self_ip, time_now, DEFAULT_DATETIME_FORMAT
 from eggroll.core.utils import get_stack
-from eggroll.config import Config
+from eggroll.config import Config, ConfigKey
 
 L = logging.getLogger(__name__)
 
@@ -72,7 +71,7 @@ class ErSession(object):
             os.environ["EGGROLL_DEBUG"] = "0"
 
         self.__options = options.copy()
-        self.__options[SessionConfKeys.CONFKEY_SESSION_ID] = self.__session_id
+        self.__options[ConfigKey.eggroll.session.id] = self.__session_id
         self._cluster_manager_client = ClusterManagerClient(config=config)
         session_meta = ErSessionMeta(
             id=self.__session_id,
