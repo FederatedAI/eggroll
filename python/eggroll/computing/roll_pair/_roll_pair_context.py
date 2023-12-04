@@ -68,6 +68,10 @@ class RollPairContext(object):
     #     rp.with_stores(func=_bc_eggs, description="broadcast eggs")
 
     @property
+    def config(self):
+        return self._session.config
+
+    @property
     def session(self):
         return self._session
 

@@ -184,6 +184,49 @@ class DefaultConfig:
         @dataclass
         class RollSiteConfig:
             @dataclass
+            class PullConfig:
+                @dataclass
+                class MaxConfig:
+                    retry: int = 720
+
+                @dataclass
+                class IntervalConfig:
+                    sec: int = 600
+
+                @dataclass
+                class HeaderConfig:
+                    @dataclass
+                    class TimeoutConfig:
+                        sec: int = 720 * 600
+
+                    @dataclass
+                    class IntervalConfig:
+                        sec: int = 300
+
+                    interval: IntervalConfig = IntervalConfig()
+                    timeout: TimeoutConfig = TimeoutConfig()
+
+                header: HeaderConfig = HeaderConfig()
+                interval: IntervalConfig = IntervalConfig()
+                max: MaxConfig = MaxConfig()
+
+            @dataclass
+            class ReceiveConfig:
+                @dataclass
+                class ExecutorConfig:
+                    @dataclass
+                    class PoolConfig:
+                        @dataclass
+                        class MaxConfig:
+                            size: int = 5000
+
+                        max: MaxConfig = MaxConfig()
+
+                    pool: PoolConfig = PoolConfig()
+
+                executor: ExecutorConfig = ExecutorConfig()
+
+            @dataclass
             class PartyConfig:
                 id: int = MISSING
 
@@ -204,30 +247,53 @@ class DefaultConfig:
             @dataclass
             class PushConfig:
                 @dataclass
+                class StreamConfig:
+                    @dataclass
+                    class TimeoutConfig:
+                        sec: int = 300
+
+                    timeout: TimeoutConfig = TimeoutConfig()
+
+                @dataclass
+                class OverallConfig:
+                    @dataclass
+                    class TimeoutConfig:
+                        sec: int = 600
+
+                    timeout: TimeoutConfig = TimeoutConfig()
+
+                @dataclass
+                class SessionConfig:
+                    enabled: bool = False
+
+                @dataclass
                 class MaxConfig:
-                    retry: int = MISSING
+                    retry: int = 3
 
                 @dataclass
                 class LongConfig:
-                    retry: int = MISSING
+                    retry: int = 2
 
                 @dataclass
                 class BatchesConfig:
                     @dataclass
                     class PerStreamConfig:
-                        stream: int = MISSING
+                        stream: int = 10
 
                     per: PerStreamConfig = PerStreamConfig()
 
                 max: MaxConfig = MaxConfig()
                 long: LongConfig = LongConfig()
                 batches: BatchesConfig = BatchesConfig()
+                session: SessionConfig = SessionConfig()
+                overall: OverallConfig = OverallConfig()
+                stream: StreamConfig = StreamConfig()
 
             @dataclass
             class AdapterConfig:
                 @dataclass
                 class SendbufConfig:
-                    size: int = MISSING
+                    size: int = 100_000
 
                 sendbuf: SendbufConfig = SendbufConfig()
 
@@ -239,6 +305,8 @@ class DefaultConfig:
             jvm: JvmConfig = JvmConfig()
             push: PushConfig = PushConfig()
             adapter: AdapterConfig = AdapterConfig()
+            receive: ReceiveConfig = ReceiveConfig()
+            pull: PullConfig = PullConfig()
 
         @dataclass
         class ZookeeperConfig:
@@ -307,10 +375,19 @@ class DefaultConfig:
             @dataclass
             class FifoBrokerConfig:
                 @dataclass
+                class IterConfig:
+                    @dataclass
+                    class TimeoutConfig:
+                        sec: int = 180
+
+                    timeout: TimeoutConfig = TimeoutConfig()
+
+                @dataclass
                 class DefaultConfig:
                     size: int = 16
 
                 default: DefaultConfig = DefaultConfig()
+                iter: IterConfig = IterConfig()
 
             # command.executor.pool.max.size
             @dataclass

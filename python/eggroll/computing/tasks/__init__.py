@@ -17,6 +17,10 @@ from .impl import (
     MapReducePartitionsWithIndex,
     WithStores,
     Aggregate,
+    PullGetHeader,
+    PullGetPartitionStatus,
+    PullClearStatus,
+    PutBatch,
     Task,
     EnvOptions,
 )
@@ -30,18 +34,22 @@ L = logging.getLogger(__name__)
 tracer = get_tracer(__name__)
 
 task_mapping: typing.Dict[str, Task] = {
-    "get": Get,
-    "put": Put,
-    "delete": Delete,
-    "getAll": GetAll,
-    "putAll": PutAll,
-    "count": Count,
-    "destroy": Destroy,
-    "reduce": Reduce,
-    # "aggregate": Aggregate,
-    "mapReducePartitionsWithIndex": MapReducePartitionsWithIndex,
-    "binarySortedMapPartitionsWithIndex": BinarySortedMapPartitionsWithIndex,
-    "withStores": WithStores,
+    consts.GET: Get,
+    consts.PUT: Put,
+    consts.DELETE: Delete,
+    consts.GET_ALL: GetAll,
+    consts.PUT_ALL: PutAll,
+    consts.COUNT: Count,
+    consts.DESTROY: Destroy,
+    consts.REDUCE: Reduce,
+    # consts.AGGREGATE: Aggregate,
+    consts.MAP_REDUCE_PARTITIONS_WITH_INDEX: MapReducePartitionsWithIndex,
+    consts.BINARY_SORTED_MAP_PARTITIONS_WITH_INDEX: BinarySortedMapPartitionsWithIndex,
+    consts.WITH_STORES: WithStores,
+    consts.PULL_GET_HEADER: PullGetHeader,
+    consts.PULL_GET_PARTITION_STATUS: PullGetPartitionStatus,
+    consts.PULL_CLEAR_STATUS: PullClearStatus,
+    consts.PUT_BATCH: PutBatch,
 }
 
 
