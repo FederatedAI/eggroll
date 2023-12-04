@@ -43,6 +43,14 @@ class ErEndpoint(RpcMessage):
         self._host = host
         self._port = port
 
+    @property
+    def host(self):
+        return self._host
+
+    @property
+    def port(self):
+        return self._port
+
     def endpoint_str(self):
         return f"{self._host}:{self._port}"
 
@@ -143,7 +151,10 @@ class ErServerCluster(RpcMessage):
 
     def to_proto(self):
         return meta_pb2.ServerCluster(
-            id=self._id, name=self._name, serverNodes=_elements_to_proto(self._server_nodes), tag=self._tag
+            id=self._id,
+            name=self._name,
+            serverNodes=_elements_to_proto(self._server_nodes),
+            tag=self._tag,
         )
 
     @staticmethod
@@ -151,7 +162,9 @@ class ErServerCluster(RpcMessage):
         return ErServerCluster(
             id=pb_message.id,
             name=pb_message.name,
-            server_nodes=_map_and_listify(ErServerNode.from_proto, pb_message.serverNodes),
+            server_nodes=_map_and_listify(
+                ErServerNode.from_proto, pb_message.serverNodes
+            ),
             tag=pb_message.tag,
         )
 
@@ -194,7 +207,9 @@ class ErProcessor(RpcMessage):
         self._processor_type = processor_type
         self._status = status
         self._command_endpoint = command_endpoint
-        self._transfer_endpoint = transfer_endpoint if transfer_endpoint else command_endpoint
+        self._transfer_endpoint = (
+            transfer_endpoint if transfer_endpoint else command_endpoint
+        )
         self._pid = pid
         self._options = options
         self._tag = tag
@@ -283,7 +298,10 @@ class ErProcessorBatch(RpcMessage):
 
     def to_proto(self):
         return meta_pb2.ProcessorBatch(
-            id=self._id, name=self._name, processors=_elements_to_proto(self._processors), tag=self._tag
+            id=self._id,
+            name=self._name,
+            processors=_elements_to_proto(self._processors),
+            tag=self._tag,
         )
 
     def to_proto_string(self):
@@ -353,14 +371,18 @@ class ErFunctor(RpcMessage):
         return cloudpickle.loads(self._body)
 
     def to_proto(self):
-        return meta_pb2.Functor(name=self._name, body=self._body, options=_stringify_dict(self._options))
+        return meta_pb2.Functor(
+            name=self._name, body=self._body, options=_stringify_dict(self._options)
+        )
 
     def to_proto_string(self):
         return self.to_proto().SerializeToString()
 
     @staticmethod
     def from_proto(pb_message):
-        return ErFunctor(name=pb_message.name, body=pb_message.body, options=dict(pb_message.options))
+        return ErFunctor(
+            name=pb_message.name, body=pb_message.body, options=dict(pb_message.options)
+        )
 
     def __repr__(self):
         return (
@@ -403,7 +425,10 @@ class ErPair(RpcMessage):
 
     def __repr__(self):
         return (
-            f"<ErPair(" f"key={_repr_bytes(self._key)}, " f"value={_repr_bytes(self._value)}) " f"at {hex(id(self))}>"
+            f"<ErPair("
+            f"key={_repr_bytes(self._key)}, "
+            f"value={_repr_bytes(self._value)}) "
+            f"at {hex(id(self))}>"
         )
 
 
@@ -545,7 +570,13 @@ class ErStoreLocator(RpcMessage):
 
 
 class ErPartition(RpcMessage):
-    def __init__(self, id: int, store_locator: ErStoreLocator, processor: ErProcessor = None, rank_in_node=-1):
+    def __init__(
+        self,
+        id: int,
+        store_locator: ErStoreLocator,
+        processor: ErProcessor = None,
+        rank_in_node=-1,
+    ):
         self._id = id
         self._store_locator = store_locator
         self._processor = processor
@@ -599,7 +630,9 @@ class ErPartition(RpcMessage):
     def to_proto(self):
         return meta_pb2.Partition(
             id=self._id,
-            storeLocator=self._store_locator.to_proto() if self._store_locator else None,
+            storeLocator=self._store_locator.to_proto()
+            if self._store_locator
+            else None,
             processor=self._processor.to_proto() if self._processor else None,
             rankInNode=self._rank_in_node,
         )
@@ -617,7 +650,9 @@ class ErPartition(RpcMessage):
         )
 
     def to_path(self, delim=DEFAULT_PATH_DELIM):
-        return DEFAULT_PATH_DELIM.join([self._store_locator.to_path(delim=delim), self._id])
+        return DEFAULT_PATH_DELIM.join(
+            [self._store_locator.to_path(delim=delim), self._id]
+        )
 
     def __repr__(self):
         return (
@@ -631,7 +666,12 @@ class ErPartition(RpcMessage):
 
 
 class ErStore(RpcMessage):
-    def __init__(self, store_locator: ErStoreLocator, partitions: List[ErPartition] = None, options: dict = None):
+    def __init__(
+        self,
+        store_locator: ErStoreLocator,
+        partitions: List[ErPartition] = None,
+        options: dict = None,
+    ):
         if partitions is None:
             partitions = []
         if options is None:
@@ -654,9 +694,13 @@ class ErStore(RpcMessage):
 
     def get_partition(self, partition_id: int) -> ErPartition:
         if len(self._partitions) <= 0:
-            raise ValueError(f"no partitions in store: {self._store_locator}, populate partitions first")
+            raise ValueError(
+                f"no partitions in store: {self._store_locator}, populate partitions first"
+            )
         if partition_id < 0 or partition_id >= len(self._partitions):
-            raise ValueError(f"partition_id out of range: {partition_id}, total partitions: {len(self._partitions)}")
+            raise ValueError(
+                f"partition_id out of range: {partition_id}, total partitions: {len(self._partitions)}"
+            )
         return self._partitions[partition_id]
 
     @property
@@ -701,9 +745,16 @@ class ErStore(RpcMessage):
     def fork(self, postfix="", delim=DEFAULT_FORK_DELIM):
         final_store_locator = self._store_locator.fork(postfix, delim)
         final_partitions = map(
-            lambda p: ErPartition(id=-1, store_locator=final_store_locator, processor=p._processor), self._partitions
+            lambda p: ErPartition(
+                id=-1, store_locator=final_store_locator, processor=p._processor
+            ),
+            self._partitions,
         )
-        return ErStore(store_locator=final_store_locator, partitions=list(final_partitions), options=self._options)
+        return ErStore(
+            store_locator=final_store_locator,
+            partitions=list(final_partitions),
+            options=self._options,
+        )
 
     def __str__(self):
         return (
@@ -998,7 +1049,9 @@ class ErJob(RpcMessage):
         from .utils import generate_task_id
 
         input_total_partitions = self.first_input.num_partitions
-        output_total_partitions = self.first_output.num_partitions if self.has_first_output else 0
+        output_total_partitions = (
+            self.first_output.num_partitions if self.has_first_output else 0
+        )
         total_partitions = max(input_total_partitions, output_total_partitions)
         tasks = []
         for i in range(total_partitions):
@@ -1014,13 +1067,19 @@ class ErJob(RpcMessage):
                     if target_endpoint is None:
                         target_endpoint = endpoint
                     elif target_endpoint != endpoint:
-                        raise ValueError(f"store {job_io.store} partition {i} has different processor endpoint")
+                        raise ValueError(
+                            f"store {job_io.store} partition {i} has different processor endpoint"
+                        )
                 return target_endpoint
 
             if i < input_total_partitions:
-                task_endpoint = _fill_partitions(self._inputs, task_input_partitions, task_endpoint)
+                task_endpoint = _fill_partitions(
+                    self._inputs, task_input_partitions, task_endpoint
+                )
             if i < output_total_partitions:
-                task_endpoint = _fill_partitions(self._outputs, task_output_partitions, task_endpoint)
+                task_endpoint = _fill_partitions(
+                    self._outputs, task_output_partitions, task_endpoint
+                )
             if not task_endpoint:
                 raise ValueError(f"task endpoint is null for task {i}")
 
@@ -1149,7 +1208,13 @@ class ErTask(RpcMessage):
 
 class ErSessionMeta(RpcMessage):
     def __init__(
-        self, id="", name: str = "", status: str = "", tag: str = "", processors: list = None, options: dict = None
+        self,
+        id="",
+        name: str = "",
+        status: str = "",
+        tag: str = "",
+        processors: list = None,
+        options: dict = None,
     ):
         if processors is None:
             processors = []
