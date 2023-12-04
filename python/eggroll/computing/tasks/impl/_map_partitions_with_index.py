@@ -166,6 +166,7 @@ class MapReducePartitionsWithIndex(Task):
             task_output = task.first_output
             # shuffle gather: source partition broker -> task output store
             store_broker_future = shuffler.store_broker(
+                config=env_options.config,
                 data_dir=env_options.data_dir,
                 store_partition=task_output,
                 is_shuffle=True,
@@ -174,7 +175,9 @@ class MapReducePartitionsWithIndex(Task):
             )
         if task_has_input:
             with contextlib.ExitStack() as stack:
-                shuffle_write_broker = stack.enter_context(FifoBroker())
+                shuffle_write_broker = stack.enter_context(
+                    FifoBroker(config=env_options.config)
+                )
 
                 # shuffle scatter: shuffle_write_broker -> target partition broker
                 output_partitioner = (
