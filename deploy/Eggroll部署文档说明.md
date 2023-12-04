@@ -142,29 +142,42 @@ Eggroll的bin目录中附带启动脚本bin/eggroll.sh使用说明：
 source ${EGGROLL_HOME}/init_env.sh       --${EGGROLL_HOME} means the absolute path of eggroll
 sh bin/eggroll.sh $1 $2		
 <--
-	$1：需要执行操作的服务名称，例如clustermanager，nodemanage，dashboard，all(表示所有服务)；
-	$2：需要执行的操作，例如start(启动)，status（查看状态），stop（关闭），restart（重启）
+	$1:需要执行操作的服务名称,例如clustermanager,nodemanage,dashboard,all(表示所有服务组件);
+	$2:需要执行的操作, start( 启动 ), status(查看状态), stop(关闭), restart(重启), usage(查看使用方法说明)
 -->
+<--
+    注意事项:
+    stop在停止服务的时候会执行默认100次正常终止服务的操作, 如果在100次后仍无法正常终止进程, 会强制终止进程.
+    restart后面可以跟时间参数, 表示先停止服务后再启动服务前等待时间, 默认为5秒.
+    例如: sh bin/eggroll.sh dashboard restart 10
+-->
+
 ```
 
 使用例子：
 
 ```shell
 source ${EGGROLL_HOME}/init_env.sh       --${EGGROLL_HOME} means the absolute path of eggroll
+
+<--使用usage 查看使用方法服务-->
+sh bin/eggroll.sh usage
+
 <--启动所有服务-->
 sh bin/eggroll.sh all start
 
 <--查看clustermanager服务状态-->
 sh bin/eggroll.sh clustermanager status
 
-<--重启clustermanager服务-->
-sh bin/eggroll.sh dashboard restart
+<--重启dashboard服务-->
+sh bin/eggroll.sh dashboard restart [time]
 
 <--关闭nodemanager服务-->
 sh bin/eggroll.sh nodemanager stop
 
 
-将各节点对应的服务启动成功后，部署完成，进入测试步骤。
+将各节点对应的服务启动成功后, 部署完成, 进入测试步骤.
+
+```
 
 
 
