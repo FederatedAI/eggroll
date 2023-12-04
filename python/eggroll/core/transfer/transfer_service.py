@@ -85,7 +85,7 @@ class TransferService(object):
         retry = 0
         while True:
             report_interval = 60
-            L.trace(
+            L.debug(
                 f"waiting broker tag={key}, retry={retry}, report_interval={report_interval}"
             )
             event = None
@@ -96,16 +96,16 @@ class TransferService(object):
             TransferService.event_buffer[key].wait(report_interval)
             with TransferService.mutex:
                 if TransferService.event_buffer[key].is_set():
-                    L.trace(f"event is set. tag={key}")
+                    L.debug(f"event is set. tag={key}")
                     result = TransferService.data_buffer.get(key)
                 else:
-                    L.trace(f"event is not set. tag={key}")
+                    L.debug(f"event is not set. tag={key}")
                 if result is not None:
                     break
                 else:
-                    L.trace(f"result is None. tag={key}")
+                    L.debug(f"result is None. tag={key}")
             retry += 1
-            if retry > 5:
+            if retry > 1:
                 raise RuntimeError(
                     f"cannot get broker={key}, result={result}, data_buffer={TransferService.data_buffer}, event_buffer={TransferService.event_buffer}"
                 )

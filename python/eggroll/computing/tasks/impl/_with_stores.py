@@ -25,7 +25,7 @@ class WithStores(Task):
     @classmethod
     def run(cls, env_options: EnvOptions, job: ErJob, task: ErTask):
         f = job.first_functor.func
-        value = f(env_options.data_dir, task)
+        value = f(env_options.config, env_options.data_dir, task)
         return WithStoresResponse(id=task.first_input.id, value=value)
 
     @classmethod
