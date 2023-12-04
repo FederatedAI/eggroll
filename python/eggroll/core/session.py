@@ -32,7 +32,9 @@ from eggroll.config import Config
 L = logging.getLogger(__name__)
 
 
-def session_init(session_id, options: dict = None, config=None, config_properties_file=None) -> "ErSession":
+def session_init(
+    session_id, options: dict = None, config=None, config_properties_file=None
+) -> "ErSession":
     if config is None:
         config = Config().load_default()
         if config_properties_file:
@@ -47,7 +49,15 @@ def session_init(session_id, options: dict = None, config=None, config_propertie
 
 
 class ErSession(object):
-    def __init__(self, config: Config, session_id=None, name="", tag="", processors: list = None, options: dict = None):
+    def __init__(
+        self,
+        config: Config,
+        session_id=None,
+        name="",
+        tag="",
+        processors: list = None,
+        options: dict = None,
+    ):
         self._config = config
         if processors is None:
             processors = []
@@ -65,7 +75,12 @@ class ErSession(object):
         self.__options[SessionConfKeys.CONFKEY_SESSION_ID] = self.__session_id
         self._cluster_manager_client = ClusterManagerClient(config=config)
         session_meta = ErSessionMeta(
-            id=self.__session_id, name=name, status=SessionStatus.NEW, tag=tag, processors=processors, options=options
+            id=self.__session_id,
+            name=name,
+            status=SessionStatus.NEW,
+            tag=tag,
+            processors=processors,
+            options=options,
         )
         self.executor = ErThreadUnpooledExecutor(
             max_workers=config.eggroll.core.client.command.executor.pool.max.size,
@@ -81,9 +96,13 @@ class ErSession(object):
         while True:
             try:
                 if not processors:
-                    self.__session_meta = self._cluster_manager_client.get_or_create_session(session_meta)
+                    self.__session_meta = (
+                        self._cluster_manager_client.get_or_create_session(session_meta)
+                    )
                 else:
-                    self.__session_meta = self._cluster_manager_client.register_session(session_meta)
+                    self.__session_meta = self._cluster_manager_client.register_session(
+                        session_meta
+                    )
                 break
             except Exception as e:
                 print(e)
@@ -95,9 +114,12 @@ class ErSession(object):
         self.__exit_tasks = list()
         self.__processors = self.__session_meta._processors
 
-        L.info(f"session init finished: {self.__session_id}, details: {self.__session_meta}")
+        L.info(
+            f"session init finished: {self.__session_id}, details: {self.__session_meta}"
+        )
         self.stopped = (
-                self.__session_meta._status == SessionStatus.CLOSED or self.__session_meta._status == SessionStatus.KILLED
+            self.__session_meta._status == SessionStatus.CLOSED
+            or self.__session_meta._status == SessionStatus.KILLED
         )
         self._rolls = list()
         self._eggs = dict()
@@ -112,7 +134,13 @@ class ErSession(object):
             elif processor_type == ProcessorTypes.ROLL_PAIR_MASTER:
                 self._rolls.append(processor)
             else:
-                raise ValueError(f"processor type {processor_type} not supported in roll pair")
+                raise ValueError(
+                    f"processor type {processor_type} not supported in roll pair"
+                )
+
+    @property
+    def eggs(self):
+        return self._eggs
 
     @property
     def config(self):
@@ -125,7 +153,9 @@ class ErSession(object):
     def get_rank_in_node(self, partition_id, server_node_id):
         processor_count_of_node = len(self._eggs[server_node_id])
         cluster_node_count = len(self._eggs)
-        rank_in_node = calculate_rank_in_node(partition_id, cluster_node_count, processor_count_of_node)
+        rank_in_node = calculate_rank_in_node(
+            partition_id, cluster_node_count, processor_count_of_node
+        )
 
         return rank_in_node
 
@@ -133,7 +163,9 @@ class ErSession(object):
         server_node_id = partition.processor._server_node_id
         rank_in_node = partition._rank_in_node
         if partition._rank_in_node is None or rank_in_node < 0:
-            rank_in_node = self.get_rank_in_node(partition_id=partition._id, server_node_id=server_node_id)
+            rank_in_node = self.get_rank_in_node(
+                partition_id=partition._id, server_node_id=server_node_id
+            )
 
         result = self.route_to_egg_by_rank(server_node_id, rank_in_node)
 
@@ -142,7 +174,9 @@ class ErSession(object):
     def route_to_egg_by_rank(self, server_node_id, rank_in_node):
         result = self._eggs[server_node_id][rank_in_node]
         if not result._command_endpoint._host or result._command_endpoint._port <= 0:
-            raise ValueError(f"error routing to egg: {result} in session: {self.__session_id}")
+            raise ValueError(
+                f"error routing to egg: {result} in session: {self.__session_id}"
+            )
 
         return result
 
@@ -158,45 +192,59 @@ class ErSession(object):
                 rank_in_node=rank_in_node,
             )
             populated_partitions.append(pp)
-        return ErStore(store_locator=store.store_locator, partitions=populated_partitions, options=store._options)
+        return ErStore(
+            store_locator=store.store_locator,
+            partitions=populated_partitions,
+            options=store._options,
+        )
 
     def get_or_create_store(self, store: ErStore):
         store = self._cluster_manager_client.get_or_create_store(store)
         return self.populate_processor(store)
 
     def submit_job(
-            self,
-            job: ErJob,
-            output_key_serdes_type,
-            output_value_serdes_type,
-            output_types: list = None,
-            command_uri: CommandURI = None,
-            create_output_if_missing=True,
+        self,
+        job: ErJob,
+        output_key_serdes_type,
+        output_value_serdes_type,
+        output_types: list = None,
+        command_uri: CommandURI = None,
+        create_output_if_missing=True,
     ):
         if not output_types:
             output_types = [ErTask]
         final_job = (
-            self.populate_output_store(job, output_key_serdes_type, output_value_serdes_type)
+            self.populate_output_store(
+                job, output_key_serdes_type, output_value_serdes_type
+            )
             if create_output_if_missing
             else job
         )
         tasks = self._decompose_job(final_job)
         command_client = CommandClient(config=self._config)
-        return command_client.async_call(args=tasks, output_types=output_types, command_uri=command_uri)
+        return command_client.async_call(
+            args=tasks, output_types=output_types, command_uri=command_uri
+        )
 
-    def wait_until_job_finished(self, task_futures: list, timeout=None, return_when=FIRST_EXCEPTION):
+    def wait_until_job_finished(
+        self, task_futures: list, timeout=None, return_when=FIRST_EXCEPTION
+    ):
         return wait(task_futures, timeout=timeout, return_when=return_when).done
 
     def _decompose_job(self, job: ErJob):
         input_total_partitions = job._inputs[0]._store_locator._total_partitions
-        output_total_partitions = 0 if not job._outputs else job._outputs[0]._store_locator._total_partitions
+        output_total_partitions = (
+            0 if not job._outputs else job._outputs[0]._store_locator._total_partitions
+        )
 
         larger_total_partitions = max(input_total_partitions, output_total_partitions)
 
         populated_input_partitions = self.populate_processor(job._inputs[0])._partitions
 
         if output_total_partitions > 0:
-            populated_output_partitions = self.populate_processor(job._outputs[0])._partitions
+            populated_output_partitions = self.populate_processor(
+                job._outputs[0]
+            )._partitions
         else:
             populated_output_partitions = list()
 
@@ -210,7 +258,11 @@ class ErSession(object):
                 input_server_node_id = input_processor._server_node_id
                 for input_store in job._inputs:
                     input_partitions.append(
-                        ErPartition(id=i, store_locator=input_store._store_locator, processor=input_processor)
+                        ErPartition(
+                            id=i,
+                            store_locator=input_store._store_locator,
+                            processor=input_processor,
+                        )
                     )
             else:
                 input_processor = None
@@ -221,7 +273,11 @@ class ErSession(object):
                 output_server_node_id = output_processor._server_node_id
                 for output_store in job._outputs:
                     output_partitions.append(
-                        ErPartition(id=i, store_locator=output_store._store_locator, processor=output_processor)
+                        ErPartition(
+                            id=i,
+                            store_locator=output_store._store_locator,
+                            processor=output_processor,
+                        )
                     )
             else:
                 output_processor = None
@@ -246,7 +302,9 @@ class ErSession(object):
 
         return result
 
-    def populate_output_store(self, job: ErJob, output_key_serdes_type, output_value_serdes_type):
+    def populate_output_store(
+        self, job: ErJob, output_key_serdes_type, output_value_serdes_type
+    ):
         is_output_blank = not job._outputs or not job.first_output
         is_output_not_populated = is_output_blank or not job.first_output._partitions
         if is_output_not_populated:
@@ -262,13 +320,20 @@ class ErSession(object):
                 if not final_output_proposal._partitions:
                     final_output_proposal._partitions = job._inputs[0]._partitions
             final_output_proposal._store_locator._key_serdes = output_key_serdes_type
-            final_output_proposal._store_locator._value_serdes = output_value_serdes_type
+            final_output_proposal._store_locator._value_serdes = (
+                output_value_serdes_type
+            )
         else:
             final_output_proposal = job._outputs[0]
 
-        final_output = self.populate_processor(self._cluster_manager_client.get_or_create_store(final_output_proposal))
+        final_output = self.populate_processor(
+            self._cluster_manager_client.get_or_create_store(final_output_proposal)
+        )
 
-        if final_output._store_locator._total_partitions != final_output_proposal._store_locator._total_partitions:
+        if (
+            final_output._store_locator._total_partitions
+            != final_output_proposal._store_locator._total_partitions
+        ):
             raise ValueError(
                 f"partition count of actual output and proposed output does not match. "
                 f"actual={final_output}, proposed={final_output_proposal}"
