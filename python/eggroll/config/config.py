@@ -1,8 +1,10 @@
+import configparser
 import os
 import pprint
 import typing
-import configparser
+
 import omegaconf
+
 from eggroll.config.defaults import DefaultConfig
 
 
@@ -147,19 +149,3 @@ def load_config(properties_file):
             config.load_properties(path)
     config.load_env()
     return config
-
-
-if __name__ == "__main__":
-    os.environ["eggroll.data.dir"] = "bb"
-    os.environ["eggroll.logs.dir"] = "cc"
-    config = Config()
-    config.load_default()
-    config.load_env()
-
-    print(
-        config.get_option(
-            {"eggroll.core2": 1},
-            ConfigKey.eggroll.core.grpc.server.channel.max.inbound.message.size,
-        )
-    )
-    # config.load_properties("/Users/sage/MergeFATE/eggroll/conf/eggroll.properties")
