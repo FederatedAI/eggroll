@@ -9,18 +9,10 @@ from contextlib import ExitStack
 from multiprocessing.pool import ThreadPool
 from typing import Dict, List, Optional
 
-from eggroll.config import ConfigKey, Config
-from eggroll.core.command.command_status import SessionStatus
-from eggroll.core.command.command_uri import SessionCommands
-from eggroll.core.meta_model import ErEndpoint
-from eggroll.core.proto import (
-    containers_pb2,
-    deepspeed_pb2,
-    extend_pb2,
-    extend_pb2_grpc,
-    deepspeed_download_pb2,
-    meta_pb2,
-)
+from ..core.command.commands import SessionCommands
+from ..core.conf_keys import SessionConfKeys
+from ..core.constants import SessionStatus
+from ..core.proto import containers_pb2, deepspeed_pb2, extend_pb2, extend_pb2_grpc, deepspeed_download_pb2, meta_pb2
 from ..submit.base import BaseClient
 from ..submit.commands import JobCommands
 from ..utils.base_utils import BaseEggrollAPI
@@ -43,26 +35,23 @@ class ContentType(enum.Enum):
 
 
 class Task(BaseEggrollAPI):
-    def _get_client(self, config: Config = None, host=None, port=None):
-        if config is None:
-            config = self.config
-        if host is None:
-            host = self.host
-        if port is None:
-            port = self.port
-        return BaseClient(config, host, port)
+    def _get_client(self, host=None, port=None):
+        if not (host and port):
+            return BaseClient(self.host, self.port)
+        else:
+            return BaseClient(host, port)
 
     def submit(
-        self,
-        name="",
-        world_size=1,
-        command_arguments: Optional[List[str]] = None,
-        environment_variables: Optional[Dict[str, str]] = None,
-        files: Optional[Dict[str, str]] = None,
-        zipped_files: Optional[Dict[str, str]] = None,
-        resource_options: Optional[Dict] = None,
-        options: Optional[Dict] = None,
-        session_id=None,
+            self,
+            name="",
+            world_size=1,
+            command_arguments: Optional[List[str]] = None,
+            environment_variables: Optional[Dict[str, str]] = None,
+            files: Optional[Dict[str, str]] = None,
+            zipped_files: Optional[Dict[str, str]] = None,
+            resource_options: Optional[Dict] = None,
+            options: Optional[Dict] = None,
+            session_id=None
     ):
         if session_id is None:
             session_id = f"deepspeed_session_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f')}"
@@ -73,23 +62,15 @@ class Task(BaseEggrollAPI):
         if not name:
             name = f"session_{session_id}"
         options = options.copy()
-        options[ConfigKey.eggroll.session.id] = session_id
-        environment_variables = (
-            {} if environment_variables is None else environment_variables
-        )
+        options[SessionConfKeys.CONFKEY_SESSION_ID] = session_id
+        environment_variables = {} if environment_variables is None else environment_variables
 
         files = {} if files is None else files
         zipped_files = {} if zipped_files is None else zipped_files
 
         with ExitStack() as stack:
-            files = {
-                name: stack.enter_context(open(path, "rb")).read()
-                for name, path in files.items()
-            }
-            zipped_files = {
-                name: stack.enter_context(open(path, "rb")).read()
-                for name, path in zipped_files.items()
-            }
+            files = {name: stack.enter_context(open(path, "rb")).read() for name, path in files.items()}
+            zipped_files = {name: stack.enter_context(open(path, "rb")).read() for name, path in zipped_files.items()}
 
         submit_request = deepspeed_pb2.SubmitJobRequest(
             session_id=session_id,
@@ -97,31 +78,23 @@ class Task(BaseEggrollAPI):
             job_type="deepspeed",
             world_size=world_size,
             command_arguments=command_arguments,
-            environment_variables={
-                str(k): str(v) for k, v in environment_variables.items()
-            },
+            environment_variables={str(k): str(v) for k, v in environment_variables.items()},
             files=files,
             zipped_files=zipped_files,
             resource_options=deepspeed_pb2.ResourceOptions(
                 timeout_seconds=int(resource_options.get("timeout_seconds", 300)),
-                resource_exhausted_strategy=resource_options.get(
-                    "resource_exhausted_strategy", "waiting"
-                ),
+                resource_exhausted_strategy=resource_options.get("resource_exhausted_strategy", "waiting"),
             ),
             options=options,
         )
 
         submit_response = self._get_client().do_sync_request(
-            submit_request,
-            output_type=deepspeed_pb2.SubmitJobResponse,
-            command_uri=JobCommands.SUBMIT_JOB,
+            submit_request, output_type=deepspeed_pb2.SubmitJobResponse, command_uri=JobCommands.SUBMIT_JOB
         )
         return submit_response
 
     def query_status(self, session_id):
-        query_job_status_request = deepspeed_pb2.QueryJobStatusRequest(
-            session_id=session_id
-        )
+        query_job_status_request = deepspeed_pb2.QueryJobStatusRequest(session_id=session_id)
         response = self._get_client().do_sync_request(
             query_job_status_request,
             output_type=deepspeed_pb2.QueryJobStatusResponse,
@@ -134,9 +107,7 @@ class Task(BaseEggrollAPI):
     def query_job(self, session_id):
         query_job_request = deepspeed_pb2.QueryJobRequest(session_id=session_id)
         query_response = self._get_client().do_sync_request(
-            query_job_request,
-            output_type=deepspeed_pb2.QueryJobResponse,
-            command_uri=JobCommands.QUERY_JOB,
+            query_job_request, output_type=deepspeed_pb2.QueryJobResponse, command_uri=JobCommands.QUERY_JOB
         )
         return query_response
 
@@ -146,12 +117,10 @@ class Task(BaseEggrollAPI):
             return status
         kill_job_request = deepspeed_pb2.KillJobRequest(session_id=session_id)
         response = self._get_client().do_sync_request(
-            kill_job_request,
-            output_type=deepspeed_pb2.KillJobResponse,
-            command_uri=JobCommands.KILL_JOB,
+            kill_job_request, output_type=deepspeed_pb2.KillJobResponse, command_uri=JobCommands.KILL_JOB
         )
         status = self.query_status(session_id=session_id)
-        response = {"session_id": response.session_id, "status": status.get("status")}
+        response = {"session_id":response.session_id, "status": status.get("status")}
         return response
 
     def stop_job(self, session_id):
@@ -160,9 +129,7 @@ class Task(BaseEggrollAPI):
             return status
         stop_job_request = deepspeed_pb2.StopJobRequest(session_id=session_id)
         response = self._get_client().do_sync_request(
-            stop_job_request,
-            output_type=deepspeed_pb2.StopJobResponse,
-            command_uri=JobCommands.STOP_JOB,
+            stop_job_request, output_type=deepspeed_pb2.StopJobResponse, command_uri=JobCommands.STOP_JOB
         )
         status = self.query_status(session_id=session_id)
         response = {"session_id": response.session_id, "status": status.get("status")}
@@ -172,29 +139,24 @@ class Task(BaseEggrollAPI):
         deadline = time.time() + timeout
         query_response = self.query_status(session_id)
         while timeout <= 0 or time.time() < deadline:
-            if query_response.get("status", "") not in {
-                SessionStatus.NEW,
-                SessionStatus.ACTIVE,
-            }:
+            if query_response.get("status", "") not in {SessionStatus.NEW, SessionStatus.ACTIVE}:
                 break
             query_response = self.query_status(session_id)
             time.sleep(poll_interval)
         return query_response["status"]
 
     def download_job(
-        self,
-        session_id,
-        ranks: Optional[List[int]] = None,
-        content_type: int = 0,
-        compress_method: str = "zip",
-        compress_level: int = 1,
+            self,
+            session_id,
+            ranks: Optional[List[int]] = None,
+            content_type: int = 0,
+            compress_method: str = "zip",
+            compress_level: int = 1,
     ):
         if compress_level < 0 or compress_level > 9:
             raise ValueError(f"compress_level must be in [0, 9], got {compress_level}")
         if compress_method not in {"zip"}:
-            raise ValueError(
-                f"compress_method must be in ['zip'], got {compress_method}"
-            )
+            raise ValueError(f"compress_method must be in ['zip'], got {compress_method}")
 
         if ranks is None:
             ranks = []
@@ -206,26 +168,22 @@ class Task(BaseEggrollAPI):
             content_type=content_type,
         )
         download_job_response = self._get_client().do_sync_request(
-            download_job_request,
-            output_type=deepspeed_pb2.DownloadJobResponse,
-            command_uri=JobCommands.DOWNLOAD_JOB,
+            download_job_request, output_type=deepspeed_pb2.DownloadJobResponse, command_uri=JobCommands.DOWNLOAD_JOB
         )
         return download_job_response
 
     def download_job_v2(
-        self,
-        session_id,
-        ranks: Optional[List[int]] = None,
-        content_type: int = 0,
-        compress_method: str = "zip",
-        compress_level: int = 1,
+            self,
+            session_id,
+            ranks: Optional[List[int]] = None,
+            content_type: int = 0,
+            compress_method: str = "zip",
+            compress_level: int = 1,
     ):
         if compress_level < 0 or compress_level > 9:
             raise ValueError(f"compress_level must be in [0, 9], got {compress_level}")
         if compress_method not in {"zip"}:
-            raise ValueError(
-                f"compress_method must be in ['zip'], got {compress_method}"
-            )
+            raise ValueError(f"compress_method must be in ['zip'], got {compress_method}")
 
         if ranks is None:
             ranks = []
@@ -237,19 +195,16 @@ class Task(BaseEggrollAPI):
             content_type=content_type,
         )
         prepare_download_job_response = self._get_client().do_sync_request(
-            download_job_request,
-            output_type=deepspeed_download_pb2.PrepareDownloadResponse,
-            command_uri=JobCommands.PREPARE_DOWNLOAD_JOB,
+            download_job_request, output_type=deepspeed_download_pb2.PrepareDownloadResponse, command_uri=JobCommands.PREPARE_DOWNLOAD_JOB
         )
         download_session_id = prepare_download_job_response.session_id
         download_meta: dict = json.loads(prepare_download_job_response.content)
         zipped_container_content_map = {}
         pool = ThreadPool()
         try:
-
             def inner_handle_download(address):
                 element_data = download_meta[address]
-                ranks = list(map(lambda d: d[2], element_data))
+                ranks = list(map(lambda d: d[2],element_data))
                 indexes = list(map(lambda d: d[4], element_data))
                 ip_port = address.split(":")
                 eggpair_client = self._get_client(ip_port[0], int(ip_port[1]))
@@ -258,11 +213,10 @@ class Task(BaseEggrollAPI):
                     compress_method=compress_method,
                     ranks=ranks,
                     content_type=content_type,
-                    session_id=session_id,
+                    session_id=session_id
                 )
                 response = eggpair_client.do_download_stream(request)
                 zipped_container_content_map.update(response)
-
             pool.map(inner_handle_download, download_meta)
             pool.close()
             pool.join()
@@ -278,9 +232,7 @@ class Task(BaseEggrollAPI):
         if session_id is not None:
             session = meta_pb2.SessionMeta(id=session_id)
             download_job_response = self._get_client().do_sync_request(
-                session,
-                output_type=meta_pb2.SessionMeta,
-                command_uri=SessionCommands.KILL_SESSION,
+                session, output_type=meta_pb2.SessionMeta, command_uri=SessionCommands.KILL_SESSION
             )
         print("close")
 
@@ -288,27 +240,23 @@ class Task(BaseEggrollAPI):
         if session_id is not None:
             session = meta_pb2.SessionMeta(id=session_id)
             download_job_response = self._get_client().do_sync_request(
-                session,
-                output_type=meta_pb2.SessionMeta,
-                command_uri=SessionCommands.STOP_SESSION,
+                session, output_type=meta_pb2.SessionMeta, command_uri=SessionCommands.STOP_SESSION
             )
         print("close")
 
     def download_job_to(
-        self,
-        session_id,
-        ranks: Optional[List[int]] = None,
-        content_type: int = 0,
-        rank_to_path: typing.Callable[[int], str] = lambda rank: f"rank_{rank}.zip",
-        compress_method: str = "zip",
-        compress_level: int = 1,
+            self,
+            session_id,
+            ranks: Optional[List[int]] = None,
+            content_type: int = 0,
+            rank_to_path: typing.Callable[[int], str] = lambda rank: f"rank_{rank}.zip",
+            compress_method: str = "zip",
+            compress_level: int = 1,
     ):
         query_status = self.query_status(session_id)
         if not query_status.get("status"):
-            raise ValueError(f"not found session_id:{session_id}")
-        download_job_response = self.download_job_v2(
-            session_id, ranks, content_type, compress_method, compress_level
-        )
+            raise ValueError(f'not found session_id:{session_id}')
+        download_job_response = self.download_job_v2(session_id, ranks, content_type, compress_method, compress_level)
         for key, value in download_job_response.items():
             path = rank_to_path(key)
             with open(path, "wb") as f:
@@ -322,10 +270,7 @@ class Task(BaseEggrollAPI):
                     for log_info in res.datas:
                         print(log_info)
                 elif str(res.code) == "110":
-                    ret = {
-                        "code": res.code,
-                        "message": f"file is not exists sessionId: {session_id}",
-                    }
+                    ret = {"code": res.code, "message": f"file is not exists sessionId: {session_id}"}
                     result_queue.put(ret)
                 else:
                     ret = {"code": res.code, "message": f"info error"}
@@ -351,33 +296,21 @@ class Task(BaseEggrollAPI):
             yield build
             time.sleep(10)
 
-    def get_log(
-        self,
-        config,
-        sessionId: str,
-        rank: str = None,
-        path: str = None,
-        startLine: int = None,
-        logType: str = None,
-    ):
+    def get_log(self, config, sessionId: str, rank: str = None, path: str = None, startLine: int = None, logType: str = None):
         kwargs = locals()
         params = filter_invalid_params(**kwargs)
         build = extend_pb2.GetLogRequest(**params)
         flag = [0]
         channel = self._get_client().channel_factory
         stub = extend_pb2_grpc.ExtendTransferServerStub(
-            channel.create_channel(config, ErEndpoint(self.host, self.port))
+            channel.create_channel(config, BaseClient(self.host, self.port).endpoint)
         )
         builds = self.generator_yields(build, flag)
         stream = stub.getLog(builds)
 
         result_queue = queue.Queue()
-        channel_1 = threading.Thread(
-            target=self.writer, args=(stream, sessionId, result_queue)
-        )
-        channel_2 = threading.Thread(
-            target=self.cancel_stream, args=(sessionId, stream, flag)
-        )
+        channel_1 = threading.Thread(target=self.writer, args=(stream, sessionId, result_queue))
+        channel_2 = threading.Thread(target=self.cancel_stream, args=(sessionId, stream, flag))
 
         channel_1.start()
         channel_2.start()
