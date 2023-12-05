@@ -1,5 +1,14 @@
 stringify_charset = "iso-8859-1"
 
+from datetime import datetime
+
+
+DEFAULT_DATETIME_FORMAT = "%Y%m%d.%H%M%S.%f"
+
+
+def time_now_ns(format: str = DEFAULT_DATETIME_FORMAT):
+    return datetime.now().strftime(format)
+
 
 def _stringify(data):
     from ._base_model import RpcMessage
