@@ -35,7 +35,7 @@ class BaseEggrollClient:
             setattr(self, name, api)
         return self
 
-    def __init__(self, ip, port, config: Config = None):
+    def __init__(self, config: Config, ip: str, port: int):
         self._http = requests.Session()
         self.ip = ip
         self.port = port
