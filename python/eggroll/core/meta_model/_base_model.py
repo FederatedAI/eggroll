@@ -12,20 +12,23 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+
 class RpcMessage(object):
     def __str__(self):
         return self.__repr__()
 
 
-
 class NetworkingRpcMessage(RpcMessage):
     pass
+
 
 class MetaRpcMessage(RpcMessage):
     pass
 
+
 class TransferRpcMessage(RpcMessage):
     pass
+
 
 class CommandRpcMessage(RpcMessage):
     pass

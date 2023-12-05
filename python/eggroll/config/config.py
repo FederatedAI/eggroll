@@ -18,7 +18,9 @@ class Config(object):
     def load_default(self):
         default_config = omegaconf.OmegaConf.structured(DefaultConfig)
         self.config = omegaconf.OmegaConf.merge(self.config, default_config)
-        self.loaded_history.append(f"load_default: {DefaultConfig.__module__}:{DefaultConfig.__qualname__}")
+        self.loaded_history.append(
+            f"load_default: {DefaultConfig.__module__}:{DefaultConfig.__qualname__}"
+        )
         return self
 
     def load_properties(self, config_file):
@@ -32,6 +34,7 @@ class Config(object):
 
     def load_env(self):
         import os
+
         accept_envs = []
         for k, v in os.environ.items():
             if k.lower().startswith("eggroll."):
@@ -43,7 +46,9 @@ class Config(object):
         return self
 
     def from_structured(self, dataclass_type: typing.Type):
-        self.config = omegaconf.OmegaConf.merge(self.config, omegaconf.OmegaConf.structured(dataclass_type))
+        self.config = omegaconf.OmegaConf.merge(
+            self.config, omegaconf.OmegaConf.structured(dataclass_type)
+        )
         return self
 
     @property
@@ -56,13 +61,21 @@ class Config(object):
         if key.key in option:
             return option[key.key]
         else:
-            value = omegaconf.OmegaConf.select(self.config, key.key, throw_on_missing=True)
+            value = omegaconf.OmegaConf.select(
+                self.config, key.key, throw_on_missing=True
+            )
             if value is None:
-                raise ConfigError(self, key.key,
-                                  f"`{key.key}` not found both in option=`{option}` and config=`{config.config}`")
+                raise ConfigError(
+                    self,
+                    key.key,
+                    f"`{key.key}` not found both in option=`{option}` and config=`{config.config}`",
+                )
             elif isinstance(value, omegaconf.Container):
-                raise ConfigError(self, key.key,
-                                  f"`{key.key}` found in config but not in leaf: value=`{value}`")
+                raise ConfigError(
+                    self,
+                    key.key,
+                    f"`{key.key}` found in config but not in leaf: value=`{value}`",
+                )
             return value
 
 
@@ -98,10 +111,14 @@ class WrappedDictConfig:
                 return attr
 
         except omegaconf.errors.MissingMandatoryValue as e:
-            raise ConfigError(self._base, e.full_key, f"config on `{e.full_key}` is missing") from e
+            raise ConfigError(
+                self._base, e.full_key, f"config on `{e.full_key}` is missing"
+            ) from e
 
         except omegaconf.errors.OmegaConfBaseException as e:
-            raise ConfigError(self._base, e.full_key, f"config on `{e.full_key}` error") from e
+            raise ConfigError(
+                self._base, e.full_key, f"config on `{e.full_key}` error"
+            ) from e
 
     def __str__(self):
         return str(self.config)
@@ -139,5 +156,10 @@ if __name__ == "__main__":
     config.load_default()
     config.load_env()
 
-    print(config.get_option({"eggroll.core2": 1}, ConfigKey.eggroll.core.grpc.server.channel.max.inbound.message.size))
+    print(
+        config.get_option(
+            {"eggroll.core2": 1},
+            ConfigKey.eggroll.core.grpc.server.channel.max.inbound.message.size,
+        )
+    )
     # config.load_properties("/Users/sage/MergeFATE/eggroll/conf/eggroll.properties")

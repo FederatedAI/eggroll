@@ -18,7 +18,7 @@
 import logging
 import typing
 
-from eggroll.core.transfer_model import ErRollSiteHeader
+from eggroll.core.meta_model import ErRollSiteHeader
 from ._rollsite_base import RollSiteBase
 
 L = logging.getLogger(__name__)
