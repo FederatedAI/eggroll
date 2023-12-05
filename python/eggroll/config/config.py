@@ -66,12 +66,18 @@ class Config(object):
             return value
 
 
-class DotKey:
+class DotKey(str):
     def __init__(self, key):
         self.key = key
 
     def __getattr__(self, item):
         return DotKey(f"{self.key}.{item}")
+
+    def __str__(self):
+        return f"<{self.__class__.__name__} key=self.key>"
+
+    def __repr__(self):
+        return self.key
 
 
 class ConfigKey:
