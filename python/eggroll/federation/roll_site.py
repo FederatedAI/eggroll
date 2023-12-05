@@ -17,6 +17,7 @@ import logging
 import random
 import threading
 import time
+import typing
 
 from grpc import RpcError
 
@@ -75,7 +76,13 @@ class RollSiteContext:
     grpc_channel_factory = GrpcChannelFactory()
 
     def __init__(
-        self, roll_site_session_id, rp_ctx: RollPairContext, options: dict = None
+        self,
+        roll_site_session_id,
+        rp_ctx: RollPairContext,
+        party: typing.Tuple[str, str],
+        proxy_endpoint_host: str,
+        proxy_endpoint_port: int,
+        options: dict = None,
     ):
         if options is None:
             options = {}
@@ -83,23 +90,15 @@ class RollSiteContext:
         self.rp_ctx = rp_ctx
         self._config = rp_ctx.session.config
 
-        self.role = options["self_role"]
-        self.party_id = str(options["self_party_id"])
+        self.role = party[0]
+        self.party_id = party[1]
         self._options = options
 
         self._registered_comm_types = dict()
         self.register_comm_type("grpc", RollSiteGrpc)
-
-        endpoint = options["proxy_endpoint"]
-        if isinstance(endpoint, str):
-            splitted = endpoint.split(":")
-            self.proxy_endpoint = ErEndpoint(
-                host=splitted[0].strip(), port=int(splitted[1].strip())
-            )
-        elif isinstance(endpoint, ErEndpoint):
-            self.proxy_endpoint = endpoint
-        else:
-            raise ValueError("endpoint only support str and ErEndpoint type")
+        self.proxy_endpoint = ErEndpoint(
+            host=proxy_endpoint_host, port=proxy_endpoint_port
+        )
 
         self.pushing_latch = CountDownLatch(0)
         self.rp_ctx.session.add_exit_task(self._wait_push_complete)
@@ -176,8 +175,8 @@ class RollSiteBase:
         self.ctx = rs_ctx
         self.options = options
         self.party_id = self.ctx.party_id
-        self.dst_host = self.ctx.proxy_endpoint._host
-        self.dst_port = self.ctx.proxy_endpoint._port
+        self.dst_host = self.ctx.proxy_endpoint.host
+        self.dst_port = self.ctx.proxy_endpoint.port
         self.roll_site_session_id = self.ctx.roll_site_session_id
         self.local_role = self.ctx.role
 
