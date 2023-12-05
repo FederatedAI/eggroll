@@ -19,4 +19,6 @@ __version__ = "3.0.0"
 
 logging.TRACE = logging.DEBUG - 5
 logging.addLevelName(logging.DEBUG - 5, "TRACE")
-logging.Logger.trace = lambda inst, msg, *args, **kwargs: inst.log(logging.TRACE, msg, *args, **kwargs)
+logging.Logger.trace = lambda inst, msg, *args, **kwargs: inst.log(
+    logging.TRACE, msg, *args, **kwargs
+)

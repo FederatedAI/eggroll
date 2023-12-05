@@ -22,15 +22,14 @@ from grpc import RpcError
 
 from eggroll import __version__ as eggroll_version
 from eggroll.computing import RollPair
-from eggroll.computing.roll_pair.transfer_pair import TransferPair
-from eggroll.computing.tasks import consts
+from eggroll.computing.tasks import consts, store
+from eggroll.computing.tasks.transfer_pair import TransferPair
 from eggroll.config import Config
 from eggroll.config import ConfigKey
 from eggroll.core.constants import StoreTypes
 from eggroll.core.grpc.factory import GrpcChannelFactory
-from eggroll.core.meta_model import ErTask
+from eggroll.core.meta_model import ErTask, ErRollSiteHeader
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
-from eggroll.core.transfer_model import ErRollSiteHeader
 from ._rollsite_impl_base import RollSiteImplBase
 
 if typing.TYPE_CHECKING:
@@ -314,7 +313,9 @@ class RollSiteGrpc(RollSiteImplBase):
             from eggroll.core.proto import proxy_pb2_grpc
 
             grpc_channel_factory = GrpcChannelFactory()
-            with ertask.first_input.get_adapter(data_dir) as db, db.iteritems() as rb:
+            with store.get_adapter(
+                ertask.first_input, data_dir
+            ) as db, db.iteritems() as rb:
                 # NOTICE AGAIN: all modifications to rs_header are limited in bs_helper.
                 # rs_header is shared by bs_helper and here. any modification in bs_helper affects this header.
                 # Remind that python's object references are passed by value,

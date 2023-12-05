@@ -6,13 +6,12 @@ import typing
 from threading import Thread
 from typing import TypeVar, Iterable, Tuple, Callable
 
-from eggroll.computing.roll_pair.transfer_pair import TransferPair, BatchBroker
-from eggroll.computing.tasks import consts
+from eggroll.computing.tasks import consts, store, shutil
 from eggroll.computing.tasks.submit_utils import (
     block_submit_unary_unit_job,
     block_submit_unary_unit_tasks,
 )
-from eggroll.core import shutil
+from eggroll.computing.tasks.transfer_pair import TransferPair, BatchBroker
 from eggroll.core.constants import StoreTypes
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import (
@@ -22,11 +21,7 @@ from eggroll.core.meta_model import (
     ErStoreLocator,
     ErPartition,
 )
-from eggroll.core.meta_model import ErJob, ErTask
-from eggroll.core.model.task import (
-    GetAllRequest,
-    CountResponse,
-)
+from eggroll.core.meta_model import ErJob, ErTask, GetAllRequest, CountResponse
 from eggroll.core.transfer.transfer_service import TransferService
 from eggroll.core.utils import generate_job_id, generate_task_id
 from ._task import Task, EnvOptions
@@ -47,8 +42,8 @@ class GetAll(Task):
         request = job.first_functor.deserialized_as(GetAllRequest)
 
         def generate_broker():
-            with task.first_input.get_adapter(
-                env_options.data_dir
+            with store.get_adapter(
+                task.first_input, env_options.data_dir
             ) as db, db.iteritems() as rb:
                 limit = None if request.limit < 0 else request.limit
                 try:
@@ -150,7 +145,7 @@ class PutAll(Task):
 class Count(Task):
     @classmethod
     def run(cls, env_options: EnvOptions, _job: ErJob, task: ErTask):
-        with task.first_input.get_adapter(env_options.data_dir) as input_adapter:
+        with store.get_adapter(task.first_input, env_options.data_dir) as input_adapter:
             return CountResponse(value=input_adapter.count())
 
     @classmethod
@@ -210,8 +205,6 @@ class Destroy(Task):
             f"destroying store_type={store_type}, namespace={namespace}, name={name}"
         )
         if name == "*":
-            from eggroll.core._data_path import get_db_path_from_partition
-
             target_paths = list()
             if store_type == "*":
                 store_types = os.listdir(env_options.data_dir)
@@ -220,8 +213,8 @@ class Destroy(Task):
                         os.path.join(env_options.data_dir, store_type, namespace)
                     )
             else:
-                db_path = get_db_path_from_partition(
-                    env_options.data_dir, task.first_input
+                db_path = store.get_db_path_from_partition(
+                    task.first_input, env_options.data_dir
                 )
                 target_paths.append(db_path[: db_path.rfind("*")])
 

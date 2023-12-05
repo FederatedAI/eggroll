@@ -1,4 +1,4 @@
-from eggroll.core.command.command_model import CommandURI
+from eggroll.core.meta_model import CommandURI
 
 EGG_PAIR_URI_PREFIX = "v1/eggs-pair"
 RUN_TASK = "runTask"

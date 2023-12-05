@@ -27,7 +27,7 @@ class JobCommands:
     QUERY_JOB = _create_command_uri(prefix, "queryJob")
     KILL_JOB = _create_command_uri(prefix, "killJob")
     DOWNLOAD_JOB = _create_command_uri(prefix, "downloadJob")
-    PREPARE_DOWNLOAD_JOB =  _create_command_uri(prefix, "prepareJobDownload")
+    PREPARE_DOWNLOAD_JOB = _create_command_uri(prefix, "prepareJobDownload")
 
 
 class ContainerCommands:

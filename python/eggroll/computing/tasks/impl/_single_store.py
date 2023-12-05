@@ -3,10 +3,11 @@ import typing
 from typing import Callable
 from typing import TypeVar
 
-from eggroll.computing.tasks import consts
+from eggroll.computing.tasks import consts, store
 from eggroll.computing.tasks.submit_utils import _process_key_request
-from eggroll.core.meta_model import ErJob, ErTask
-from eggroll.core.model.task import (
+from eggroll.core.meta_model import (
+    ErJob,
+    ErTask,
     GetRequest,
     GetResponse,
     DeleteRequest,
@@ -28,7 +29,7 @@ class Get(Task):
     @classmethod
     def run(cls, env_options: EnvOptions, job: ErJob, task: ErTask):
         request = GetRequest.from_proto_string(job.first_functor.body)
-        with task.first_input.get_adapter(env_options.data_dir) as input_adapter:
+        with store.get_adapter(task.first_input, env_options.data_dir) as input_adapter:
             value = input_adapter.get(request.key)
             if value is None:
                 return GetResponse(key=request.key, value=b"", exists=False)
@@ -52,7 +53,7 @@ class Delete(Task):
     @classmethod
     def run(cls, env_options: EnvOptions, job: ErJob, task: ErTask):
         request = job.first_functor.deserialized_as(DeleteRequest)
-        with task.first_input.get_adapter(env_options.data_dir) as input_adapter:
+        with store.get_adapter(task.first_input, env_options.data_dir) as input_adapter:
             success = input_adapter.delete(request.key)
             if success:
                 L.debug("delete k success")
@@ -75,7 +76,7 @@ class Put(Task):
     @classmethod
     def run(cls, env_options: EnvOptions, job: ErJob, task: ErTask):
         request = job.first_functor.deserialized_as(PutRequest)
-        with task.first_input.get_adapter(env_options.data_dir) as input_adapter:
+        with store.get_adapter(task.first_input, env_options.data_dir) as input_adapter:
             success = input_adapter.put(request.key, request.value)
             return PutResponse(key=request.key, value=request.value, success=success)
 
