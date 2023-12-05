@@ -179,7 +179,7 @@
         <HikariCP.version>5.0.1</HikariCP.version>
         <mybatis-guice.version>3.18</mybatis-guice.version>
         <curator.version>2.13.0</curator.version>
-        <zookeeper.version>3.5.5</zookeeper.version>
+        <zookeeper.version>3.9.1</zookeeper.version>
         <caffeine.version>2.9.3</caffeine.version>
         <disruptor.version>3.4.4</disruptor.version>
         <jna.version>5.10.0</jna.version>
@@ -190,6 +190,14 @@
         <rocksdb.version>6.8.1</rocksdb.version>
         <scalatest.version>3.0.8</scalatest.version>
         <spark.version>2.4.8</spark.version>
+        <pagehelper.version>5.2.0</pagehelper.version>
+        <jna.version>5.10.0</jna.version>
+        <jetty.version>9.4.43.v20210629</jetty.version>
+        <commons-codec.version>1.15</commons-codec.version>
+        <guice-servlet.version>4.2.3</guice-servlet.version>
+        <javax.servlet-api.version>4.0.1</javax.servlet-api.version>
+        <validation-api.version>2.0.1.Final</validation-api.version>
+        <javatuples.version>1.2</javatuples.version>
 
         <!-- Plugins -->
         <build-helper-maven-plugin.version>3.0.0</build-helper-maven-plugin.version>
@@ -446,7 +454,79 @@
             <dependency>
                 <groupId>net.java.dev.jna</groupId>
                 <artifactId>jna</artifactId>
-                <version>5.10.0</version>
+                <version>${jna.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.github.pagehelper</groupId>
+                <artifactId>pagehelper</artifactId>
+                <version>${pagehelper.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-servlet</artifactId>
+                <version>${jetty.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-server</artifactId>
+                <version>${jetty.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-webapp</artifactId>
+                <version>${jetty.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-security</artifactId>
+                <version>${jetty.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>commons-codec</groupId>
+                <artifactId>commons-codec</artifactId>
+                <version>${commons-codec.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.google.inject.extensions</groupId>
+                <artifactId>guice-servlet</artifactId>
+                <version>${guice-servlet.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>javax.servlet</groupId>
+                <artifactId>javax.servlet-api</artifactId>
+                <version>${javax.servlet-api.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>javax.validation</groupId>
+                <artifactId>validation-api</artifactId>
+                <version>${validation-api.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.javatuples</groupId>
+                <artifactId>javatuples</artifactId>
+                <version>${javatuples.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.fedai.eggroll</groupId>
+                <artifactId>core</artifactId>
+                <version>${eggroll.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.fedai.eggroll</groupId>
+                <artifactId>cluster_manager</artifactId>
+                <version>${eggroll.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
