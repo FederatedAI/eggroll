@@ -12,75 +12,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import traceback
 from datetime import datetime
-
-
-def _exception_logger(func):
-    def wrapper(*args, **kw):
-        try:
-            return func(*args, **kw)
-        except Exception as e:
-            msg = (
-                f"\n\n==== detail start, at {time_now('%Y-%m-%d %H:%M:%S %f')} ====\n"
-                f"{traceback.format_exc()}"
-                f"\n==== detail end ====\n\n"
-            )
-            print(msg)
-            raise RuntimeError(msg) from e
-
-    return wrapper
-
-
-def get_stack():
-    return (
-        f"\n\n==== stack start, at {time_now('%Y-%m-%d %H:%M:%S %f')}"
-        f"{''.join(traceback.format_stack())}"
-        f"\n==== stack end ====\n\n"
-    )
 
 
 DEFAULT_DATETIME_FORMAT = "%Y%m%d.%H%M%S.%f"
 
 
-def time_now(format: str = DEFAULT_DATETIME_FORMAT):
-    formatted = datetime.now().strftime(format)
-    if format == DEFAULT_DATETIME_FORMAT or ("%f" in format):
-        return formatted[:-3]
-    else:
-        return formatted
-
-
 def time_now_ns(format: str = DEFAULT_DATETIME_FORMAT):
     return datetime.now().strftime(format)
-
-
-def get_self_ip():
-    import socket
-
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        # doesn't even have to be reachable
-        s.connect(("10.255.255.255", 1))
-        self_ip = s.getsockname()[0]
-    except:
-        self_ip = "127.0.0.1"
-    finally:
-        s.close()
-    return self_ip
-
-
-def generate_job_id(session_id, tag="", delim="-"):
-    result = delim.join([session_id, "py", "job", time_now_ns()])
-    if not tag:
-        return result
-    else:
-        return f"{result}_{tag}"
-
-
-def generate_task_id(job_id, partition_id, delim="-"):
-    return delim.join([job_id, "task", str(partition_id)])
-
-
-def calculate_rank_in_node(partition_id, cluster_node_count, processor_count_of_node):
-    return (partition_id // cluster_node_count) % processor_count_of_node

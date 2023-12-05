@@ -12,7 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from eggroll.core.command.commands import CommandURI, _to_service_name
+from eggroll.core.command.command_uri import CommandURI, _to_service_name
 
 
 def _create_command_uri(prefix, method_name):

@@ -4,8 +4,7 @@ import threading
 import typing
 from collections import defaultdict, namedtuple
 
-from eggroll.computing.tasks import consts, store
-from eggroll.computing.tasks.store.format import ArrayByteBuffer, PairBinReader
+from eggroll.computing.tasks import consts, store, job_util, transfer
 from eggroll.computing.tasks.submit_utils import block_submit_unary_unit_job
 from eggroll.config import Config
 from eggroll.core.datastructure.broker import BrokerClosed
@@ -23,8 +22,6 @@ from eggroll.core.meta_model import (
     ErRollSitePullClearStatusRequest,
     ErRollSitePullClearStatusResponse,
 )
-from eggroll.core.transfer.transfer_service import TransferService
-from eggroll.core.utils import generate_job_id
 from ._task import Task, EnvOptions
 
 if typing.TYPE_CHECKING:
@@ -48,7 +45,7 @@ class PullGetHeader(Task):
             else consts.PULL_GET_HEADER
         )
         stores = [rp.get_store()]
-        job_id = generate_job_id(rp.session_id, tag=job_tag)
+        job_id = job_util.generate_job_id(rp.session_id, tag=job_tag)
         job = ErJob(
             id=job_id,
             name=consts.PULL_GET_HEADER,
@@ -105,7 +102,7 @@ class PullGetPartitionStatus(object):
             else consts.PULL_GET_PARTITION_STATUS
         )
         stores = [rp.get_store()]
-        job_id = generate_job_id(rp.session_id, tag=job_tag)
+        job_id = job_util.generate_job_id(rp.session_id, tag=job_tag)
         job = ErJob(
             id=job_id,
             name=consts.PULL_GET_PARTITION_STATUS,
@@ -156,7 +153,7 @@ class PullClearStatus(object):
             else consts.PULL_CLEAR_STATUS
         )
         stores = [rp.get_store()]
-        job_id = generate_job_id(rp.session_id, tag=job_tag)
+        job_id = job_util.generate_job_id(rp.session_id, tag=job_tag)
         job = ErJob(
             id=job_id,
             name=consts.PULL_CLEAR_STATUS,
@@ -209,7 +206,7 @@ class PutBatchTask:
             )
             bss = _BatchStreamStatus.get_or_create(self.tag)
             try:
-                broker = TransferService.get_or_create_broker(
+                broker = transfer.TransferService.get_or_create_broker(
                     config=config, key=self.tag, write_signals=1
                 )
 
@@ -238,8 +235,8 @@ class PutBatchTask:
                         rs_header = ErRollSiteHeader.from_proto_string(batch.header.ext)
                         batch_pairs = 0
                         if batch.data:
-                            bin_data = ArrayByteBuffer(batch.data)
-                            reader = PairBinReader(
+                            bin_data = store.ArrayByteBuffer(batch.data)
+                            reader = store.PairBinReader(
                                 pair_buffer=bin_data, data=batch.data
                             )
                             for k_bytes, v_bytes in reader.read_all():
@@ -260,7 +257,7 @@ class PutBatchTask:
                 )
                 raise e
             finally:
-                TransferService.remove_broker(self.tag)
+                transfer.TransferService.remove_broker(self.tag)
 
     def get_status(self, timeout):
         return _BatchStreamStatus.wait_finish(self.tag, timeout)
@@ -360,7 +357,7 @@ class _BatchStreamStatus:
         bss = cls.get_or_create(tag)
         finished = bss._stream_finish_event.wait(timeout)
         if finished:
-            TransferService.remove_broker(tag)
+            transfer.TransferService.remove_broker(tag)
             # del cls._recorder[tag]
 
         return BSS(
