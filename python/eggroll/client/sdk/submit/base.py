@@ -4,11 +4,14 @@ import traceback
 import typing
 
 from eggroll.config import Config
-from eggroll.core.command.command_model import ErCommandRequest, ErCommandResponse
 from eggroll.core.grpc.factory import GrpcChannelFactory
+from eggroll.core.meta_model import ErCommandRequest, ErCommandResponse
 from eggroll.core.meta_model import ErEndpoint
 from eggroll.core.proto import command_pb2_grpc, deepspeed_download_pb2_grpc
-from eggroll.core.proto.deepspeed_download_pb2 import DsDownloadRequest, DsDownloadResponse
+from eggroll.core.proto.deepspeed_download_pb2 import (
+    DsDownloadRequest,
+    DsDownloadResponse,
+)
 from eggroll.core.utils import time_now_ns
 
 T = typing.TypeVar("T")
@@ -22,12 +25,15 @@ class BaseClient:
         self._endpoint = ErEndpoint(host, int(port))
         self._channel_factory = GrpcChannelFactory()
 
-
     def do_sync_request(self, input, output_type: typing.Type[T], command_uri) -> T:
-        request = ErCommandRequest(id=time_now_ns(), uri=command_uri._uri, args=[input.SerializeToString()])
+        request = ErCommandRequest(
+            id=time_now_ns(), uri=command_uri._uri, args=[input.SerializeToString()]
+        )
         try:
             start = time.time()
-            _channel = self._channel_factory.create_channel(config=self._config, endpoint=self._endpoint)
+            _channel = self._channel_factory.create_channel(
+                config=self._config, endpoint=self._endpoint
+            )
             _command_stub = command_pb2_grpc.CommandServiceStub(_channel)
             response = _command_stub.call(request.to_proto())
             er_response = ErCommandResponse.from_proto(response)
@@ -41,16 +47,24 @@ class BaseClient:
                 return None
         except Exception as e:
             traceback.print_exc()
-            raise Exception(f"failed to call {command_uri} to {self._endpoint}: {e}") from e
+            raise Exception(
+                f"failed to call {command_uri} to {self._endpoint}: {e}"
+            ) from e
 
     def do_download(self, input: DsDownloadRequest) -> DsDownloadResponse:
         try:
-            _channel = self._channel_factory.create_channel(config=self._config, endpoint=self._endpoint)
-            _deepspeed_stub = deepspeed_download_pb2_grpc.DsDownloadServiceStub(_channel)
+            _channel = self._channel_factory.create_channel(
+                config=self._config, endpoint=self._endpoint
+            )
+            _deepspeed_stub = deepspeed_download_pb2_grpc.DsDownloadServiceStub(
+                _channel
+            )
             response = _deepspeed_stub.download(input)
             return response
         except Exception as e:
-            L.exception(f"Error calling to {self._endpoint}, download deepspeed , req:{input}")
+            L.exception(
+                f"Error calling to {self._endpoint}, download deepspeed , req:{input}"
+            )
             raise e
 
     @property
@@ -63,8 +77,12 @@ class BaseClient:
 
     def do_download_stream(self, input: DsDownloadRequest):
         try:
-            _channel = self._channel_factory.create_channel(config=self._config, endpoint=self._endpoint)
-            _deepspeed_stub = deepspeed_download_pb2_grpc.DsDownloadServiceStub(_channel)
+            _channel = self._channel_factory.create_channel(
+                config=self._config, endpoint=self._endpoint
+            )
+            _deepspeed_stub = deepspeed_download_pb2_grpc.DsDownloadServiceStub(
+                _channel
+            )
             size = 0
             rank_map = {}
             for response in _deepspeed_stub.download_by_split(input):
@@ -72,8 +90,10 @@ class BaseClient:
                 if response.rank in rank_map:
                     rank_map[response.rank] += response.data
                 else:
-                    rank_map[response.rank]=response.data
+                    rank_map[response.rank] = response.data
             return rank_map
         except Exception as e:
-            L.exception(f"Error calling to {self._endpoint}, download deepspeed , req:{input}")
+            L.exception(
+                f"Error calling to {self._endpoint}, download deepspeed , req:{input}"
+            )
             raise e

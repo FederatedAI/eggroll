@@ -6,12 +6,7 @@ from typing import Type, TypeVar, List, Tuple
 
 from eggroll.computing.tasks import consts
 from eggroll.core.client import CommandClient
-from eggroll.core.meta_model import (
-    ErFunctor,
-    ErJobIO,
-    ErEndpoint,
-)
-from eggroll.core.meta_model import ErJob, ErTask
+from eggroll.core.meta_model import ErFunctor, ErJobIO, ErEndpoint, ErJob, ErTask
 from eggroll.core.utils import generate_job_id, generate_task_id
 
 if typing.TYPE_CHECKING:

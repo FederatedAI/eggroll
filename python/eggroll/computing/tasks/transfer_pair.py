@@ -17,16 +17,16 @@ import contextlib
 import logging
 import queue
 import threading
-import time
 
+from eggroll.config import Config
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
 from eggroll.core.meta_model import ErPartition, ErStore
-from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, ArrayByteBuffer
 from eggroll.core.transfer.transfer_service import TransferClient, TransferService
 from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import generate_task_id
-from eggroll.config import Config
+from .store import get_adapter
+from .store.format import PairBinReader, PairBinWriter, ArrayByteBuffer
 
 L = logging.getLogger(__name__)
 
@@ -317,7 +317,7 @@ class TransferPair(object):
                 L.trace(f"do_store start for tag={tag}")
                 batches = TransferPair.bin_batch_to_pair(b.data for b in broker)
 
-                with store_partition_inner.get_adapter(data_dir) as db:
+                with get_adapter(store_partition_inner, data_dir) as db:
                     L.trace(
                         f"do_store create_db for tag={tag} for partition={store_partition_inner}"
                     )

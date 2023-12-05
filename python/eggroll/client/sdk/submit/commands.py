@@ -11,13 +11,13 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from eggroll.core.command.command_model import CommandURI
+from eggroll.core.meta_model import CommandURI
 
-DEFAULT_DELIM = '/'
+DEFAULT_DELIM = "/"
 
 
 def _to_service_name(prefix, method_name, delim=DEFAULT_DELIM):
-    return f'{prefix}{delim}{method_name}'
+    return f"{prefix}{delim}{method_name}"
 
 
 def _create_command_uri(prefix, method_name):

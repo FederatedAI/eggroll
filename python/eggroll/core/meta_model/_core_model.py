@@ -18,21 +18,19 @@ from copy import deepcopy
 from threading import Lock
 from typing import List
 
-from eggroll.core._data_path import get_db_path_expanded
-from eggroll.core.base_model import RpcMessage
 from eggroll.core.constants import SessionStatus
-from eggroll.core.pair_store import create_pair_adapter
 from eggroll.core.proto import meta_pb2
-from eggroll.core.utils import (
-    _map_and_listify,
-    _repr_list,
-    _repr_bytes,
-    _elements_to_proto,
-    _to_proto,
-    _from_proto,
-    _stringify_dict,
-)
 from eggroll.core.utils import time_now_ns
+from ._base_model import RpcMessage
+from ._utils import (
+    _stringify_dict,
+    _repr_bytes,
+    _to_proto,
+    _elements_to_proto,
+    _from_proto,
+    _repr_list,
+    _map_and_listify,
+)
 
 DEFAULT_PATH_DELIM = "/"
 DEFAULT_FORK_DELIM = "_"
@@ -602,24 +600,6 @@ class ErPartition(RpcMessage):
     def transfer_endpoint(self):
         return self._processor.transfer_endpoint
 
-    def get_adapter(self, data_dir, options=None, watch=False):
-        if options is None:
-            options = {}
-        options["store_type"] = self._store_locator.store_type
-        options["path"] = get_db_path_expanded(
-            data_dir,
-            self._store_locator.store_type,
-            self._store_locator.namespace,
-            self._store_locator.name,
-            self._id,
-        )
-        options["er_partition"] = self
-
-        if watch:
-            raise ValueError(f"watch is not supported for now, {options['path']}")
-
-        return create_pair_adapter(options=options)
-
     def is_on_node(self, node_id: int) -> bool:
         return self._processor and self._processor._server_node_id == node_id
 
@@ -1046,7 +1026,7 @@ class ErJob(RpcMessage):
         )
 
     def decompose_tasks(self):
-        from .utils import generate_task_id
+        from eggroll.core.utils import generate_task_id
 
         input_total_partitions = self.first_input.num_partitions
         output_total_partitions = (

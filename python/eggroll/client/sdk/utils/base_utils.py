@@ -44,7 +44,9 @@ class BaseEggrollClient:
     @staticmethod
     def _decode_result(response):
         try:
-            result = json.loads(response.content.decode('utf-8', 'ignore'), strict=False)
+            result = json.loads(
+                response.content.decode("utf-8", "ignore"), strict=False
+            )
         except (TypeError, ValueError):
             return response
         else:
