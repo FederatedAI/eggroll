@@ -17,17 +17,26 @@
 from setuptools import find_packages, setup
 
 
-packages = find_packages('.')
+packages = find_packages(".")
 package_data = {"": ["*"]}
 install_requires = [
     "click",
-    "requests<2.26.0",
+    "omegaconf",
+    "requests<3.0",
     "grpcio==1.46.3",
-    "numba==0.53.0",
-    "numpy==1.23.1",
     "protobuf==3.19.6",
-    "ruamel.yaml==0.16.10"
+    "ruamel.yaml==0.16.10",
 ]
+
+extras_require = {
+    "full": [
+        "cloudpickle==2.1.0",
+        "grpcio-tools==1.46.3",
+        "lmdb==1.3.0",
+        "psutil>=5.7.0",
+    ]
+}
+
 
 entry_points = {"console_scripts": ["eggroll = eggroll.client.cli.eggroll:eggroll_cli"]}
 
@@ -46,6 +55,7 @@ setup_kwargs = {
     "include_package_data": True,
     "package_data": package_data,
     "install_requires": install_requires,
+    "extras_require": extras_require,
     "entry_points": entry_points,
     "python_requires": ">=3.8",
 }
