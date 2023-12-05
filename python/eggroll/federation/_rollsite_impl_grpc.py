@@ -15,214 +15,28 @@
 #
 import logging
 import random
-import threading
 import time
 import typing
 
 from grpc import RpcError
 
 from eggroll import __version__ as eggroll_version
-from eggroll.computing import RollPair, RollPairContext
-from eggroll.computing.tasks import consts
+from eggroll.computing import RollPair
 from eggroll.computing.roll_pair.transfer_pair import TransferPair
+from eggroll.computing.tasks import consts
+from eggroll.config import Config
 from eggroll.config import ConfigKey
 from eggroll.core.constants import StoreTypes
-from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.grpc.factory import GrpcChannelFactory
-from eggroll.core.meta_model import ErEndpoint, ErTask
+from eggroll.core.meta_model import ErTask
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
-from eggroll.core.session import ErSession
 from eggroll.core.transfer_model import ErRollSiteHeader
-from eggroll.config import Config
+from ._rollsite_impl_base import RollSiteImplBase
 
+if typing.TYPE_CHECKING:
+    from ._rollsite_context import RollSiteContext
 L = logging.getLogger(__name__)
-RS_KEY_DELIM = "#"
 STATUS_TABLE_NAME = "__rs_status"
-
-ERROR_STATES = [proxy_pb2.STOP, proxy_pb2.KILL]
-RS_KEY_PREFIX = "__rsk"
-CONF_KEY_TARGET = "rollsite"
-CONF_KEY_LOCAL = "local"
-CONF_KEY_SERVER = "servers"
-
-
-class CountDownLatch(object):
-    def __init__(self, count):
-        self.count = count
-        self.lock = threading.Condition()
-
-    def count_up(self):
-        with self.lock:
-            self.count += 1
-
-    def count_down(self):
-        with self.lock:
-            self.count -= 1
-            if self.count <= 0:
-                self.lock.notifyAll()
-
-    def await_latch(self, timeout=None, attempt=1, after_attempt=None):
-        try_count = 0
-        with self.lock:
-            while self.count > 0 and try_count < attempt:
-                try_count += 1
-                self.lock.wait(timeout)
-                if after_attempt:
-                    after_attempt(try_count)
-        return self.count
-
-
-class RollSiteContext:
-    grpc_channel_factory = GrpcChannelFactory()
-
-    def __init__(
-        self,
-        roll_site_session_id,
-        rp_ctx: RollPairContext,
-        party: typing.Tuple[str, str],
-        proxy_endpoint_host: str,
-        proxy_endpoint_port: int,
-        options: dict = None,
-    ):
-        if options is None:
-            options = {}
-        self.roll_site_session_id = roll_site_session_id
-        self.rp_ctx = rp_ctx
-        self._config = rp_ctx.session.config
-
-        self.role = party[0]
-        self.party_id = party[1]
-        self._options = options
-
-        self._registered_comm_types = dict()
-        self.register_comm_type("grpc", RollSiteGrpc)
-        self.proxy_endpoint = ErEndpoint(
-            host=proxy_endpoint_host, port=proxy_endpoint_port
-        )
-
-        self.pushing_latch = CountDownLatch(0)
-        self.rp_ctx.session.add_exit_task(self._wait_push_complete)
-
-        # push session
-        self.push_session_enabled = self._config.get_option(
-            options, ConfigKey.eggroll.rollsite.push.session.enabled
-        )
-        if self.push_session_enabled:
-            # create session for push roll_pair and object
-            self._push_session = ErSession(
-                config=self._config,
-                session_id=roll_site_session_id + "_push",
-                options=rp_ctx.session.get_all_options(),
-            )
-            self._push_rp_ctx = RollPairContext(session=self._push_session)
-            L.info(f"push_session={self._push_session.get_session_id()} enabled")
-
-            def stop_push_session():
-                self._push_session.stop()
-
-            self.rp_ctx.session.add_exit_task(stop_push_session)
-        self._wait_push_exit_timeout = self._config.get_option(
-            options, ConfigKey.eggroll.rollsite.push.overall.timeout.sec
-        )
-
-        L.info(f"inited RollSiteContext: {self.__dict__}")
-
-    @property
-    def config(self):
-        return self.rp_ctx.session.config
-
-    def _wait_push_complete(self):
-        session_id = self.rp_ctx.session.get_session_id()
-        L.info(
-            f"running roll site exit func for er session={session_id},"
-            f" roll site session id={self.roll_site_session_id}"
-        )
-        residual_count = self.pushing_latch.await_latch(self._wait_push_exit_timeout)
-        if residual_count != 0:
-            L.error(
-                f"exit session when not finish push: "
-                f"residual_count={residual_count}, timeout={self._wait_push_exit_timeout}"
-            )
-
-    def load(self, name: str, tag: str, options: dict = None):
-        if options is None:
-            options = {}
-        final_options = self._options.copy()
-        final_options.update(options)
-        return RollSite(name, tag, self, options=final_options)
-
-    def register_comm_type(self, name, clazz):
-        self._registered_comm_types[name] = clazz
-
-    def get_comm_impl(self, name):
-        if name in self._registered_comm_types:
-            return self._registered_comm_types[name]
-        else:
-            raise ValueError(f"comm_type={name} is not registered")
-
-
-class RollSiteBase:
-    _receive_executor_pool = None
-
-    def __init__(
-        self, name: str, tag: str, rs_ctx: RollSiteContext, options: dict = None
-    ):
-        if options is None:
-            options = {}
-
-        self.name = name
-        self.tag = tag
-        self.ctx = rs_ctx
-        self.options = options
-        self.party_id = self.ctx.party_id
-        self.dst_host = self.ctx.proxy_endpoint.host
-        self.dst_port = self.ctx.proxy_endpoint.port
-        self.roll_site_session_id = self.ctx.roll_site_session_id
-        self.local_role = self.ctx.role
-
-        if RollSiteBase._receive_executor_pool is None:
-            receive_executor_pool_size = self.ctx.config.get_option(
-                options, ConfigKey.eggroll.rollsite.receive.executor.pool.max.size
-            )
-            receive_executor_pool_type = self.ctx.config.get_option(
-                options, ConfigKey.eggroll.core.default.executor.pool
-            )
-            self._receive_executor_pool = create_executor_pool(
-                canonical_name=receive_executor_pool_type,
-                max_workers=receive_executor_pool_size,
-                thread_name_prefix="rollsite-client",
-            )
-        self._push_start_time = None
-        self._pull_start_time = None
-        L.debug(
-            f"inited RollSite. my party_id={self.ctx.party_id}. proxy endpoint={self.dst_host}:{self.dst_port}"
-        )
-
-    def _run_thread(self, fn, *args, **kwargs):
-        return self._receive_executor_pool.submit(fn, *args, **kwargs)
-
-
-class RollSiteImplBase(RollSiteBase):
-    def __init__(
-        self, name: str, tag: str, rs_ctx: RollSiteContext, options: dict = None
-    ):
-        super(RollSiteImplBase, self).__init__(name, tag, rs_ctx, options)
-
-    def _push_bytes(self, obj, rs_header: ErRollSiteHeader, options: dict):
-        raise NotImplementedError()
-
-    def _push_rollpair(self, rp: RollPair, rs_header: ErRollSiteHeader, options: dict):
-        raise NotImplementedError()
-
-    def _pull_one(self, rs_header: ErRollSiteHeader):
-        raise NotImplementedError()
-
-    def cleanup(self):
-        return
-
-
-class RollSiteLocalMock(RollSiteBase):
-    pass
 
 
 class _BatchStreamHelper(object):
@@ -316,98 +130,9 @@ class _BatchStreamHelper(object):
             )
 
 
-class RollSite(RollSiteBase):
-    def __init__(
-        self, name: str, tag: str, rs_ctx: RollSiteContext, options: dict = None
-    ):
-        if options is None:
-            options = dict()
-        super().__init__(name, tag, rs_ctx)
-
-        if "comm_type" not in options:
-            options["comm_type"] = "grpc"
-        self._comm_type = options["comm_type"]
-        self._impl_class = self.ctx.get_comm_impl(self._comm_type)
-        self._impl_instance = self._impl_class(name, tag, rs_ctx, options)
-
-    def push_bytes(self, obj, parties: list = None, options: dict = None):
-        if options is None:
-            options = {}
-
-        futures = []
-        for role_party_id in parties:
-            self.ctx.pushing_latch.count_up()
-            dst_role = role_party_id[0]
-            dst_party_id = str(role_party_id[1])
-            data_type = "object"
-            rs_header = ErRollSiteHeader(
-                roll_site_session_id=self.roll_site_session_id,
-                name=self.name,
-                tag=self.tag,
-                src_role=self.local_role,
-                src_party_id=self.party_id,
-                dst_role=dst_role,
-                dst_party_id=dst_party_id,
-                data_type=data_type,
-            )
-            future = self._run_thread(
-                self._impl_instance._push_bytes, obj, rs_header, options
-            )
-            futures.append(future)
-
-        return futures
-
-    def push_rp(self, obj, parties: list = None, options: dict = None):
-        if options is None:
-            options = {}
-
-        futures = []
-        for role_party_id in parties:
-            self.ctx.pushing_latch.count_up()
-            dst_role = role_party_id[0]
-            dst_party_id = str(role_party_id[1])
-            data_type = "rollpair"
-            rs_header = ErRollSiteHeader(
-                roll_site_session_id=self.roll_site_session_id,
-                name=self.name,
-                tag=self.tag,
-                src_role=self.local_role,
-                src_party_id=self.party_id,
-                dst_role=dst_role,
-                dst_party_id=dst_party_id,
-                data_type=data_type,
-            )
-
-            future = self._run_thread(
-                self._impl_instance._push_rollpair, obj, rs_header, options
-            )
-            futures.append(future)
-        return futures
-
-    def pull(self, parties: list = None):
-        futures = []
-        for src_role, src_party_id in parties:
-            src_party_id = str(src_party_id)
-            rs_header = ErRollSiteHeader(
-                roll_site_session_id=self.roll_site_session_id,
-                name=self.name,
-                tag=self.tag,
-                src_role=src_role,
-                src_party_id=src_party_id,
-                dst_role=self.local_role,
-                dst_party_id=self.party_id,
-            )
-            futures.append(
-                self._receive_executor_pool.submit(
-                    self._impl_instance._pull_one, rs_header
-                )
-            )
-        return futures
-
-
 class RollSiteGrpc(RollSiteImplBase):
     def __init__(
-        self, name: str, tag: str, rs_ctx: RollSiteContext, options: dict = None
+        self, name: str, tag: str, rs_ctx: "RollSiteContext", options: dict = None
     ):
         if options is None:
             options = dict()
