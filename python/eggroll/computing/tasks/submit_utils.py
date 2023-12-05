@@ -5,9 +5,9 @@ from typing import Callable
 from typing import Type, TypeVar, List, Tuple
 
 from eggroll.computing.tasks import consts
-from eggroll.core.client import CommandClient
+from eggroll.core.command.command_client import CommandClient
 from eggroll.core.meta_model import ErFunctor, ErJobIO, ErEndpoint, ErJob, ErTask
-from eggroll.core.utils import generate_job_id, generate_task_id
+from .job_util import generate_job_id, generate_task_id
 
 if typing.TYPE_CHECKING:
     from eggroll.computing.roll_pair import RollPair
@@ -66,9 +66,62 @@ def block_submit_unary_unit_job(
 ) -> List[List[T]]:
     return block_submit_unary_unit_tasks(
         command_client=command_client,
-        tasks=job.decompose_tasks(),
+        tasks=decompose_tasks(job),
         output_types=output_types,
     )
+
+
+def decompose_tasks(job: ErJob) -> List[Tuple[List[ErTask], ErEndpoint]]:
+    input_total_partitions = job.first_input.num_partitions
+    output_total_partitions = (
+        job.first_output.num_partitions if job.has_first_output else 0
+    )
+    total_partitions = max(input_total_partitions, output_total_partitions)
+    tasks = []
+    for i in range(total_partitions):
+        task_input_partitions = []
+        task_output_partitions = []
+        task_endpoint = None
+
+        def _fill_partitions(job_ios: List[ErJobIO], partitions, target_endpoint):
+            for job_io in job_ios:
+                partition = job_io.store.get_partition(i)
+                partitions.append(partition)
+                endpoint = partition.processor.command_endpoint
+                if target_endpoint is None:
+                    target_endpoint = endpoint
+                elif target_endpoint != endpoint:
+                    raise ValueError(
+                        f"store {job_io.store} partition {i} has different processor endpoint"
+                    )
+            return target_endpoint
+
+        if i < input_total_partitions:
+            task_endpoint = _fill_partitions(
+                job.inputs, task_input_partitions, task_endpoint
+            )
+        if i < output_total_partitions:
+            task_endpoint = _fill_partitions(
+                job.outputs, task_output_partitions, task_endpoint
+            )
+        if not task_endpoint:
+            raise ValueError(f"task endpoint is null for task {i}")
+
+        tasks.append(
+            (
+                [
+                    ErTask(
+                        id=generate_task_id(job.id, i),
+                        name=f"{job.name}",
+                        inputs=task_input_partitions,
+                        outputs=task_output_partitions,
+                        job=job,
+                    )
+                ],
+                task_endpoint,
+            ),
+        )
+    return tasks
 
 
 def block_submit_unary_unit_tasks(

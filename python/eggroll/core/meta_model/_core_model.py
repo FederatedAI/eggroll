@@ -18,7 +18,6 @@ from copy import deepcopy
 from threading import Lock
 from typing import List
 
-from eggroll.core.constants import SessionStatus
 from eggroll.core.proto import meta_pb2
 from eggroll.core.utils import time_now_ns
 from ._base_model import RpcMessage
@@ -928,6 +927,14 @@ class ErJob(RpcMessage):
         self._options = options
 
     @property
+    def inputs(self):
+        return self._inputs
+
+    @property
+    def outputs(self):
+        return self._outputs
+
+    @property
     def id(self):
         return self._id
 
@@ -1024,60 +1031,6 @@ class ErJob(RpcMessage):
             f"options={repr(self._options)}) "
             f"at {hex(id(self))}>"
         )
-
-    def decompose_tasks(self):
-        from eggroll.core.utils import generate_task_id
-
-        input_total_partitions = self.first_input.num_partitions
-        output_total_partitions = (
-            self.first_output.num_partitions if self.has_first_output else 0
-        )
-        total_partitions = max(input_total_partitions, output_total_partitions)
-        tasks = []
-        for i in range(total_partitions):
-            task_input_partitions = []
-            task_output_partitions = []
-            task_endpoint = None
-
-            def _fill_partitions(job_ios: List[ErJobIO], partitions, target_endpoint):
-                for job_io in job_ios:
-                    partition = job_io.store.get_partition(i)
-                    partitions.append(partition)
-                    endpoint = partition.processor.command_endpoint
-                    if target_endpoint is None:
-                        target_endpoint = endpoint
-                    elif target_endpoint != endpoint:
-                        raise ValueError(
-                            f"store {job_io.store} partition {i} has different processor endpoint"
-                        )
-                return target_endpoint
-
-            if i < input_total_partitions:
-                task_endpoint = _fill_partitions(
-                    self._inputs, task_input_partitions, task_endpoint
-                )
-            if i < output_total_partitions:
-                task_endpoint = _fill_partitions(
-                    self._outputs, task_output_partitions, task_endpoint
-                )
-            if not task_endpoint:
-                raise ValueError(f"task endpoint is null for task {i}")
-
-            tasks.append(
-                (
-                    [
-                        ErTask(
-                            id=generate_task_id(self.id, i),
-                            name=f"{self.name}",
-                            inputs=task_input_partitions,
-                            outputs=task_output_partitions,
-                            job=self,
-                        )
-                    ],
-                    task_endpoint,
-                ),
-            )
-        return tasks
 
 
 class ErTask(RpcMessage):
@@ -1210,9 +1163,6 @@ class ErSessionMeta(RpcMessage):
     @property
     def status(self):
         return self._status
-
-    def is_active(self):
-        return self._status == SessionStatus.ACTIVE
 
     def is_processors_valid(self):
         for p in self._processors:

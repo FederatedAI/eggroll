@@ -16,7 +16,8 @@ import logging
 import os
 import typing
 
-from eggroll.core.constants import StoreTypes
+from ._format import PairBinReader, PairBinWriter, ArrayByteBuffer
+from ._type import StoreTypes
 
 if typing.TYPE_CHECKING:
     from eggroll.core.meta_model import ErPartition
@@ -31,7 +32,7 @@ def create_pair_adapter(options: dict):
         duplicate_options["store_type"] = StoreTypes.ROLLPAIR_LMDB
         ret = create_pair_adapter(options=duplicate_options)
     elif options["store_type"] == StoreTypes.ROLLPAIR_LMDB:
-        from .lmdb import LmdbAdapter
+        from ._lmdb import LmdbAdapter
 
         ret = LmdbAdapter(options=options)
         L.info(f"return LmdbAdapter={ret}")
