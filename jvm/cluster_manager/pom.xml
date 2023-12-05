@@ -10,19 +10,12 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>cluster_manager</artifactId>
-    <version>3.0.0</version>
+    <version>${eggroll.version}</version>
     <dependencies>
 
         <dependency>
             <groupId>com.github.pagehelper</groupId>
             <artifactId>pagehelper</artifactId>
-            <version>5.2.0</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.javatuples</groupId>
-            <artifactId>javatuples</artifactId>
-            <version>1.2</version>
         </dependency>
 
         <dependency>
@@ -33,7 +26,7 @@
         <dependency>
             <groupId>org.fedai.eggroll</groupId>
             <artifactId>core</artifactId>
-            <version>3.0.0</version>
+            <version>${eggroll.version}</version>
         </dependency>
 
         <dependency>
