@@ -31,6 +31,7 @@ class JobCommands:
     QUERY_JOB_STATUS = _create_command_uri(prefix, "queryJobStatus")
     QUERY_JOB = _create_command_uri(prefix, "queryJob")
     KILL_JOB = _create_command_uri(prefix, "killJob")
+    STOP_JOB = _create_command_uri(prefix, "stopJob")
     DOWNLOAD_JOB = _create_command_uri(prefix, "downloadJob")
     PREPARE_DOWNLOAD_JOB = _create_command_uri(prefix, "prepareJobDownload")
 
