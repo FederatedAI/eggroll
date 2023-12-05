@@ -12,94 +12,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import json
-import os
-import time
 import traceback
 from datetime import datetime
-
-from google.protobuf.text_format import MessageToString
-
-static_er_conf = {}
-stringify_charset = "iso-8859-1"
-M = 2**31
-
-
-def _to_proto(rpc_message):
-    if rpc_message is not None:
-        return rpc_message.to_proto()
-
-
-def _to_proto_string(rpc_message):
-    if rpc_message is not None:
-        return rpc_message.to_proto_string()
-
-
-def _from_proto(parser, rpc_message):
-    if rpc_message is not None:
-        return parser(rpc_message)
-
-
-def _map_and_listify(map_func, a_list):
-    return list(map(map_func, a_list))
-
-
-def _stringify(data):
-    from eggroll.core.base_model import RpcMessage
-
-    if isinstance(data, str):
-        return data
-    elif isinstance(data, RpcMessage):
-        return data.to_proto_string().decode(stringify_charset)
-    elif isinstance(data, bytes):
-        return data.decode(stringify_charset)
-    else:
-        return str(data)
-
-
-def _stringify_dict(a_dict: dict):
-    return {_stringify(k): _stringify(v) for k, v in a_dict.items()}
-
-
-def _repr_list(a_list: list):
-    return ", ".join(_map_and_listify(repr, a_list))
-
-
-def _repr_bytes(a_bytes: bytes):
-    if a_bytes is None:
-        return f"(None)"
-    else:
-        return f"({a_bytes[:200]}, len={len(a_bytes)})"
-
-
-def _elements_to_proto(rpc_message_list):
-    return _map_and_listify(_to_proto, rpc_message_list)
-
-
-def string_to_bytes(string):
-    return string if isinstance(string, bytes) else string.encode(encoding="utf-8")
-
-
-def bytes_to_string(byte):
-    return byte.decode(encoding="ISO-8859-1")
-
-
-def json_dumps(src, byte=False):
-    if byte:
-        return string_to_bytes(json.dumps(src))
-    else:
-        return json.dumps(src)
-
-
-def json_loads(src):
-    if isinstance(src, bytes):
-        return json.loads(bytes_to_string(src))
-    else:
-        return json.loads(src)
-
-
-def current_timestamp():
-    return int(time.time() * 1000)
 
 
 def _exception_logger(func):
@@ -166,37 +80,6 @@ def generate_job_id(session_id, tag="", delim="-"):
 
 def generate_task_id(job_id, partition_id, delim="-"):
     return delim.join([job_id, "task", str(partition_id)])
-
-
-def to_one_line_string(msg, as_one_line=True):
-    if isinstance(msg, str) or isinstance(msg, bytes):
-        return msg
-    return MessageToString(msg, as_one_line=as_one_line)
-
-
-_eggroll_home = None
-
-
-def get_eggroll_home():
-    global _eggroll_home
-    if not _eggroll_home:
-        _eggroll_home = os.getenv(
-            "EGGROLL_HOME", os.path.realpath(f"{__file__}/../../../..")
-        )
-    return _eggroll_home
-
-
-_eggroll_bin_truncate_limit = None
-
-
-def get_eggroll_bin_truncate_limit():
-    global _eggroll_bin_truncate_limit
-    if not _eggroll_bin_truncate_limit:
-        _eggroll_bin_truncate_limit = os.getenv("EGGROLL_BIN_TRUNCATE_LIMIT", 0)
-        if _eggroll_bin_truncate_limit <= 0:
-            _eggroll_bin_truncate_limit = 300
-
-    return _eggroll_bin_truncate_limit
 
 
 def calculate_rank_in_node(partition_id, cluster_node_count, processor_count_of_node):

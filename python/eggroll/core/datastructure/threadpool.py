@@ -62,9 +62,10 @@ class ErThreadUnpooledExecutor(_base.Executor):
     Executor with Threads not pooled at all. If max_workers is reached, new
     submits are blocked until an existing thread is finished and released.
     """
+
     _counter = itertools.count().__next__
 
-    def __init__(self, max_workers=None, thread_name_prefix=''):
+    def __init__(self, max_workers=None, thread_name_prefix=""):
         if max_workers is None:
             # Use this number because ThreadPoolExecutor is often
             # used to overlap I/O instead of CPU work.
@@ -75,8 +76,9 @@ class ErThreadUnpooledExecutor(_base.Executor):
         self._max_workers = max_workers
         self._shutdown = False
         self._shutdown_lock = threading.Lock()
-        self._thread_name_prefix = (thread_name_prefix or
-                                    f"ErUnpooledExecutor-{self._counter()}")
+        self._thread_name_prefix = (
+            thread_name_prefix or f"ErUnpooledExecutor-{self._counter()}"
+        )
         self._num_threads = 0
         self._num_threads_lock = threading.Lock()
         self._empty_event = threading.Event()
@@ -88,27 +90,35 @@ class ErThreadUnpooledExecutor(_base.Executor):
         if len(args) >= 2:
             self, fn, *args = args
         elif not args:
-            raise TypeError("descriptor 'submit' of 'ErDummyThreadPool' object "
-                            "needs an argument")
-        elif 'fn' in kwargs:
-            fn = kwargs.pop('fn')
+            raise TypeError(
+                "descriptor 'submit' of 'ErDummyThreadPool' object " "needs an argument"
+            )
+        elif "fn" in kwargs:
+            fn = kwargs.pop("fn")
             self, *args = args
         else:
-            raise TypeError('submit expected at least 1 positional argument, '
-                            'got %d' % (len(args) - 1))
+            raise TypeError(
+                "submit expected at least 1 positional argument, "
+                "got %d" % (len(args) - 1)
+            )
 
         with self._shutdown_lock:
             if self._shutdown:
-                raise RuntimeError('cannot schedule new futures after shutdown')
+                raise RuntimeError("cannot schedule new futures after shutdown")
             if _shutdown:
-                raise RuntimeError('cannot schedule new futures after '
-                                   'interpreter shutdown')
+                raise RuntimeError(
+                    "cannot schedule new futures after " "interpreter shutdown"
+                )
             self.increase_thread_count()
-            thread_name = f'{self._thread_name_prefix or self}_{self._num_threads}'
+            thread_name = f"{self._thread_name_prefix or self}_{self._num_threads}"
             f = _base.Future()
             w = _ErWorkItem(f, fn, args, kwargs)
-            t = threading.Thread(name=thread_name, target=w.run, kwargs={"on_join": self.decrease_thread_count},
-                                 daemon=True)
+            t = threading.Thread(
+                name=thread_name,
+                target=w.run,
+                kwargs={"on_join": self.decrease_thread_count},
+                daemon=True,
+            )
             t.start()
 
             return f
@@ -130,7 +140,8 @@ class ErThreadUnpooledExecutor(_base.Executor):
                         break
             else:
                 L.debug(
-                    f"waiting for thread to release. thread_name_prefix={self._thread_name_prefix}, self._num_threads={self._num_threads}, max_workers={self._max_workers}")
+                    f"waiting for thread to release. thread_name_prefix={self._thread_name_prefix}, self._num_threads={self._num_threads}, max_workers={self._max_workers}"
+                )
 
     def decrease_thread_count(self):
         with self._num_threads_lock:
@@ -140,11 +151,13 @@ class ErThreadUnpooledExecutor(_base.Executor):
                 self._empty_event.set()
             elif self._num_threads < 0:
                 raise OverflowError(
-                    f'num thread of {self._thread_name_prefix} < 0 after decrease. _num_threads={self._num_threads}')
+                    f"num thread of {self._thread_name_prefix} < 0 after decrease. _num_threads={self._num_threads}"
+                )
 
     def shutdown(self, wait=True):
         L.info(
-            f"shutting down threadpool. wait={wait}, thread_name_prefix={self._thread_name_prefix}, self._num_threads={self._num_threads}, max_workers={self._max_workers}")
+            f"shutting down threadpool. wait={wait}, thread_name_prefix={self._thread_name_prefix}, self._num_threads={self._num_threads}, max_workers={self._max_workers}"
+        )
         with self._shutdown_lock:
             self._shutdown = True
             self._accept_event.clear()

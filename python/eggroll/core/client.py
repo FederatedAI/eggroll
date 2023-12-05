@@ -18,25 +18,41 @@ import threading
 import time
 import typing
 
-from eggroll.core.base_model import RpcMessage
-from eggroll.core.command.command_model import CommandURI
-from eggroll.core.command.command_model import ErCommandRequest, ErCommandResponse
-from eggroll.core.command.commands import MetadataCommands, NodeManagerCommands, SessionCommands
+from eggroll.config import Config
+from eggroll.core.command.commands import (
+    MetadataCommands,
+    NodeManagerCommands,
+    SessionCommands,
+)
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.grpc.factory import GrpcChannelFactory
-from eggroll.core.meta_model import ErEndpoint, ErServerNode, ErServerCluster, ErProcessor, ErStoreList
-from eggroll.core.meta_model import ErStore, ErSessionMeta
+from eggroll.core.meta_model import CommandURI, ErCommandRequest, ErCommandResponse
+from eggroll.core.meta_model import (
+    ErEndpoint,
+    ErServerNode,
+    ErServerCluster,
+    ErProcessor,
+    ErStoreList,
+    ErStore,
+    ErSessionMeta,
+    RpcMessage,
+    to_proto_string,
+    map_and_listify,
+)
 from eggroll.core.proto import command_pb2_grpc
-from eggroll.core.utils import _to_proto_string, _map_and_listify
 from eggroll.core.utils import time_now_ns
-from eggroll.config import Config
 
 L = logging.getLogger(__name__)
 
 
 class CommandCallError(Exception):
-    def __init__(self, command_uri: CommandURI, endpoint: ErEndpoint, *args: object) -> None:
-        super().__init__(f"Failed to call command: {command_uri} to endpoint: {endpoint}, caused by: ", *args)
+    def __init__(
+        self, command_uri: CommandURI, endpoint: ErEndpoint, *args: object
+    ) -> None:
+        super().__init__(
+            f"Failed to call command: {command_uri} to endpoint: {endpoint}, caused by: ",
+            *args,
+        )
 
 
 T = typing.TypeVar("T")
@@ -54,10 +70,12 @@ class CommandClient(object):
     @classmethod
     def _maybe_create_executor_pool(cls, config: Config):
         if CommandClient._executor_pool is None:
-            with (CommandClient._executor_pool_lock):
+            with CommandClient._executor_pool_lock:
                 if CommandClient._executor_pool is None:
                     _executor_pool_type = config.eggroll.core.default.executor.pool
-                    _max_workers = config.eggroll.core.client.command.executor.pool.max.size
+                    _max_workers = (
+                        config.eggroll.core.client.command.executor.pool.max.size
+                    )
                     CommandClient._executor_pool = create_executor_pool(
                         canonical_name=_executor_pool_type,
                         max_workers=_max_workers,
@@ -65,11 +83,11 @@ class CommandClient(object):
                     )
 
     def simple_sync_send(
-            self,
-            input: RpcMessage,
-            output_type: typing.Type[T],
-            endpoint: ErEndpoint,
-            command_uri: CommandURI,
+        self,
+        input: RpcMessage,
+        output_type: typing.Type[T],
+        endpoint: ErEndpoint,
+        command_uri: CommandURI,
     ) -> T:
         results = self.sync_send(
             inputs=[input],
@@ -84,16 +102,18 @@ class CommandClient(object):
             return None
 
     def sync_send(
-            self,
-            inputs: list,
-            output_types: list,
-            endpoint: ErEndpoint,
-            command_uri: CommandURI,
+        self,
+        inputs: list,
+        output_types: list,
+        endpoint: ErEndpoint,
+        command_uri: CommandURI,
     ):
         request = None
         try:
             request = ErCommandRequest(
-                id=time_now_ns(), uri=command_uri._uri, args=_map_and_listify(_to_proto_string, inputs)
+                id=time_now_ns(),
+                uri=command_uri._uri,
+                args=map_and_listify(to_proto_string, inputs),
             )
             start = time.time()
             L.trace(f"[CC] calling: {endpoint} {command_uri} {request}")
@@ -102,19 +122,32 @@ class CommandClient(object):
             response = _command_stub.call(request.to_proto())
             er_response = ErCommandResponse.from_proto(response)
             elapsed = time.time() - start
-            L.trace(f"[CC] called (elapsed={elapsed}): {endpoint}, {command_uri}, {request}, {er_response}")
+            L.trace(
+                f"[CC] called (elapsed={elapsed}): {endpoint}, {command_uri}, {request}, {er_response}"
+            )
             byte_results = er_response._results
 
             if len(byte_results):
                 zipped = zip(output_types, byte_results)
-                return list(map(lambda t: t[0].from_proto_string(t[1]) if t[1] is not None else None, zipped))
+                return list(
+                    map(
+                        lambda t: t[0].from_proto_string(t[1])
+                        if t[1] is not None
+                        else None,
+                        zipped,
+                    )
+                )
             else:
                 return []
         except Exception as e:
-            L.exception(f"Error calling to {endpoint}, command_uri: {command_uri}, req:{request}")
+            L.exception(
+                f"Error calling to {endpoint}, command_uri: {command_uri}, req:{request}"
+            )
             raise CommandCallError(command_uri, endpoint, e) from e
 
-    def async_call(self, args, output_types: list, command_uri: CommandURI, callback=None):
+    def async_call(
+        self, args, output_types: list, command_uri: CommandURI, callback=None
+    ):
         futures = list()
         for inputs, endpoint in args:
             f = self._executor_pool.submit(

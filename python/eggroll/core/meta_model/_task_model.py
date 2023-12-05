@@ -13,7 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from eggroll.core.base_model import RpcMessage
+from ._base_model import RpcMessage
 from eggroll.core.proto import egg_pb2
 
 
@@ -92,14 +92,18 @@ class GetResponse(RpcMessage):
         return self._exists
 
     def to_proto(self):
-        return egg_pb2.GetResponse(key=self._key, value=self._value, exists=self._exists)
+        return egg_pb2.GetResponse(
+            key=self._key, value=self._value, exists=self._exists
+        )
 
     def to_proto_string(self):
         return self.to_proto().SerializeToString()
 
     @staticmethod
     def from_proto(pb_message):
-        return GetResponse(key=pb_message.key, value=pb_message.value, exists=pb_message.exists)
+        return GetResponse(
+            key=pb_message.key, value=pb_message.value, exists=pb_message.exists
+        )
 
     @staticmethod
     def from_proto_string(pb_string):
@@ -163,14 +167,18 @@ class PutResponse(RpcMessage):
         return self._success
 
     def to_proto(self):
-        return egg_pb2.PutResponse(key=self._key, value=self._value, success=self._success)
+        return egg_pb2.PutResponse(
+            key=self._key, value=self._value, success=self._success
+        )
 
     def to_proto_string(self):
         return self.to_proto().SerializeToString()
 
     @staticmethod
     def from_proto(pb_message):
-        return PutResponse(key=pb_message.key, value=pb_message.value, success=pb_message.success)
+        return PutResponse(
+            key=pb_message.key, value=pb_message.value, success=pb_message.success
+        )
 
     @staticmethod
     def from_proto_string(pb_string):
@@ -329,7 +337,9 @@ class ReduceResponse(RpcMessage):
         return ReduceResponse.from_proto(pb_message)
 
     def __repr__(self):
-        return f"<ReduceResponse(id={self._id}, value={self._value}) at {hex(id(self))}>"
+        return (
+            f"<ReduceResponse(id={self._id}, value={self._value}) at {hex(id(self))}>"
+        )
 
 
 class AggregateRequest(RpcMessage):

@@ -3,12 +3,14 @@ import os
 
 def init_deepspeed(config=None):
     from eggroll.config import load_config
+
     if config is None:
         config = load_config(None)
 
     import torch.distributed as distributed
 
     from ..store.client import EggrollStore
+
     if "EGGROLL_DEEPSPEED_STORE_HOST" not in os.environ:
         raise RuntimeError("EGGROLL_DEEPSPEED_STORE_HOST is not set")
     store_host = os.environ["EGGROLL_DEEPSPEED_STORE_HOST"]
@@ -35,4 +37,6 @@ def init_deepspeed(config=None):
     if "LOCAL_RANK" not in os.environ:
         raise RuntimeError("LOCAL_RANK is not set")
 
-    distributed.init_process_group(backend=backend, store=store, world_size=world_size, rank=rank)
+    distributed.init_process_group(
+        backend=backend, store=store, world_size=world_size, rank=rank
+    )

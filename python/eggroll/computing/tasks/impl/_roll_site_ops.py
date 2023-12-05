@@ -4,21 +4,18 @@ import threading
 import typing
 from collections import defaultdict, namedtuple
 
-from eggroll.computing.tasks import consts
+from eggroll.computing.tasks import consts, store
+from eggroll.computing.tasks.store.format import ArrayByteBuffer, PairBinReader
 from eggroll.computing.tasks.submit_utils import block_submit_unary_unit_job
 from eggroll.config import Config
 from eggroll.core.datastructure.broker import BrokerClosed
 from eggroll.core.meta_model import (
-    ErFunctor,
+    ErJob,
+    ErPartition,
+    ErTask,
     ErJobIO,
-)
-from eggroll.core.meta_model import ErJob
-from eggroll.core.meta_model import ErPartition
-from eggroll.core.meta_model import ErTask
-from eggroll.core.pair_store.format import ArrayByteBuffer, PairBinReader
-from eggroll.core.transfer.transfer_service import TransferService
-from eggroll.core.transfer_model import ErRollSiteHeader
-from eggroll.core.transfer_model import (
+    ErFunctor,
+    ErRollSiteHeader,
     ErRollSitePullGetHeaderRequest,
     ErRollSitePullGetHeaderResponse,
     ErRollSitePullGetPartitionStatusRequest,
@@ -26,6 +23,7 @@ from eggroll.core.transfer_model import (
     ErRollSitePullClearStatusRequest,
     ErRollSitePullClearStatusResponse,
 )
+from eggroll.core.transfer.transfer_service import TransferService
 from eggroll.core.utils import generate_job_id
 from ._task import Task, EnvOptions
 
@@ -218,7 +216,9 @@ class PutBatchTask:
                 iter_wait = 0
                 iter_timeout = config.eggroll.core.fifobroker.iter.timeout.sec
                 batch_get_interval = 0.1
-                with self.partition.get_adapter(data_dir) as db, db.new_batch() as wb:
+                with store.get_adapter(
+                    self.partition, data_dir
+                ) as db, db.new_batch() as wb:
                     # for batch in broker:
                     while not broker.is_closable():
                         try:

@@ -17,8 +17,8 @@
 import os
 from struct import pack_into, unpack_from, unpack, pack
 
-MAGIC_NUM = bytes.fromhex('46709394')
-PROTOCOL_VERSION = bytes.fromhex('00000001')
+MAGIC_NUM = bytes.fromhex("46709394")
+PROTOCOL_VERSION = bytes.fromhex("00000001")
 
 # def create_byte_buffer(data, options=None):
 #     if options and "buffer_type" in options :
@@ -75,7 +75,9 @@ class FileByteBuffer:
         if offset is None:
             offset = self.get_offset()
         if self.size() - offset - size < 0:
-            raise IndexError(f'buffer overflow. remaining: {self.__size - offset}, required: {size}')
+            raise IndexError(
+                f"buffer overflow. remaining: {self.__size - offset}, required: {size}"
+            )
 
     def size(self):
         return os.fstat(self.file.fileno()).st_size
@@ -137,18 +139,20 @@ class ArrayByteBuffer(ByteBuffer):
         op_offset = self.__get_op_offset(offset)
         value_size = 4
         self._check_remaining(op_offset, value_size)
-        result = unpack_from('>i', self.__buffer, op_offset)
+        result = unpack_from(">i", self.__buffer, op_offset)
         self.__adjust_offset(op_offset, value_size)
         return result[0]
 
     def _check_remaining(self, offset, size):
         if self.__size - offset - size < 0:
-            raise IndexError(f'buffer overflow. remaining: {self.size() - offset}, required: {size}')
+            raise IndexError(
+                f"buffer overflow. remaining: {self.size() - offset}, required: {size}"
+            )
 
     def read_bytes(self, size, offset=None):
         op_offset = self.__get_op_offset(offset)
         self._check_remaining(op_offset, size)
-        ret = self.__buffer[op_offset: op_offset + size]
+        ret = self.__buffer[op_offset : op_offset + size]
         self.__adjust_offset(op_offset, size)
         return ret
 
@@ -156,14 +160,14 @@ class ArrayByteBuffer(ByteBuffer):
         size = 4
         op_offset = self.__get_op_offset(offset)
         self._check_remaining(op_offset, size)
-        pack_into('>i', self.__buffer, op_offset, value)
+        pack_into(">i", self.__buffer, op_offset, value)
         self.__adjust_offset(op_offset, size)
 
     def write_bytes(self, value, offset=None):
         op_offset = self.__get_op_offset(offset)
         size = len(value)
         self._check_remaining(op_offset, size)
-        self.__buffer[op_offset: op_offset + size] = value
+        self.__buffer[op_offset : op_offset + size] = value
         self.__adjust_offset(op_offset, size)
 
 
@@ -174,17 +178,20 @@ class PairBinReader(object):
             self.__buf = pair_buffer
             _magic_num = self.__buf.read_bytes(len(MAGIC_NUM))
             if _magic_num != MAGIC_NUM:
-                raise ValueError('magic num does not match')
+                raise ValueError("magic num does not match")
 
             _protocol_version = self.__buf.read_bytes(len(PROTOCOL_VERSION))
             if _protocol_version != PROTOCOL_VERSION:
-                raise ValueError('protocol version not suppoted')
+                raise ValueError("protocol version not suppoted")
             # move offset, do not delete
             header_size = self.__buf.read_int32()
             body_size = self.__buf.read_int32()
 
-            if body_size > 0 and self.__buf.size() - self.__buf.get_offset() != body_size:
-                raise ValueError('body size does not match len of body')
+            if (
+                body_size > 0
+                and self.__buf.size() - self.__buf.get_offset() != body_size
+            ):
+                raise ValueError("body size does not match len of body")
         else:
             self.use_array_byte_buffer = False
             self.__data = data
@@ -193,38 +200,48 @@ class PairBinReader(object):
 
             # _magic_num = self.read_bytes(len(MAGIC_NUM))
             if self.__size - self.__offset - len(MAGIC_NUM) < 0:
-                raise IndexError(f'buffer overflow. remaining: {self.__size - self.__offset}, required: {len(MAGIC_NUM)}')
-            _magic_num = self.__data[self.__offset: self.__offset + len(MAGIC_NUM)]
+                raise IndexError(
+                    f"buffer overflow. remaining: {self.__size - self.__offset}, required: {len(MAGIC_NUM)}"
+                )
+            _magic_num = self.__data[self.__offset : self.__offset + len(MAGIC_NUM)]
             self.__offset = self.__offset + len(MAGIC_NUM)
 
             if _magic_num != MAGIC_NUM:
-                raise ValueError('magic num does not match')
+                raise ValueError("magic num does not match")
 
             # _protocol_version = self.read_bytes(len(PROTOCOL_VERSION))
             if self.__size - self.__offset - len(PROTOCOL_VERSION) < 0:
-                raise IndexError(f'buffer overflow. remaining: {self.__size - self.__offset}, required: {len(PROTOCOL_VERSION)}')
-            _protocol_version = self.__data[self.__offset: self.__offset + len(PROTOCOL_VERSION)]
+                raise IndexError(
+                    f"buffer overflow. remaining: {self.__size - self.__offset}, required: {len(PROTOCOL_VERSION)}"
+                )
+            _protocol_version = self.__data[
+                self.__offset : self.__offset + len(PROTOCOL_VERSION)
+            ]
             self.__offset = self.__offset + len(PROTOCOL_VERSION)
             if _protocol_version != PROTOCOL_VERSION:
-                raise ValueError('protocol version not suppoted')
+                raise ValueError("protocol version not suppoted")
 
             # move offset, do not delete
             # header_size = self.read_int32()
             value_size = 4
             if self.__size - self.__offset - value_size < 0:
-                raise IndexError(f'buffer overflow. remaining: {self.__size - self.__offset}, required: {value_size}')
-            header_size = unpack_from('>i', self.__data, self.__offset)[0]
+                raise IndexError(
+                    f"buffer overflow. remaining: {self.__size - self.__offset}, required: {value_size}"
+                )
+            header_size = unpack_from(">i", self.__data, self.__offset)[0]
             self.__offset = self.__offset + value_size
 
             # body_size = self.read_int32()
             value_size = 4
             if self.__size - self.__offset - value_size < 0:
-                raise IndexError(f'buffer overflow. remaining: {self.__size - self.__offset}, required: {value_size}')
-            body_size = unpack_from('>i', self.__data, self.__offset)[0]
+                raise IndexError(
+                    f"buffer overflow. remaining: {self.__size - self.__offset}, required: {value_size}"
+                )
+            body_size = unpack_from(">i", self.__data, self.__offset)[0]
             self.__offset = self.__offset + value_size
 
             if body_size > 0 and self.size() - self.get_offset() != body_size:
-                raise ValueError('body size does not match len of body')
+                raise ValueError("body size does not match len of body")
 
     def remaining_size(self):
         return self.size() - self.get_offset()
@@ -249,7 +266,9 @@ class PairBinReader(object):
 
     def _check_remaining(self, offset, size):
         if self.__size - offset - size < 0:
-            raise IndexError(f'buffer overflow. remaining: {self.size() - offset}, required: {size}')
+            raise IndexError(
+                f"buffer overflow. remaining: {self.size() - offset}, required: {size}"
+            )
 
     def read_bytes(self, size, offset=None):
         if offset is None:
@@ -257,8 +276,10 @@ class PairBinReader(object):
         else:
             op_offset = offset
         if self.__size - op_offset - size < 0:
-            raise IndexError(f'buffer overflow. remaining: {self.size() - op_offset}, required: {size}')
-        ret = self.__data[op_offset: op_offset + size]
+            raise IndexError(
+                f"buffer overflow. remaining: {self.size() - op_offset}, required: {size}"
+            )
+        ret = self.__data[op_offset : op_offset + size]
         self.__offset = op_offset + size
         return ret
 
@@ -269,8 +290,10 @@ class PairBinReader(object):
             op_offset = offset
         value_size = 4
         if self.__size - op_offset - value_size < 0:
-            raise IndexError(f'buffer overflow. remaining: {self.size() - op_offset}, required: {value_size}')
-        result = unpack_from('>i', self.__data, op_offset)
+            raise IndexError(
+                f"buffer overflow. remaining: {self.size() - op_offset}, required: {value_size}"
+            )
+        result = unpack_from(">i", self.__data, op_offset)
         self.__offset = op_offset + value_size
         return result[0]
 
@@ -283,8 +306,10 @@ class PairBinReader(object):
             op_offset = offset
         # self._check_remaining(op_offset, size)
         if self.__size - op_offset - size < 0:
-            raise IndexError(f'buffer overflow. remaining: {self.size() - op_offset}, required: {size}')
-        pack_into('>i', self.__data, op_offset, value)
+            raise IndexError(
+                f"buffer overflow. remaining: {self.size() - op_offset}, required: {size}"
+            )
+        pack_into(">i", self.__data, op_offset, value)
         # self.__adjust_offset(op_offset, size)
         self.__offset = op_offset + size
 
@@ -315,8 +340,10 @@ class PairBinReader(object):
                     # key_size = self.read_int32()
                     int_size = 4
                     if self.__size - self.__offset - int_size < 0:
-                        raise IndexError(f'buffer overflow. remaining: {self.__size - self.__offset}, required: {int_size}')
-                    key_size = unpack_from('>i', self.__data, self.__offset)[0]
+                        raise IndexError(
+                            f"buffer overflow. remaining: {self.__size - self.__offset}, required: {int_size}"
+                        )
+                    key_size = unpack_from(">i", self.__data, self.__offset)[0]
                     self.__offset = self.__offset + int_size
 
                     # empty means end, though there is remaining data
@@ -327,23 +354,29 @@ class PairBinReader(object):
 
                     # key = self.read_bytes(size=key_size)
                     if self.__size - self.__offset - key_size < 0:
-                        raise IndexError(f'buffer overflow. remaining: {self.__size - self.__offset}, required: {key_size}')
-                    key = self.__data[self.__offset: self.__offset + key_size]
+                        raise IndexError(
+                            f"buffer overflow. remaining: {self.__size - self.__offset}, required: {key_size}"
+                        )
+                    key = self.__data[self.__offset : self.__offset + key_size]
                     self.__offset = self.__offset + key_size
 
-                    #value_size = self.read_int32()
+                    # value_size = self.read_int32()
                     int_size = 4
                     if self.__size - self.__offset - int_size < 0:
-                        raise IndexError(f'buffer overflow. remaining: {self.__size - self.__offset}, required: {int_size}')
-                    value_size = unpack_from('>i', self.__data, self.__offset)[0]
+                        raise IndexError(
+                            f"buffer overflow. remaining: {self.__size - self.__offset}, required: {int_size}"
+                        )
+                    value_size = unpack_from(">i", self.__data, self.__offset)[0]
                     self.__offset = self.__offset + int_size
 
                     # value = self.read_bytes(size=value_size)
                     if self.__size - self.__offset - value_size < 0:
-                        raise IndexError(f'buffer overflow. remaining: {self.__size - self.__offset}, required: {value_size}')
-                    value = self.__data[self.__offset: self.__offset + value_size]
+                        raise IndexError(
+                            f"buffer overflow. remaining: {self.__size - self.__offset}, required: {value_size}"
+                        )
+                    value = self.__data[self.__offset : self.__offset + value_size]
                     self.__offset = self.__offset + value_size
-                    
+
                 except IndexError as e:
                     # read end
                     self.__offset = old_offset
@@ -352,7 +385,6 @@ class PairBinReader(object):
 
 
 class PairBinWriter(object):
-
     @staticmethod
     def write_pair(buf, key_bytes, value_bytes):
         old_offset = buf.get_offset()
@@ -385,29 +417,37 @@ class PairBinWriter(object):
             # self.write_bytes(MAGIC_NUM)
             size = len(MAGIC_NUM)
             if self.__size - self.__offset - size < 0:
-                raise IndexError(f'buffer overflow. remaining: {self.size() - self.__offset}, required: {size}')
-            self.__data[self.__offset: self.__offset + size] = MAGIC_NUM
+                raise IndexError(
+                    f"buffer overflow. remaining: {self.size() - self.__offset}, required: {size}"
+                )
+            self.__data[self.__offset : self.__offset + size] = MAGIC_NUM
             self.__offset = self.__offset + size
 
             # self.write_bytes(PROTOCOL_VERSION)
             size = len(PROTOCOL_VERSION)
             if self.__size - self.__offset - size < 0:
-                raise IndexError(f'buffer overflow. remaining: {self.size() - self.__offset}, required: {size}')
-            self.__data[self.__offset: self.__offset + size] = PROTOCOL_VERSION
+                raise IndexError(
+                    f"buffer overflow. remaining: {self.size() - self.__offset}, required: {size}"
+                )
+            self.__data[self.__offset : self.__offset + size] = PROTOCOL_VERSION
             self.__offset = self.__offset + size
 
             # self.write_int32(0)
             size = 4
             if self.__size - self.__offset - size < 0:
-                raise IndexError(f'buffer overflow. remaining: {self.size() - self.__offset}, required: {size}')
-            pack_into('>i', self.__data, self.__offset, 0)
+                raise IndexError(
+                    f"buffer overflow. remaining: {self.size() - self.__offset}, required: {size}"
+                )
+            pack_into(">i", self.__data, self.__offset, 0)
             self.__offset = self.__offset + size
 
             # self.write_int32(0)
             size = 4
             if self.__size - self.__offset - size < 0:
-                raise IndexError(f'buffer overflow. remaining: {self.size() - self.__offset}, required: {size}')
-            pack_into('>i', self.__data, self.__offset, 0)
+                raise IndexError(
+                    f"buffer overflow. remaining: {self.size() - self.__offset}, required: {size}"
+                )
+            pack_into(">i", self.__data, self.__offset, 0)
             self.__offset = self.__offset + size
 
             self.use_array_byte_buffer = False
@@ -435,7 +475,9 @@ class PairBinWriter(object):
 
     def _check_remaining(self, offset, size):
         if self.__size - offset - size < 0:
-            raise IndexError(f'buffer overflow. remaining: {self.size() - offset}, required: {size}')
+            raise IndexError(
+                f"buffer overflow. remaining: {self.size() - offset}, required: {size}"
+            )
 
     def write_int32(self, value, offset=None):
         size = 4
@@ -444,8 +486,10 @@ class PairBinWriter(object):
         else:
             op_offset = offset
         if self.__size - op_offset - size < 0:
-            raise IndexError(f'buffer overflow. remaining: {self.size() - op_offset}, required: {size}')
-        pack_into('>i', self.__data, op_offset, value)
+            raise IndexError(
+                f"buffer overflow. remaining: {self.size() - op_offset}, required: {size}"
+            )
+        pack_into(">i", self.__data, op_offset, value)
         self.__offset = op_offset + size
 
     def write_bytes(self, value, offset=None):
@@ -455,42 +499,54 @@ class PairBinWriter(object):
             op_offset = offset
         size = len(value)
         if self.__size - op_offset - size < 0:
-            raise IndexError(f'buffer overflow. remaining: {self.size() - op_offset}, required: {size}')
-        self.__data[op_offset: op_offset + size] = value
+            raise IndexError(
+                f"buffer overflow. remaining: {self.size() - op_offset}, required: {size}"
+            )
+        self.__data[op_offset : op_offset + size] = value
         self.__offset = op_offset + size
 
     def write(self, key_bytes, value_bytes):
         if self.use_array_byte_buffer:
-            PairBinWriter.write_pair(self.__buf, key_bytes=key_bytes, value_bytes=value_bytes)
+            PairBinWriter.write_pair(
+                self.__buf, key_bytes=key_bytes, value_bytes=value_bytes
+            )
         else:
             old_offset = self.__offset
             try:
                 # self.write_int32(len(key_bytes))
                 size = 4
                 if self.__size - self.__offset - size < 0:
-                    raise IndexError(f'buffer overflow. remaining: {self.size() - self.__offset}, required: {size}')
-                pack_into('>i', self.__data, self.__offset, len(key_bytes))
+                    raise IndexError(
+                        f"buffer overflow. remaining: {self.size() - self.__offset}, required: {size}"
+                    )
+                pack_into(">i", self.__data, self.__offset, len(key_bytes))
                 self.__offset = self.__offset + size
 
                 # self.write_bytes(key_bytes)
                 size = len(key_bytes)
                 if self.__size - self.__offset - size < 0:
-                    raise IndexError(f'buffer overflow. remaining: {self.size() - self.__offset}, required: {size}')
-                self.__data[self.__offset: self.__offset + size] = key_bytes
+                    raise IndexError(
+                        f"buffer overflow. remaining: {self.size() - self.__offset}, required: {size}"
+                    )
+                self.__data[self.__offset : self.__offset + size] = key_bytes
                 self.__offset = self.__offset + size
 
                 # self.write_int32(len(value_bytes))
                 size = 4
                 if self.__size - self.__offset - size < 0:
-                    raise IndexError(f'buffer overflow. remaining: {self.size() - self.__offset}, required: {size}')
-                pack_into('>i', self.__data, self.__offset, len(value_bytes))
+                    raise IndexError(
+                        f"buffer overflow. remaining: {self.size() - self.__offset}, required: {size}"
+                    )
+                pack_into(">i", self.__data, self.__offset, len(value_bytes))
                 self.__offset = self.__offset + size
 
                 # self.write_bytes(value_bytes)
                 size = len(value_bytes)
                 if self.__size - self.__offset - size < 0:
-                    raise IndexError(f'buffer overflow. remaining: {self.size() - self.__offset}, required: {size}')
-                self.__data[self.__offset: self.__offset + size] = value_bytes
+                    raise IndexError(
+                        f"buffer overflow. remaining: {self.size() - self.__offset}, required: {size}"
+                    )
+                self.__data[self.__offset : self.__offset + size] = value_bytes
                 self.__offset = self.__offset + size
 
             except IndexError as e:
