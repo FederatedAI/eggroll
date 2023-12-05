@@ -14,19 +14,14 @@
 import logging
 import os
 from concurrent.futures import wait, FIRST_EXCEPTION
-from copy import deepcopy
 
 from eggroll.config import Config, ConfigKey
-from eggroll.core.client import ClusterManagerClient
-from eggroll.core.client import CommandClient
-from eggroll.core.constants import SessionStatus, ProcessorTypes
+from eggroll.core.command.command_client import ClusterManagerClient
+from eggroll.core.command.command_status import SessionStatus
+from eggroll.core.constants import ProcessorTypes
 from eggroll.core.datastructure.threadpool import ErThreadUnpooledExecutor
-from eggroll.core.meta_model import CommandURI
-from eggroll.core.meta_model import ErJob, ErTask
 from eggroll.core.meta_model import ErSessionMeta, ErPartition, ErStore
-from eggroll.core.utils import generate_task_id, calculate_rank_in_node
-from eggroll.core.utils import get_self_ip, time_now, DEFAULT_DATETIME_FORMAT
-from eggroll.core.utils import get_stack
+from ._utils import get_stack, time_now, get_self_ip
 
 L = logging.getLogger(__name__)
 
@@ -63,7 +58,7 @@ class ErSession(object):
         if options is None:
             options = {}
         if not session_id:
-            self.__session_id = f"er_session_py_{time_now(format=DEFAULT_DATETIME_FORMAT)}_{get_self_ip()}"
+            self.__session_id = f"er_session_py_{time_now()}_{get_self_ip()}"
         else:
             self.__session_id = session_id
 
@@ -145,6 +140,9 @@ class ErSession(object):
     def config(self):
         return self._config
 
+    def is_active(self):
+        return self.__session_meta.status == SessionStatus.ACTIVE
+
     @property
     def cluster_manager_client(self):
         return self._cluster_manager_client
@@ -152,7 +150,7 @@ class ErSession(object):
     def get_rank_in_node(self, partition_id, server_node_id):
         processor_count_of_node = len(self._eggs[server_node_id])
         cluster_node_count = len(self._eggs)
-        rank_in_node = calculate_rank_in_node(
+        rank_in_node = _calculate_rank_in_node(
             partition_id, cluster_node_count, processor_count_of_node
         )
 
@@ -200,147 +198,6 @@ class ErSession(object):
     def get_or_create_store(self, store: ErStore):
         store = self._cluster_manager_client.get_or_create_store(store)
         return self.populate_processor(store)
-
-    def submit_job(
-        self,
-        job: ErJob,
-        output_key_serdes_type,
-        output_value_serdes_type,
-        output_types: list = None,
-        command_uri: CommandURI = None,
-        create_output_if_missing=True,
-    ):
-        if not output_types:
-            output_types = [ErTask]
-        final_job = (
-            self.populate_output_store(
-                job, output_key_serdes_type, output_value_serdes_type
-            )
-            if create_output_if_missing
-            else job
-        )
-        tasks = self._decompose_job(final_job)
-        command_client = CommandClient(config=self._config)
-        return command_client.async_call(
-            args=tasks, output_types=output_types, command_uri=command_uri
-        )
-
-    def wait_until_job_finished(
-        self, task_futures: list, timeout=None, return_when=FIRST_EXCEPTION
-    ):
-        return wait(task_futures, timeout=timeout, return_when=return_when).done
-
-    def _decompose_job(self, job: ErJob):
-        input_total_partitions = job._inputs[0]._store_locator._total_partitions
-        output_total_partitions = (
-            0 if not job._outputs else job._outputs[0]._store_locator._total_partitions
-        )
-
-        larger_total_partitions = max(input_total_partitions, output_total_partitions)
-
-        populated_input_partitions = self.populate_processor(job._inputs[0])._partitions
-
-        if output_total_partitions > 0:
-            populated_output_partitions = self.populate_processor(
-                job._outputs[0]
-            )._partitions
-        else:
-            populated_output_partitions = list()
-
-        result = list()
-        for i in range(larger_total_partitions):
-            input_partitions = list()
-            output_partitions = list()
-
-            if i < input_total_partitions:
-                input_processor = populated_input_partitions[i]._processor
-                input_server_node_id = input_processor._server_node_id
-                for input_store in job._inputs:
-                    input_partitions.append(
-                        ErPartition(
-                            id=i,
-                            store_locator=input_store._store_locator,
-                            processor=input_processor,
-                        )
-                    )
-            else:
-                input_processor = None
-                input_server_node_id = None
-
-            if i < output_total_partitions:
-                output_processor = populated_output_partitions[i]._processor
-                output_server_node_id = output_processor._server_node_id
-                for output_store in job._outputs:
-                    output_partitions.append(
-                        ErPartition(
-                            id=i,
-                            store_locator=output_store._store_locator,
-                            processor=output_processor,
-                        )
-                    )
-            else:
-                output_processor = None
-                output_server_node_id = None
-
-            tasks = [
-                ErTask(
-                    id=generate_task_id(job._id, i),
-                    name=f"{job._name}",
-                    inputs=input_partitions,
-                    outputs=output_partitions,
-                    job=job,
-                )
-            ]
-            if input_server_node_id == output_server_node_id:
-                result.append((tasks, input_processor._command_endpoint))
-            else:
-                if input_server_node_id is not None:
-                    result.append((tasks, input_processor._command_endpoint))
-                if output_server_node_id is not None:
-                    result.append((tasks, output_processor._command_endpoint))
-
-        return result
-
-    def populate_output_store(
-        self, job: ErJob, output_key_serdes_type, output_value_serdes_type
-    ):
-        is_output_blank = not job._outputs or not job.first_output
-        is_output_not_populated = is_output_blank or not job.first_output._partitions
-        if is_output_not_populated:
-            if is_output_blank:
-                final_output_proposal = job._inputs[0].fork()
-            else:
-                final_output_proposal = job._outputs[0]
-
-            refresh_nodes = job._options.get("refresh_nodes")
-            if refresh_nodes is None or refresh_nodes:
-                final_output_proposal._partitions = []
-            else:
-                if not final_output_proposal._partitions:
-                    final_output_proposal._partitions = job._inputs[0]._partitions
-            final_output_proposal._store_locator._key_serdes = output_key_serdes_type
-            final_output_proposal._store_locator._value_serdes = (
-                output_value_serdes_type
-            )
-        else:
-            final_output_proposal = job._outputs[0]
-
-        final_output = self.populate_processor(
-            self._cluster_manager_client.get_or_create_store(final_output_proposal)
-        )
-
-        if (
-            final_output._store_locator._total_partitions
-            != final_output_proposal._store_locator._total_partitions
-        ):
-            raise ValueError(
-                f"partition count of actual output and proposed output does not match. "
-                f"actual={final_output}, proposed={final_output_proposal}"
-            )
-        final_job = deepcopy(job)
-        final_job._outputs = [final_output]
-
-        return final_job
 
     def stop(self):
         L.info(f"stopping session (gracefully): {self.__session_id}")
@@ -400,3 +257,7 @@ class ErSession(object):
         for k, v in self._eggs.items():
             egg_count += len(v)
         return egg_count
+
+
+def _calculate_rank_in_node(partition_id, cluster_node_count, processor_count_of_node):
+    return (partition_id // cluster_node_count) % processor_count_of_node

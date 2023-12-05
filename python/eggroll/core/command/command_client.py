@@ -19,11 +19,6 @@ import time
 import typing
 
 from eggroll.config import Config
-from eggroll.core.command.commands import (
-    MetadataCommands,
-    NodeManagerCommands,
-    SessionCommands,
-)
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import CommandURI, ErCommandRequest, ErCommandResponse
@@ -41,6 +36,11 @@ from eggroll.core.meta_model import (
 )
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.utils import time_now_ns
+from .command_uri import (
+    MetadataCommands,
+    NodeManagerCommands,
+    SessionCommands,
+)
 
 L = logging.getLogger(__name__)
 
@@ -112,7 +112,7 @@ class CommandClient(object):
         try:
             request = ErCommandRequest(
                 id=time_now_ns(),
-                uri=command_uri._uri,
+                uri=command_uri.uri,
                 args=map_and_listify(to_proto_string, inputs),
             )
             start = time.time()

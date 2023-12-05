@@ -18,15 +18,13 @@ import logging
 import queue
 import threading
 
+from eggroll.computing.tasks import job_util, store
 from eggroll.config import Config
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
 from eggroll.core.meta_model import ErPartition, ErStore
-from eggroll.core.transfer.transfer_service import TransferClient, TransferService
-from eggroll.core.utils import _exception_logger
-from eggroll.core.utils import generate_task_id
-from .store import get_adapter
-from .store.format import PairBinReader, PairBinWriter, ArrayByteBuffer
+from eggroll.trace import exception_catch
+from .transfer_service import TransferClient, TransferService
 
 L = logging.getLogger(__name__)
 
@@ -149,9 +147,11 @@ class TransferPair(object):
                     L.info(f"transfer pair _executor_pool max_workers={_max_workers}")
 
     def __generate_tag(self, partition_id):
-        return generate_task_id(job_id=self.__transfer_id, partition_id=partition_id)
+        return job_util.generate_task_id(
+            job_id=self.__transfer_id, partition_id=partition_id
+        )
 
-    @_exception_logger
+    @exception_catch
     def scatter(self, config: Config, input_broker, partitioner, output_store):
         """
         scatter input_broker to output_store
@@ -169,7 +169,7 @@ class TransferPair(object):
         shuffle_write_targets = {i: FifoBroker(config) for i in range(total_partitions)}
         futures = []
 
-        @_exception_logger
+        @exception_catch
         def do_shuffle_write():
             L.trace(f"do_shuffle_write start for transfer_id={self.__transfer_id}")
             done_count = 0
@@ -218,7 +218,7 @@ class TransferPair(object):
         return CompositeFuture(futures)
 
     @staticmethod
-    @_exception_logger
+    @exception_catch
     def pair_to_bin_batch(config: Config, input_iter, limit=None, sendbuf_size=-1):
         if sendbuf_size <= 0:
             sendbuf_size = config.eggroll.rollpair.transferpair.sendbuf.size
@@ -239,8 +239,8 @@ class TransferPair(object):
             # if ba:
             #     bin_batch = bytes(ba[0:buffer.get_offset()])
             ba = bytearray(bs)
-            buffer = ArrayByteBuffer(ba)
-            writer = PairBinWriter(pair_buffer=buffer, data=ba)
+            buffer = store.ArrayByteBuffer(ba)
+            writer = store.PairBinWriter(pair_buffer=buffer, data=ba)
             return bin_batch
 
         # init var
@@ -269,8 +269,8 @@ class TransferPair(object):
         for batch in input_iter:
             L.trace(f"bin_batch_to_pair: cur batch size={len(batch)}")
             try:
-                bin_data = ArrayByteBuffer(batch)
-                reader = PairBinReader(pair_buffer=bin_data, data=batch)
+                bin_data = store.ArrayByteBuffer(batch)
+                reader = store.PairBinReader(pair_buffer=bin_data, data=batch)
                 for k_bytes, v_bytes in reader.read_all():
                     yield k_bytes, v_bytes
                     write_count += 1
@@ -296,7 +296,7 @@ class TransferPair(object):
         # def do_merge(old_value, update_value, merge_func):
         #     return merge_func(old_value, update_value)
 
-        @_exception_logger
+        @exception_catch
         def do_store(
             _config: Config,
             store_partition_inner: ErPartition,
@@ -317,7 +317,7 @@ class TransferPair(object):
                 L.trace(f"do_store start for tag={tag}")
                 batches = TransferPair.bin_batch_to_pair(b.data for b in broker)
 
-                with get_adapter(store_partition_inner, data_dir) as db:
+                with store.get_adapter(store_partition_inner, data_dir) as db:
                     L.trace(
                         f"do_store create_db for tag={tag} for partition={store_partition_inner}"
                     )
