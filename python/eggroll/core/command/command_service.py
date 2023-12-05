@@ -12,11 +12,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from eggroll.core.command.command_model import ErCommandRequest, \
-    ErCommandResponse, CommandURI
-from eggroll.core.command.command_router import CommandRouter
+from eggroll.core.meta_model import ErCommandRequest, ErCommandResponse, CommandURI
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.utils import _exception_logger
+from .command_router import CommandRouter
 
 
 class CommandServicer(command_pb2_grpc.CommandServiceServicer):
@@ -27,12 +26,14 @@ class CommandServicer(command_pb2_grpc.CommandServiceServicer):
         command_uri = CommandURI(command_request=command_request)
 
         service_name = command_uri.get_route()
-        call_result = CommandRouter.get_instance() \
-            .dispatch(service_name=service_name,
-                      args=getattr(command_request, '_args'),
-                      kwargs=getattr(command_request, '_kwargs'))
+        call_result = CommandRouter.get_instance().dispatch(
+            service_name=service_name,
+            args=getattr(command_request, "_args"),
+            kwargs=getattr(command_request, "_kwargs"),
+        )
 
-        response = ErCommandResponse(id=getattr(command_request, '_id'),
-                                     results=call_result)
+        response = ErCommandResponse(
+            id=getattr(command_request, "_id"), results=call_result
+        )
 
         return response.to_proto()

@@ -3,9 +3,9 @@ import logging
 import typing
 import uuid
 
-from eggroll.computing.roll_pair.transfer_pair import BatchBroker, TransferPair
-from eggroll.computing.tasks import consts
+from eggroll.computing.tasks import consts, store
 from eggroll.computing.tasks.submit_utils import block_submit_unary_unit_job
+from eggroll.computing.tasks.transfer_pair import BatchBroker, TransferPair
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import (
     ErJob,
@@ -14,8 +14,6 @@ from eggroll.core.meta_model import (
     ErPartitioner,
     ErJobIO,
     ErSerdes,
-)
-from eggroll.core.model.task import (
     MapPartitionsWithIndexRequest,
 )
 from eggroll.core.utils import generate_job_id
@@ -193,7 +191,7 @@ class MapReducePartitionsWithIndex(Task):
                 # shuffle write: input_iterator -> shuffle_write_broker
                 task_input_iterator = stack.enter_context(
                     stack.enter_context(
-                        task.first_input.get_adapter(env_options.data_dir)
+                        store.get_adapter(task.first_input, env_options.data_dir)
                     ).iteritems()
                 )
                 task_shuffle_write_batch_broker = stack.enter_context(
@@ -232,11 +230,11 @@ class MapReducePartitionsWithIndex(Task):
     ):
         with contextlib.ExitStack() as stack:
             input_adapter = stack.enter_context(
-                task.first_input.get_adapter(env_options.data_dir)
+                store.get_adapter(task.first_input, env_options.data_dir)
             )
             input_iterator = stack.enter_context(input_adapter.iteritems())
             output_adapter = stack.enter_context(
-                task.first_output.get_adapter(env_options.data_dir)
+                store.get_adapter(task.first_output, env_options.data_dir)
             )
             output_write_batch = stack.enter_context(output_adapter.new_batch())
             partition_id = task.id

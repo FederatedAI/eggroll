@@ -26,7 +26,9 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 
 @click.group(short_help="Eggroll Client", context_settings=CONTEXT_SETTINGS)
-@click.option("--eggroll-properties", type=click.Path(exists=True), help="eggroll properties file")
+@click.option(
+    "--eggroll-properties", type=click.Path(exists=True), help="eggroll properties file"
+)
 @click.pass_context
 def eggroll_cli(ctx, eggroll_properties):
     """
@@ -52,7 +54,9 @@ def eggroll_cli(ctx, eggroll_properties):
         if eggroll_properties:
             config.load_properties(eggroll_properties)
         config.load_env()
-        ctx.obj["client"] = EggrollClient(config=config, ip=cli_config.get("ip"), port=cli_config.get("port"))
+        ctx.obj["client"] = EggrollClient(
+            config=config, ip=cli_config.get("ip"), port=cli_config.get("port")
+        )
 
 
 @eggroll_cli.command("init", short_help="Eggroll CLI Init Command")

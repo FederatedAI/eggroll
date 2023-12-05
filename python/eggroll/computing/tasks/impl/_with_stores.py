@@ -8,9 +8,7 @@ from eggroll.core.meta_model import (
     ErJob,
     ErFunctor,
     ErJobIO,
-)
-from eggroll.core.meta_model import ErTask
-from eggroll.core.model.task import (
+    ErTask,
     WithStoresResponse,
 )
 from eggroll.core.utils import generate_job_id
