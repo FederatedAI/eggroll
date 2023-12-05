@@ -19,7 +19,6 @@ from threading import Lock
 from typing import List
 
 from eggroll.core.proto import meta_pb2
-from eggroll.core.utils import time_now_ns
 from ._base_model import RpcMessage
 from ._utils import (
     _stringify_dict,
@@ -29,6 +28,7 @@ from ._utils import (
     _from_proto,
     _repr_list,
     _map_and_listify,
+    time_now_ns,
 )
 
 DEFAULT_PATH_DELIM = "/"
@@ -183,6 +183,10 @@ class ErServerCluster(RpcMessage):
 
 
 class ErProcessor(RpcMessage):
+    class ProcessorTypes(object):
+        EGG_PAIR = "egg_pair"
+        ROLL_PAIR_MASTER = "roll_pair_master"
+
     def __init__(
         self,
         id=-1,
@@ -210,6 +214,16 @@ class ErProcessor(RpcMessage):
         self._pid = pid
         self._options = options
         self._tag = tag
+
+    @property
+    def processor_type(self):
+        return self._processor_type
+
+    def is_egg_pair(self):
+        return self._processor_type == ErProcessor.ProcessorTypes.EGG_PAIR
+
+    def is_roll_pair_master(self):
+        return self._processor_type == ErProcessor.ProcessorTypes.ROLL_PAIR_MASTER
 
     @property
     def server_node_id(self):
@@ -1146,7 +1160,7 @@ class ErSessionMeta(RpcMessage):
         name: str = "",
         status: str = "",
         tag: str = "",
-        processors: list = None,
+        processors: List[ErProcessor] = None,
         options: dict = None,
     ):
         if processors is None:
@@ -1163,6 +1177,10 @@ class ErSessionMeta(RpcMessage):
     @property
     def status(self):
         return self._status
+
+    @property
+    def processors(self):
+        return self._processors
 
     def is_processors_valid(self):
         for p in self._processors:

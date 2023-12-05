@@ -129,3 +129,43 @@ class SessionCommands(object):
 class RollPairCommands(object):
     roll_prefix = "v1/roll-pair"
     egg_prefix = "v1/eggs-pair"
+
+
+class RendezvousStoreCommands:
+    prefix = "v1/cluster-manager/job/rendezvous"
+
+    set = "set"
+    set_service_name = _to_service_name(prefix, set)
+    SET = CommandURI(set_service_name)
+
+    get = "get"
+    get_service_name = _to_service_name(prefix, get)
+    GET = CommandURI(get_service_name)
+
+    add = "add"
+    add_service_name = _to_service_name(prefix, add)
+    ADD = CommandURI(add_service_name)
+
+    destroy = "destroy"
+    destroy_service_name = _to_service_name(prefix, destroy)
+    DESTROY = CommandURI(destroy_service_name)
+
+
+def _create_command_uri(prefix, method_name):
+    return CommandURI(_to_service_name(prefix, method_name))
+
+
+class JobCommands:
+    prefix = "v1/cluster-manager/job"
+
+    SUBMIT_JOB = _create_command_uri(prefix, "submitJob")
+    QUERY_JOB_STATUS = _create_command_uri(prefix, "queryJobStatus")
+    QUERY_JOB = _create_command_uri(prefix, "queryJob")
+    KILL_JOB = _create_command_uri(prefix, "killJob")
+    DOWNLOAD_JOB = _create_command_uri(prefix, "downloadJob")
+    PREPARE_DOWNLOAD_JOB = _create_command_uri(prefix, "prepareJobDownload")
+
+
+class ContainerCommands:
+    prefix = "v1/node-manager/container"
+    DOWNLOAD_CONTAINERS = _create_command_uri(prefix, "downloadContainers")

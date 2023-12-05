@@ -35,7 +35,6 @@ from eggroll.core.meta_model import (
     map_and_listify,
 )
 from eggroll.core.proto import command_pb2_grpc
-from eggroll.core.utils import time_now_ns
 from .command_uri import (
     MetadataCommands,
     NodeManagerCommands,
@@ -111,18 +110,17 @@ class CommandClient(object):
         request = None
         try:
             request = ErCommandRequest(
-                id=time_now_ns(),
                 uri=command_uri.uri,
                 args=map_and_listify(to_proto_string, inputs),
             )
             start = time.time()
-            L.trace(f"[CC] calling: {endpoint} {command_uri} {request}")
+            L.debug(f"[CC] calling: {endpoint} {command_uri} {request}")
             _channel = self._channel_factory.create_channel(self._config, endpoint)
             _command_stub = command_pb2_grpc.CommandServiceStub(_channel)
             response = _command_stub.call(request.to_proto())
             er_response = ErCommandResponse.from_proto(response)
             elapsed = time.time() - start
-            L.trace(
+            L.debug(
                 f"[CC] called (elapsed={elapsed}): {endpoint}, {command_uri}, {request}, {er_response}"
             )
             byte_results = er_response._results

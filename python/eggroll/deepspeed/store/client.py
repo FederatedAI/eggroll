@@ -3,9 +3,9 @@ from datetime import timedelta
 from google.protobuf.duration_pb2 import Duration
 from torch.distributed import Store
 
-from eggroll.core.proto import deepspeed_pb2
 from eggroll.config import Config
-from .commands import RendezvousStoreCommands
+from eggroll.core.command.command_uri import RendezvousStoreCommands
+from eggroll.core.proto import deepspeed_pb2
 from ..client import BaseClient
 
 
