@@ -21,7 +21,7 @@ from eggroll.computing import RollPairContext
 from eggroll.config import ConfigKey
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint
-from eggroll.core.session import ErSession
+from eggroll.session import ErSession
 
 L = logging.getLogger(__name__)
 

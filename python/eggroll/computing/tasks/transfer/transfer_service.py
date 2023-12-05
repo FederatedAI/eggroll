@@ -23,6 +23,7 @@ from zipfile import ZIP_DEFLATED, ZIP_STORED
 import grpc
 from grpc._cython import cygrpc
 
+from eggroll.config import Config, ConfigKey
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
 from eggroll.core.grpc.factory import GrpcChannelFactory
@@ -34,8 +35,7 @@ from eggroll.core.proto import (
     deepspeed_download_pb2,
 )
 from eggroll.core.proto.containers_pb2 import ContentType, ContainerContent
-from eggroll.core.utils import _exception_logger
-from eggroll.config import Config, ConfigKey
+from eggroll.trace import exception_catch
 
 L = logging.getLogger(__name__)
 
@@ -186,7 +186,7 @@ class GrpcDsDownloadServicer(deepspeed_download_pb2_grpc.DsDownloadServiceServic
         else:
             raise RuntimeError(f"download content type {content_type} is not support ")
 
-    @_exception_logger
+    @exception_catch
     def download(self, request: deepspeed_download_pb2.DsDownloadRequest, context):
         L.info(f"receive download request  {request}")
         result = []
@@ -213,7 +213,7 @@ class GrpcDsDownloadServicer(deepspeed_download_pb2_grpc.DsDownloadServiceServic
             session_id=request.session_id, container_content=result
         )
 
-    @_exception_logger
+    @exception_catch
     def download_by_split(self, request, context):
         L.info(f"receive download_by_split request  {request}")
         result = []
@@ -234,7 +234,7 @@ class GrpcDsDownloadServicer(deepspeed_download_pb2_grpc.DsDownloadServiceServic
 
 
 class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
-    @_exception_logger
+    @exception_catch
     def send(self, request_iterator, context):
         inited = False
         response_header = None
@@ -273,7 +273,7 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
             if broker is not None:
                 broker.signal_write_finish()
 
-    @_exception_logger
+    @exception_catch
     def recv(self, request, context):
         base_tag = request.header.tag
         L.debug(f"GrpcTransferServicer recv broker tag={base_tag}")
@@ -334,7 +334,7 @@ class TransferClient(object):
         # self.__bin_packet_len = 32 << 20
         # self.__chunk_size = 100
 
-    @_exception_logger
+    @exception_catch
     def send(self, config: Config, broker, endpoint: ErEndpoint, tag):
         try:
             L.trace(f"TransferClient.send for endpoint={endpoint}, tag={tag}")
@@ -363,7 +363,7 @@ class TransferClient(object):
             L.exception(f"Error calling to {endpoint} in TransferClient.send")
             raise e
 
-    @_exception_logger
+    @exception_catch
     def recv(self, config: Config, endpoint: ErEndpoint, tag, broker):
         exception = None
         cur_retry = 0
@@ -371,7 +371,7 @@ class TransferClient(object):
             try:
                 L.trace(f"TransferClient.recv for endpoint={endpoint}, tag={tag}")
 
-                @_exception_logger
+                @exception_catch
                 def fill_broker(iterable: Iterable, broker):
                     try:
                         iterator = iter(iterable)
