@@ -99,6 +99,7 @@ class RollSiteContext:
 
     def load(self, name: str, tag: str, options: dict = None):
         from ._rollsite import RollSite
+
         if options is None:
             options = {}
         final_options = self._options.copy()
