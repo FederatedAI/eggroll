@@ -22,11 +22,10 @@ from grpc import RpcError
 
 from eggroll import __version__ as eggroll_version
 from eggroll.computing import RollPair
-from eggroll.computing.tasks import consts, store
-from eggroll.computing.tasks.transfer_pair import TransferPair
+from eggroll.computing.tasks import consts, store, transfer
+from eggroll.computing.tasks.store import StoreTypes
 from eggroll.config import Config
 from eggroll.config import ConfigKey
-from eggroll.core.constants import StoreTypes
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErTask, ErRollSiteHeader
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
@@ -96,7 +95,7 @@ class _BatchStreamHelper(object):
     def _generate_batch_streams(
         self, config: Config, pair_iter, batches_per_stream, body_bytes
     ):
-        batches = TransferPair.pair_to_bin_batch(
+        batches = transfer.TransferPair.pair_to_bin_batch(
             config=config, input_iter=pair_iter, sendbuf_size=body_bytes
         )
         try:

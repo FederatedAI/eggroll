@@ -20,7 +20,7 @@ import threading
 
 import lmdb
 
-from .adapter import PairIterator, PairWriteBatch, PairAdapter
+from ._adapter import PairIterator, PairWriteBatch, PairAdapter
 
 L = logging.getLogger(__name__)
 # 64 * 1024 * 1024
