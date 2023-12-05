@@ -1,5 +1,5 @@
 #
-#  Copyright 2019 The FATE Authors. All Rights Reserved.
+#  Copyright 2019 The EGGROLL Authors. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -14,12 +14,10 @@
 #  limitations under the License.
 # -*- coding: utf-8 -*-
 
-import os
 from setuptools import find_packages, setup
 
 
-packages = find_packages('..')
-filtered_packages = [pkg for pkg in packages if pkg.startswith("client")]
+packages = find_packages('.')
 package_data = {"": ["*"]}
 install_requires = [
     "click",
@@ -31,7 +29,7 @@ install_requires = [
     "ruamel.yaml==0.16.10"
 ]
 
-entry_points = {"console_scripts": ["eggroll = client.cli.eggroll:eggroll_cli"]}
+entry_points = {"console_scripts": ["eggroll = eggroll.client.cli.eggroll:eggroll_cli"]}
 
 setup_kwargs = {
     "name": "eggroll-client",
@@ -44,7 +42,7 @@ setup_kwargs = {
     "maintainer": None,
     "maintainer_email": None,
     "url": "https://fate.fedai.org/",
-    "packages": filtered_packages,
+    "packages": packages,
     "include_package_data": True,
     "package_data": package_data,
     "install_requires": install_requires,
@@ -52,5 +50,4 @@ setup_kwargs = {
     "python_requires": ">=3.8",
 }
 
-os.chdir('..')
 setup(**setup_kwargs)
