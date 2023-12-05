@@ -8,7 +8,9 @@ from contextlib import ExitStack
 from multiprocessing.dummy import Pool as ThreadPool
 from typing import Dict, List, Optional
 
-from eggroll.core.constants import SessionStatus
+from eggroll.config import load_config, ConfigKey
+from eggroll.core.command.command_status import SessionStatus
+from eggroll.core.command.command_uri import SessionCommands
 from eggroll.core.proto import (
     containers_pb2,
     deepspeed_pb2,
@@ -20,8 +22,6 @@ from eggroll.core.proto import (
 from .commands import JobCommands
 from ..client import BaseClient
 from ..store.client import destroy
-from ...core.command.commands import SessionCommands
-from eggroll.config import load_config, ConfigKey
 
 
 class ContentType(enum.Enum):

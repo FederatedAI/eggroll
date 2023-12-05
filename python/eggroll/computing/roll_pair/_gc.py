@@ -3,7 +3,7 @@ import os
 import queue
 from threading import Thread
 
-from eggroll.core.constants import StoreTypes
+from eggroll.computing.tasks.store import StoreTypes
 from eggroll.core.datastructure import create_simple_queue
 from eggroll.core.meta_model import ErStore
 
@@ -114,13 +114,8 @@ class GcRecorder(object):
         store_type = er_store._store_locator._store_type
         name = er_store._store_locator._name
         namespace = er_store._store_locator._namespace
-        if (
-            store_type != StoreTypes.ROLLPAIR_IN_MEMORY
-            and store_type != StoreTypes.ROLLPAIR_LEVELDB
-        ):
+        if store_type != StoreTypes.ROLLPAIR_IN_MEMORY:
             return
-        elif store_type == StoreTypes.ROLLPAIR_LEVELDB:
-            self.leveldb_recorder.add((namespace, name))
         else:
             L.trace(
                 "GC recording in memory table namespace={}, name={}".format(

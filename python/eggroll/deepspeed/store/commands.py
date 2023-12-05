@@ -1,4 +1,4 @@
-from eggroll.core.command.commands import CommandURI, _to_service_name
+from eggroll.core.command.command_uri import CommandURI, _to_service_name
 
 
 class RendezvousStoreCommands:
