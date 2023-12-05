@@ -16,11 +16,11 @@
 import os
 
 import click
-import yaml
+from ruamel import yaml
 
-from client.cli.commands import task
-from client.cli.utils.cli_utils import prettify
-from client.sdk import EggrollClient
+from eggroll.client.cli.commands import task
+from eggroll.client.cli.utils.cli_utils import prettify
+from eggroll.client.sdk import EggrollClient
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 

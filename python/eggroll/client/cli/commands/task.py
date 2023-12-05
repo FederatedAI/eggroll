@@ -20,7 +20,7 @@ import tempfile
 import click
 import time
 
-from client.sdk import EggrollClient
+from eggroll.client.sdk import EggrollClient
 from ..utils.cli_utils import prettify, unzip
 from eggroll.config import Config
 
