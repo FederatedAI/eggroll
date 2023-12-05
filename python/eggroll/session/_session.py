@@ -18,7 +18,6 @@ from concurrent.futures import wait, FIRST_EXCEPTION
 from eggroll.config import Config, ConfigKey
 from eggroll.core.command.command_client import ClusterManagerClient
 from eggroll.core.command.command_status import SessionStatus
-from eggroll.core.constants import ProcessorTypes
 from eggroll.core.datastructure.threadpool import ErThreadUnpooledExecutor
 from eggroll.core.meta_model import ErSessionMeta, ErPartition, ErStore
 from ._utils import get_stack, time_now, get_self_ip
@@ -106,30 +105,29 @@ class ErSession(object):
                     raise
 
         self.__exit_tasks = list()
-        self.__processors = self.__session_meta._processors
+        self.__processors = self.__session_meta.processors
 
         L.info(
             f"session init finished: {self.__session_id}, details: {self.__session_meta}"
         )
         self.stopped = (
-            self.__session_meta._status == SessionStatus.CLOSED
-            or self.__session_meta._status == SessionStatus.KILLED
+            self.__session_meta.status == SessionStatus.CLOSED
+            or self.__session_meta.status == SessionStatus.KILLED
         )
         self._rolls = list()
         self._eggs = dict()
 
-        for processor in self.__session_meta._processors:
-            processor_type = processor._processor_type
-            if processor_type == ProcessorTypes.EGG_PAIR:
-                server_node_id = processor._server_node_id
+        for processor in self.__session_meta.processors:
+            if processor.is_egg_pair():
+                server_node_id = processor.server_node_id
                 if server_node_id not in self._eggs:
                     self._eggs[server_node_id] = list()
                 self._eggs[server_node_id].append(processor)
-            elif processor_type == ProcessorTypes.ROLL_PAIR_MASTER:
+            elif processor.is_roll_pair_master():
                 self._rolls.append(processor)
             else:
                 raise ValueError(
-                    f"processor type {processor_type} not supported in roll pair"
+                    f"processor type {processor.processor_type} not supported in roll pair"
                 )
 
     @property
@@ -218,7 +216,7 @@ class ErSession(object):
         if done:
             L.info(f"stopped successfully before kill session: {self.__session_id}")
         else:
-            L.warn(f"stopped timeout before kill session: {self.__session_id}")
+            L.warning(f"stopped timeout before kill session: {self.__session_id}")
 
         return self._cluster_manager_client.kill_session(self.__session_meta)
 
