@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 
 from eggroll.config import load_config, ConfigKey
 from eggroll.core.command.command_status import SessionStatus
-from eggroll.core.command.command_uri import SessionCommands
+from eggroll.core.command.command_uri import SessionCommands, JobCommands
 from eggroll.core.proto import (
     containers_pb2,
     deepspeed_pb2,
@@ -19,7 +19,7 @@ from eggroll.core.proto import (
     extend_pb2_grpc,
     extend_pb2,
 )
-from .commands import JobCommands
+
 from ..client import BaseClient
 from ..store.client import destroy
 

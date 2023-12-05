@@ -17,7 +17,7 @@ from urllib.parse import urlparse, parse_qs
 
 from eggroll.core.proto import command_pb2
 from ._base_model import RpcMessage
-from ._utils import _map_and_listify
+from ._utils import _map_and_listify, time_now_ns
 
 _eggroll_bin_truncate_limit = None
 
@@ -33,15 +33,25 @@ def get_eggroll_bin_truncate_limit():
 
 
 class ErCommandRequest(RpcMessage):
-    def __init__(self, id, uri: str, args: list = None, kwargs: dict = None):
+    def __init__(
+        self, uri: str, request_id=None, args: list = None, kwargs: dict = None
+    ):
         if args is None:
             args = []
         if kwargs is None:
             kwargs = {}
-        self._id = id
+
+        if request_id is None:
+            request_id = time_now_ns()
+
+        self._id = request_id
         self._uri = uri
         self._args = args
         self._kwargs = kwargs
+
+    @property
+    def uri(self):
+        return self._uri
 
     def to_proto(self):
         return command_pb2.CommandRequest(
@@ -51,7 +61,7 @@ class ErCommandRequest(RpcMessage):
     @staticmethod
     def from_proto(pb_message):
         return ErCommandRequest(
-            id=pb_message.id,
+            request_id=pb_message.id,
             uri=pb_message.uri,
             args=pb_message.args,
             kwargs=pb_message.kwargs,

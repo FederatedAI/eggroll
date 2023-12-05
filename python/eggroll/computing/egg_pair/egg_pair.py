@@ -27,7 +27,6 @@ from eggroll.config import Config, ConfigKey
 from eggroll.core.command.command_client import NodeManagerClient
 from eggroll.core.command.command_router import CommandRouter
 from eggroll.core.command.command_service import CommandServicer
-from eggroll.core.constants import ProcessorTypes
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErProcessor, ErEndpoint
@@ -205,7 +204,7 @@ def serve(
         myself = ErProcessor(
             id=processor_id,
             server_node_id=server_node_id,
-            processor_type=ProcessorTypes.EGG_PAIR,
+            processor_type=ErProcessor.ProcessorTypes.EGG_PAIR,
             command_endpoint=ErEndpoint(host="localhost", port=port),
             transfer_endpoint=ErEndpoint(host="localhost", port=transfer_port),
             pid=pid,

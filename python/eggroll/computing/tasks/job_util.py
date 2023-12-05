@@ -1,8 +1,15 @@
-from eggroll.core.utils import time_now_ns
+from datetime import datetime
+
+
+_JOB_ID_DEFAULT_DATETIME_FORMAT = "%Y%m%d.%H%M%S.%f"
+
+
+def _time_now_ns():
+    return datetime.now().strftime(_JOB_ID_DEFAULT_DATETIME_FORMAT)
 
 
 def generate_job_id(session_id, tag="", delim="-"):
-    result = delim.join([session_id, "py", "job", time_now_ns()])
+    result = delim.join([session_id, "py", "job", _time_now_ns()])
     if not tag:
         return result
     else:
