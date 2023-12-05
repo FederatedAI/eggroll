@@ -18,6 +18,8 @@ import json
 
 import requests
 
+from eggroll.config import Config
+
 
 def _is_api_endpoint(obj):
     return isinstance(obj, BaseEggrollAPI)
@@ -33,10 +35,11 @@ class BaseEggrollClient:
             setattr(self, name, api)
         return self
 
-    def __init__(self, ip, port):
+    def __init__(self, ip, port, config: Config = None):
         self._http = requests.Session()
         self.ip = ip
         self.port = port
+        self.config = config
 
     @staticmethod
     def _decode_result(response):
@@ -61,9 +64,19 @@ class BaseEggrollAPI:
         self._client = client
 
     @property
+    def client(self):
+        if self._client is None:
+            raise ValueError("client not set")
+        return self._client
+
+    @property
+    def config(self):
+        return self.client.config
+
+    @property
     def host(self):
-        return self._client.ip
+        return self.client.ip
 
     @property
     def port(self):
-        return self._client.port
+        return self.client.port
