@@ -14,12 +14,12 @@
 
 from eggroll.core.meta_model import ErCommandRequest, ErCommandResponse, CommandURI
 from eggroll.core.proto import command_pb2_grpc
-from eggroll.core.utils import _exception_logger
+from eggroll.trace import exception_catch
 from .command_router import CommandRouter
 
 
 class CommandServicer(command_pb2_grpc.CommandServiceServicer):
-    @_exception_logger
+    @exception_catch
     def call(self, request, context):
         command_request = ErCommandRequest.from_proto(request)
 

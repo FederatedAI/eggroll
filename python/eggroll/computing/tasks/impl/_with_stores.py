@@ -2,7 +2,7 @@ import logging
 import typing
 from typing import List
 
-from eggroll.computing.tasks import consts
+from eggroll.computing.tasks import consts, job_util
 from eggroll.computing.tasks.submit_utils import block_submit_unary_unit_job
 from eggroll.core.meta_model import (
     ErJob,
@@ -11,7 +11,6 @@ from eggroll.core.meta_model import (
     ErTask,
     WithStoresResponse,
 )
-from eggroll.core.utils import generate_job_id
 from ._task import Task, EnvOptions
 
 if typing.TYPE_CHECKING:
@@ -51,7 +50,7 @@ class WithStores(Task):
                 raise ValueError(
                     f"diff partitions: expected={total_partitions}, actual={other.get_partitions()}"
                 )
-        job_id = generate_job_id(rp.session_id, tag=tag)
+        job_id = job_util.generate_job_id(rp.session_id, tag=tag)
         job = ErJob(
             id=job_id,
             name=consts.WITH_STORES,
