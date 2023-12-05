@@ -3,7 +3,7 @@ import functools
 import logging
 import typing
 
-from eggroll.computing.tasks import consts, store
+from eggroll.computing.tasks import consts, store, job_util
 from eggroll.computing.tasks.submit_utils import block_submit_unary_unit_job
 from eggroll.core.meta_model import (
     ErJob,
@@ -12,7 +12,6 @@ from eggroll.core.meta_model import (
     ErJobIO,
     ReduceResponse,
 )
-from eggroll.core.utils import generate_job_id
 
 if typing.TYPE_CHECKING:
     pass
@@ -46,7 +45,7 @@ class Reduce(Task):
 
     @classmethod
     def reduce(cls, rp: "RollPair", func):
-        job_id = generate_job_id(rp.session_id, tag=consts.REDUCE)
+        job_id = job_util.generate_job_id(rp.session_id, tag=consts.REDUCE)
         reduce_op = ErFunctor.from_func(name=consts.REDUCE, func=func)
         results = block_submit_unary_unit_job(
             command_client=rp.command_client,

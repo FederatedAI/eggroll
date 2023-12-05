@@ -10,9 +10,9 @@ from multiprocessing.pool import ThreadPool
 from typing import Dict, List, Optional
 
 from eggroll.config import ConfigKey, Config
-from eggroll.core.command.commands import SessionCommands
+from eggroll.core.command.command_status import SessionStatus
+from eggroll.core.command.command_uri import SessionCommands
 from eggroll.core.meta_model import ErEndpoint
-from eggroll.core.constants import SessionStatus
 from eggroll.core.proto import (
     containers_pb2,
     deepspeed_pb2,

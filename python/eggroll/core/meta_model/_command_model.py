@@ -146,6 +146,10 @@ class CommandURI(object):
         if not self._query_pairs:
             self._query_pairs["route"] = uri_string
 
+    @property
+    def uri(self):
+        return self._uri
+
     def get_query_value(self, key: str):
         value = self._query_pairs[key]
         if value:
