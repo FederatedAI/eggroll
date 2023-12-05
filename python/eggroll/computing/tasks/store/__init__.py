@@ -13,9 +13,13 @@
 #  limitations under the License.
 
 import logging
+import os
+import typing
 
 from eggroll.core.constants import StoreTypes
 
+if typing.TYPE_CHECKING:
+    from eggroll.core.meta_model import ErPartition
 L = logging.getLogger(__name__)
 
 
@@ -27,9 +31,44 @@ def create_pair_adapter(options: dict):
         duplicate_options["store_type"] = StoreTypes.ROLLPAIR_LMDB
         ret = create_pair_adapter(options=duplicate_options)
     elif options["store_type"] == StoreTypes.ROLLPAIR_LMDB:
-        from eggroll.core.pair_store.lmdb import LmdbAdapter
+        from .lmdb import LmdbAdapter
+
         ret = LmdbAdapter(options=options)
         L.info(f"return LmdbAdapter={ret}")
     else:
         raise NotImplementedError(options)
     return ret
+
+
+def get_adapter(partition: "ErPartition", data_dir: str, options=None, watch=False):
+    if options is None:
+        options = {}
+    options["store_type"] = partition.store_locator.store_type
+    options["path"] = get_db_path_expanded(
+        data_dir,
+        partition.store_locator.store_type,
+        partition.store_locator.namespace,
+        partition.store_locator.name,
+        partition.id,
+    )
+    options["er_partition"] = partition
+
+    if watch:
+        raise ValueError(f"watch is not supported for now, {options['path']}")
+
+    return create_pair_adapter(options=options)
+
+
+def get_db_path_expanded(data_dir, store_type, namespace, name, partition_id):
+    return os.path.join(data_dir, store_type, namespace, name, str(partition_id))
+
+
+def get_db_path_from_partition(partition: "ErPartition", data_dir: str):
+    store_locator = partition.store_locator
+    return get_db_path_expanded(
+        data_dir,
+        store_locator.store_type,
+        store_locator.namespace,
+        store_locator.name,
+        partition.id,
+    )

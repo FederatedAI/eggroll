@@ -56,7 +56,10 @@ class GcRecorder(object):
         self._gc_recorder = dict()
         self.leveldb_recorder = set()
         self.gc_queue = create_simple_queue()
-        if "EGGROLL_GC_DISABLE" in os.environ and os.environ["EGGROLL_GC_DISABLE"] == "1":
+        if (
+            "EGGROLL_GC_DISABLE" in os.environ
+            and os.environ["EGGROLL_GC_DISABLE"] == "1"
+        ):
             L.info(
                 "global GC disabled, "
                 "will not execute gc but only record temporary RollPair during the whole session"
@@ -75,7 +78,10 @@ class GcRecorder(object):
         L.info("GC: gc_util.stop called")
 
     def run(self):
-        if "EGGROLL_GC_DISABLE" in os.environ and os.environ["EGGROLL_GC_DISABLE"] == "1":
+        if (
+            "EGGROLL_GC_DISABLE" in os.environ
+            and os.environ["EGGROLL_GC_DISABLE"] == "1"
+        ):
             L.info(
                 "global GC disabled, "
                 "will not execute gc but only record temporary RollPair during the whole session"
@@ -108,12 +114,19 @@ class GcRecorder(object):
         store_type = er_store._store_locator._store_type
         name = er_store._store_locator._name
         namespace = er_store._store_locator._namespace
-        if store_type != StoreTypes.ROLLPAIR_IN_MEMORY and store_type != StoreTypes.ROLLPAIR_LEVELDB:
+        if (
+            store_type != StoreTypes.ROLLPAIR_IN_MEMORY
+            and store_type != StoreTypes.ROLLPAIR_LEVELDB
+        ):
             return
         elif store_type == StoreTypes.ROLLPAIR_LEVELDB:
             self.leveldb_recorder.add((namespace, name))
         else:
-            L.trace("GC recording in memory table namespace={}, name={}".format(namespace, name))
+            L.trace(
+                "GC recording in memory table namespace={}, name={}".format(
+                    namespace, name
+                )
+            )
             count = self.gc_recorder.get((namespace, name))
             if count is None:
                 count = 0

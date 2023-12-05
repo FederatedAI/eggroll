@@ -13,9 +13,9 @@
 #  limitations under the License.
 
 
-from eggroll.core.base_model import RpcMessage
 from eggroll.core.proto import transfer_pb2
-from eggroll.core.utils import _stringify_dict, _repr_bytes
+from ._base_model import RpcMessage
+from ._utils import _stringify_dict, _repr_bytes
 
 
 class ErTransferHeader(RpcMessage):
@@ -28,7 +28,11 @@ class ErTransferHeader(RpcMessage):
 
     def to_proto(self):
         return transfer_pb2.TransferHeader(
-            id=self._id, tag=self._tag, totalSize=self._total_size, status=self._status, ext=self._ext
+            id=self._id,
+            tag=self._tag,
+            totalSize=self._total_size,
+            status=self._status,
+            ext=self._ext,
         )
 
     def to_proto_string(self):
@@ -66,7 +70,9 @@ class ErTransferBatch(RpcMessage):
         self._data = data
 
     def to_proto(self):
-        return transfer_pb2.TransferBatch(header=self._header.to_proto(), batchSize=self._batch_size, data=self._data)
+        return transfer_pb2.TransferBatch(
+            header=self._header.to_proto(), batchSize=self._batch_size, data=self._data
+        )
 
     def to_proto_string(self):
         return self.to_proto().SerializeToString()
@@ -246,14 +252,18 @@ class ErRollSitePullGetHeaderRequest(RpcMessage):
         return self._timeout
 
     def to_proto(self):
-        return transfer_pb2.RollSitePullGetHeaderRequest(tag=self._tag, timeout=self._timeout)
+        return transfer_pb2.RollSitePullGetHeaderRequest(
+            tag=self._tag, timeout=self._timeout
+        )
 
     def to_proto_string(self):
         return self.to_proto().SerializeToString()
 
     @staticmethod
     def from_proto(pb_message):
-        return ErRollSitePullGetHeaderRequest(tag=pb_message.tag, timeout=pb_message.timeout)
+        return ErRollSitePullGetHeaderRequest(
+            tag=pb_message.tag, timeout=pb_message.timeout
+        )
 
     @staticmethod
     def from_proto_string(pb_string):
@@ -271,14 +281,18 @@ class ErRollSitePullGetHeaderResponse(RpcMessage):
         return self._header
 
     def to_proto(self):
-        return transfer_pb2.RollSitePullGetHeaderResponse(header=self._header.to_proto())
+        return transfer_pb2.RollSitePullGetHeaderResponse(
+            header=self._header.to_proto()
+        )
 
     def to_proto_string(self):
         return self.to_proto().SerializeToString()
 
     @staticmethod
     def from_proto(pb_message):
-        return ErRollSitePullGetHeaderResponse(header=ErRollSiteHeader.from_proto(pb_message.header))
+        return ErRollSitePullGetHeaderResponse(
+            header=ErRollSiteHeader.from_proto(pb_message.header)
+        )
 
     @staticmethod
     def from_proto_string(pb_string):
@@ -301,14 +315,18 @@ class ErRollSitePullGetPartitionStatusRequest(RpcMessage):
         return self._timeout
 
     def to_proto(self):
-        return transfer_pb2.RollSitePullGetPartitionStatusRequest(tag=self._tag, timeout=self._timeout)
+        return transfer_pb2.RollSitePullGetPartitionStatusRequest(
+            tag=self._tag, timeout=self._timeout
+        )
 
     def to_proto_string(self):
         return self.to_proto().SerializeToString()
 
     @staticmethod
     def from_proto(pb_message):
-        return ErRollSitePullGetPartitionStatusRequest(tag=pb_message.tag, timeout=pb_message.timeout)
+        return ErRollSitePullGetPartitionStatusRequest(
+            tag=pb_message.tag, timeout=pb_message.timeout
+        )
 
     @staticmethod
     def from_proto_string(pb_string):
