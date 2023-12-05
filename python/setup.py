@@ -23,15 +23,14 @@ install_requires = [
     "click",
     "omegaconf",
     "requests<3.0",
-    "grpcio==1.46.3",
-    "protobuf==3.19.6",
-    "ruamel.yaml==0.16.10",
+    "grpcio",
+    "protobuf",
+    "ruamel.yaml",
 ]
 
 extras_require = {
     "full": [
-        "cloudpickle==2.1.0",
-        "grpcio-tools==1.46.3",
+        "cloudpickle",
         "lmdb==1.3.0",
         "psutil>=5.7.0",
     ]
