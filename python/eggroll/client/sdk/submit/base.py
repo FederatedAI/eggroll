@@ -41,7 +41,7 @@ class BaseClient:
                 return None
         except Exception as e:
             traceback.print_exc()
-            raise Exception(f"failed to call {command_uri} to {self._endpoint}: {e}")
+            raise Exception(f"failed to call {command_uri} to {self._endpoint}: {e}") from e
 
     def do_download(self, input: DsDownloadRequest) -> DsDownloadResponse:
         try:
