@@ -12,8 +12,9 @@ from eggroll.core.proto.deepspeed_download_pb2 import (
     DsDownloadRequest,
     DsDownloadResponse,
 )
-from eggroll.core.utils import time_now_ns
 
+if typing.TYPE_CHECKING:
+    from eggroll.core.command.command_uri import CommandURI
 T = typing.TypeVar("T")
 
 L = logging.getLogger(__name__)
@@ -25,9 +26,11 @@ class BaseClient:
         self._endpoint = ErEndpoint(host, int(port))
         self._channel_factory = GrpcChannelFactory()
 
-    def do_sync_request(self, input, output_type: typing.Type[T], command_uri) -> T:
+    def do_sync_request(
+        self, input, output_type: typing.Type[T], command_uri: "CommandURI"
+    ) -> T:
         request = ErCommandRequest(
-            id=time_now_ns(), uri=command_uri._uri, args=[input.SerializeToString()]
+            uri=command_uri.uri, args=[input.SerializeToString()]
         )
         try:
             start = time.time()
