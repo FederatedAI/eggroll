@@ -20,7 +20,7 @@ import threading
 
 import lmdb
 
-from eggroll.core.pair_store.adapter import PairIterator, PairWriteBatch, PairAdapter
+from .adapter import PairIterator, PairWriteBatch, PairAdapter
 
 L = logging.getLogger(__name__)
 # 64 * 1024 * 1024
@@ -61,9 +61,14 @@ class LmdbAdapter(PairAdapter):
             super().__init__(options)
             self.path = options["path"]
             lmdb_map_size = options.get(
-                "lmdb_map_size", LMDB_MAP_SIZE if platform.system() != "Windows" else LMDB_MAP_SIZE_WINDOWS_OS
+                "lmdb_map_size",
+                LMDB_MAP_SIZE
+                if platform.system() != "Windows"
+                else LMDB_MAP_SIZE_WINDOWS_OS,
             )
-            create_if_missing = str(options.get("create_if_missing", "True")).lower() == "true"
+            create_if_missing = (
+                str(options.get("create_if_missing", "True")).lower() == "true"
+            )
             if self.path not in LmdbAdapter.env_dict:
                 if create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
@@ -82,9 +87,13 @@ class LmdbAdapter(PairAdapter):
                 )
                 self.sub_db = self.env.open_db(DEFAULT_DB)
                 try:
-                    L.trace(f"LmdbAdapter.init: env={self.path}, data count={self.count()}")
+                    L.trace(
+                        f"LmdbAdapter.init: env={self.path}, data count={self.count()}"
+                    )
                 except Exception as e:
-                    L.exception(f"LmdbAdapter.init: fail to get data count of env={self.path}")
+                    L.exception(
+                        f"LmdbAdapter.init: fail to get data count of env={self.path}"
+                    )
                 LmdbAdapter.count_dict[self.path] = 0
                 LmdbAdapter.env_dict[self.path] = self.env
                 LmdbAdapter.sub_db_dict[self.path] = self.sub_db
@@ -132,9 +141,13 @@ class LmdbAdapter(PairAdapter):
                 self.cursor.close()
             if self.txn_w:
                 try:
-                    L.trace(f"LmdbAdapter.close: env={self.path} data count={self.__get_write_count()}")
+                    L.trace(
+                        f"LmdbAdapter.close: env={self.path} data count={self.__get_write_count()}"
+                    )
                 except Exception as e:
-                    L.exception(f"LmdbAdapter.close: fail to get data count of env={self.path}")
+                    L.exception(
+                        f"LmdbAdapter.close: fail to get data count of env={self.path}"
+                    )
                 self.txn_w.commit()
             if self.env:
                 count = LmdbAdapter.count_dict[self.path]
@@ -142,16 +155,22 @@ class LmdbAdapter(PairAdapter):
                     L.debug(f"LmdbAdapter: actually closing {self.path}")
                     try:
                         if (
-                                "EGGROLL_LMDB_ENV_CLOSE_ENABLE" in os.environ
-                                and os.environ["EGGROLL_LMDB_ENV_CLOSE_ENABLE"] == "1"
-                                or sys.platform == "win32"
+                            "EGGROLL_LMDB_ENV_CLOSE_ENABLE" in os.environ
+                            and os.environ["EGGROLL_LMDB_ENV_CLOSE_ENABLE"] == "1"
+                            or sys.platform == "win32"
                         ):
                             self.env.close()
-                            L.debug(f"EGGROLL_LMDB_ENV_CLOSE_ENABLE is True, finish close lmdb env obj: {self.path}")
+                            L.debug(
+                                f"EGGROLL_LMDB_ENV_CLOSE_ENABLE is True, finish close lmdb env obj: {self.path}"
+                            )
                         else:
-                            L.trace(f"lmdb env={self.path} not close while closing LmdbAdapter")
+                            L.trace(
+                                f"lmdb env={self.path} not close while closing LmdbAdapter"
+                            )
                     except:
-                        L.warning(f"txn commit or cursor, env={self.path} have closed before")
+                        L.warning(
+                            f"txn commit or cursor, env={self.path} have closed before"
+                        )
 
                     del LmdbAdapter.env_dict[self.path]
                     del LmdbAdapter.sub_db_dict[self.path]
@@ -178,7 +197,7 @@ class LmdbAdapter(PairAdapter):
     def destroy(self, options: dict = None):
         self.close()
         import os
-        from eggroll.core import shutil
+        from eggroll.computing.tasks import shutil
         from pathlib import Path
 
         try:

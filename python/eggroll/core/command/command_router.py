@@ -33,21 +33,25 @@ class CommandRouter(object):
 
     def __init__(self):
         if CommandRouter.__instance:
-            raise Exception("CommandRouter a singleton class and the instance has been initialized")
+            raise Exception(
+                "CommandRouter a singleton class and the instance has been initialized"
+            )
         else:
             CommandRouter.__instance = self
-            self._service_route_table = dict()  # key: service_name, value: (instance, class, method)
+            self._service_route_table = (
+                dict()
+            )  # key: service_name, value: (instance, class, method)
 
     def register(
-            self,
-            service_name: str,
-            service_param_deserializers: list = None,
-            service_result_serializers: list = None,
-            route_to_module_name: str = "",
-            route_to_class_name: str = "",
-            route_to_method_name: str = "",
-            route_to_call_based_class_instance=None,
-            call_based_class_instance_init_arg=None,
+        self,
+        service_name: str,
+        service_param_deserializers: list = None,
+        service_result_serializers: list = None,
+        route_to_module_name: str = "",
+        route_to_class_name: str = "",
+        route_to_method_name: str = "",
+        route_to_call_based_class_instance=None,
+        call_based_class_instance_init_arg=None,
     ):
         if service_param_deserializers is None:
             service_param_deserializers = []
@@ -63,20 +67,28 @@ class CommandRouter(object):
         _class = getattr(_module, route_to_class_name)
         _method = getattr(_class, route_to_method_name)
 
-        self._service_route_table[service_name] = (route_to_call_based_class_instance, _class, _method)
+        self._service_route_table[service_name] = (
+            route_to_call_based_class_instance,
+            _class,
+            _method,
+        )
         L.info("service:{} has registered".format(service_name))
 
     def register_handler(
-            self,
-            service_name: str,
-            route_to_method,
-            route_to_call_based_class_instance,
+        self,
+        service_name: str,
+        route_to_method,
+        route_to_call_based_class_instance,
     ):
         if service_name in self._service_route_table:
             raise ValueError(
                 f"service {service_name} has already been registered at ${self._service_route_table[service_name]}"
             )
-        self._service_route_table[service_name] = (route_to_call_based_class_instance, None, route_to_method)
+        self._service_route_table[service_name] = (
+            route_to_call_based_class_instance,
+            None,
+            route_to_method,
+        )
         L.info("service:{} has registered".format(service_name))
 
     def dispatch(self, service_name: str, args, kwargs):
@@ -98,7 +110,9 @@ class CommandRouter(object):
                 task_name = deserialized_task._name
             deserialized_args.append(deserialized_task)
 
-        L.debug(f"[CS] calling: [{service_name}], task_name={task_name}, request={deserialized_args}, len={len(args)}")
+        L.debug(
+            f"[CS] calling: [{service_name}], task_name={task_name}, request={deserialized_args}, len={len(args)}"
+        )
 
         start = time.time()
         try:

@@ -16,7 +16,7 @@
 import logging
 import typing
 
-from eggroll.core.transfer_model import ErRollSiteHeader
+from eggroll.core.meta_model import ErRollSiteHeader
 from ._rollsite_base import RollSiteBase
 
 if typing.TYPE_CHECKING:
@@ -34,6 +34,7 @@ class RollSite(RollSiteBase):
         super().__init__(name, tag, rs_ctx)
 
         from ._rollsite_impl_grpc import RollSiteGrpc
+
         self._impl_instance = RollSiteGrpc(name, tag, rs_ctx, options)
 
     def push_bytes(self, obj, parties: list = None, options: dict = None):

@@ -28,12 +28,12 @@ def prettify(response):
             response = response.json()
         except json.decoder.JSONDecodeError:
             response = {
-                'retcode': 100,
-                'retmsg': response.text,
+                "retcode": 100,
+                "retmsg": response.text,
             }
 
     click.echo(json.dumps(response, indent=4, ensure_ascii=False))
-    click.echo('')
+    click.echo("")
 
     return response
 
@@ -48,8 +48,10 @@ def load_yaml(path):
     with open(path, "r") as fr:
         return yaml.safe_load(fr)
 
+
 def unzip(zip_path, extra_dir):
     import zipfile
+
     zfile = zipfile.ZipFile(zip_path, "r")
     for name in zfile.namelist():
         dir_name = os.path.dirname(zip_path)
@@ -58,4 +60,3 @@ def unzip(zip_path, extra_dir):
         data = zfile.read(name)
         with open(file_path, "w+b") as file:
             file.write(data)
-

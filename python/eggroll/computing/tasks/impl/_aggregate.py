@@ -1,8 +1,8 @@
 import contextlib
 import logging
 
-from eggroll.core.meta_model import ErJob, ErTask
-from eggroll.core.model.task import AggregateRequest, AggregateResponse
+from eggroll.computing.tasks import store
+from eggroll.core.meta_model import ErJob, ErTask, AggregateRequest, AggregateResponse
 from ._task import Task, EnvOptions
 
 L = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ class Aggregate(Task):
         seq_op_result = zero_value
         with contextlib.ExitStack() as stack:
             input_adapter = stack.enter_context(
-                task.first_input.get_adapter(env_options.data_dir)
+                store.get_adapter(task.first_input, env_options.data_dir)
             )
             input_iter = stack.enter_context(input_adapter.iteritems())
             for k_bytes, v_bytes in input_iter:
