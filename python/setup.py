@@ -35,7 +35,7 @@ entry_points = {"console_scripts": ["eggroll = client.cli.eggroll:eggroll_cli"]}
 
 setup_kwargs = {
     "name": "eggroll-client",
-    "version": "2.5.3",
+    "version": "3.0.0",
     "description": "Clients for Eggroll",
     "long_description_content_type": "text/markdown",
     "long_description": "Clients for Eggroll",
