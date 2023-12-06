@@ -26,17 +26,16 @@ L = logging.getLogger(__name__)
 
 
 def session_init(
-    session_id, options: dict = None, config=None, config_properties_file=None
+    session_id, options: dict = None, config=None, config_options=None, config_properties_file=None
 ) -> "ErSession":
     if config is None:
         config = Config().load_default()
-        if config_properties_file:
-            config.load_properties(config_properties_file)
-        elif eggroll_home := os.getenv("EGGROLL_HOME", None):
-            path = f"{eggroll_home}/conf/eggroll.properties"
-            if os.path.exists(path):
-                config.load_properties(path)
-        config.load_env()
+    if config_properties_file is not None:
+        config.load_properties(config_properties_file)
+    if config_options is None:
+        config_options = {}
+    config.load_options(config_options)
+    config.load_env()
     er_session = ErSession(config=config, session_id=session_id, options=options)
     return er_session
 

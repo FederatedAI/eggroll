@@ -113,13 +113,13 @@ class TransferService(object):
 
     @staticmethod
     def remove_broker(key: str):
-        L.trace(f"trying to remove broker tag={key}")
+        L.debug(f"trying to remove broker tag={key}")
         result = False
 
         event = None
         with TransferService.mutex as m:
             if key in TransferService.data_buffer:
-                L.trace(f"actual removing broker tag={key}")
+                L.debug(f"actual removing broker tag={key}")
                 data = TransferService.data_buffer[key]
                 del TransferService.data_buffer[key]
                 event = TransferService.event_buffer[key]
@@ -256,7 +256,7 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
 
                 broker.put(request)
             if inited:
-                L.trace(
+                L.debug(
                     f"GrpcTransferServicer stream finished. tag={base_tag}, remaining write count={broker, broker.__dict__}, stream not empty"
                 )
                 result = transfer_pb2.TransferBatch(header=response_header)
@@ -337,7 +337,7 @@ class TransferClient(object):
     @exception_catch
     def send(self, config: Config, broker, endpoint: ErEndpoint, tag):
         try:
-            L.trace(f"TransferClient.send for endpoint={endpoint}, tag={tag}")
+            L.debug(f"TransferClient.send for endpoint={endpoint}, tag={tag}")
             channel = self.__grpc_channel_factory.create_channel(
                 config=config, endpoint=endpoint
             )
@@ -369,7 +369,7 @@ class TransferClient(object):
         cur_retry = 0
         for cur_retry in range(3):
             try:
-                L.trace(f"TransferClient.recv for endpoint={endpoint}, tag={tag}")
+                L.debug(f"TransferClient.recv for endpoint={endpoint}, tag={tag}")
 
                 @exception_catch
                 def fill_broker(iterable: Iterable, broker):
@@ -404,7 +404,7 @@ class TransferClient(object):
                     t.start()
                 return broker
             except Exception as e:
-                L.warn(
+                L.warning(
                     f"Error calling to {endpoint} in TransferClient.recv, cur_retry={cur_retry}",
                     exc_info=e,
                 )
