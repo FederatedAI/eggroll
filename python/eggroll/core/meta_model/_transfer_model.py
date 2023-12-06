@@ -148,6 +148,22 @@ class ErRollSiteHeader(RpcMessage):
         self._stage = stage
 
     @property
+    def batch_seq(self):
+        return self._batch_seq
+
+    @property
+    def stream_seq(self):
+        return self._stream_seq
+
+    @property
+    def total_batches(self):
+        return self._total_batches
+
+    @property
+    def total_streams(self):
+        return self._total_streams
+
+    @property
     def partition_id(self):
         return self._partition_id
 

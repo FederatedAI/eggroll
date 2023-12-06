@@ -87,7 +87,7 @@ class LmdbAdapter(PairAdapter):
                 )
                 self.sub_db = self.env.open_db(DEFAULT_DB)
                 try:
-                    L.trace(
+                    L.debug(
                         f"LmdbAdapter.init: env={self.path}, data count={self.count()}"
                     )
                 except Exception as e:
@@ -98,24 +98,24 @@ class LmdbAdapter(PairAdapter):
                 LmdbAdapter.env_dict[self.path] = self.env
                 LmdbAdapter.sub_db_dict[self.path] = self.sub_db
             else:
-                L.trace("lmdb init get env={}".format(self.path))
+                L.debug("lmdb init get env={}".format(self.path))
                 self.env = LmdbAdapter.env_dict[self.path]
                 self.sub_db = LmdbAdapter.sub_db_dict[self.path]
             LmdbAdapter.count_dict[self.path] = LmdbAdapter.count_dict[self.path] + 1
-            L.trace(f"lmdb inited={self.path}")
+            L.debug(f"lmdb inited={self.path}")
 
     def _init_write(self):
         if self.txn_w:
             return
         # with LmdbAdapter.env_lock:
-        L.trace(f"lmdb init write={self.path}, path in options={self.options['path']}")
+        L.debug(f"lmdb init write={self.path}, path in options={self.options['path']}")
         self.txn_w = self.env.begin(db=self.sub_db, write=True)
 
     def _init_read(self):
         if self.txn_r:
             return
         # with LmdbAdapter.env_lock:
-        L.trace(f"lmdb init read={self.path}, path in options={self.options['path']}")
+        L.debug(f"lmdb init read={self.path}, path in options={self.options['path']}")
         self.txn_r = self.env.begin(db=self.sub_db, write=False)
         self.cursor = self.txn_r.cursor()
 
@@ -141,7 +141,7 @@ class LmdbAdapter(PairAdapter):
                 self.cursor.close()
             if self.txn_w:
                 try:
-                    L.trace(
+                    L.debug(
                         f"LmdbAdapter.close: env={self.path} data count={self.__get_write_count()}"
                     )
                 except Exception as e:
@@ -164,7 +164,7 @@ class LmdbAdapter(PairAdapter):
                                 f"EGGROLL_LMDB_ENV_CLOSE_ENABLE is True, finish close lmdb env obj: {self.path}"
                             )
                         else:
-                            L.trace(
+                            L.debug(
                                 f"lmdb env={self.path} not close while closing LmdbAdapter"
                             )
                     except:
@@ -205,7 +205,7 @@ class LmdbAdapter(PairAdapter):
             path = Path(self.path)
             if not os.listdir(path.parent):
                 os.removedirs(path.parent)
-                L.trace("finish destroy, path={}".format(self.path))
+                L.debug("finish destroy, path={}".format(self.path))
         except:
             L.debug("path={} has destroyed".format(self.path))
 
@@ -215,12 +215,12 @@ class LmdbAdapter(PairAdapter):
 
 class LmdbIterator(PairIterator):
     def __init__(self, adapter: LmdbAdapter):
-        L.trace(f"creating lmdb iterator of env={adapter.path}")
+        L.debug(f"creating lmdb iterator of env={adapter.path}")
         self._adapter = adapter
         # with LmdbAdapter.env_lock:
         self.txn_r = adapter.env.begin(db=adapter.sub_db, write=False)
         self.cursor = self.txn_r.cursor()
-        L.trace(f"created lmdb iterator of env={adapter.path}")
+        L.debug(f"created lmdb iterator of env={adapter.path}")
 
     @property
     def adapter(self) -> LmdbAdapter:
@@ -256,7 +256,7 @@ class LmdbIterator(PairIterator):
 
 class LmdbWriteBatch(PairWriteBatch):
     def __init__(self, adapter: LmdbAdapter, txn):
-        L.trace(f"creating lmdb write batch of env={adapter.path}")
+        L.debug(f"creating lmdb write batch of env={adapter.path}")
         self.adapter = adapter
         self.txn = txn
 
