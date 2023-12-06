@@ -176,7 +176,7 @@
         <jackson-databind.version>2.15.2</jackson-databind.version>
         <lombok.version>1.18.28</lombok.version>
         <guice.version>6.0.0</guice.version>
-        <HikariCP.version>5.0.1</HikariCP.version>
+        <HikariCP.version>3.4.5</HikariCP.version>
         <mybatis-guice.version>3.18</mybatis-guice.version>
         <curator.version>2.13.0</curator.version>
         <zookeeper.version>3.9.1</zookeeper.version>
