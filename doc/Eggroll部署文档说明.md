@@ -79,11 +79,19 @@ eggroll.resourcemanager.clustermanager.jdbc.password=数据库密码
 <--eggroll相关配置参数说明：
 	1、以下包含的路径都是相对Eggroll的实际部署目录之下的相对路径，若不在Eggroll的实际部署目录之下，可用系统绝对路径；
 	2、根据部署方法分为三个修改级别：需要修改、建议默认、默认即可，其中端口为建议默认但需要根据实际服务器端口是否可用或部署方式来考虑是否修改，以避免端口冲突。-->
-
 eggroll.resourcemanager.clustermanager.host=127.0.0.1	<--clustermanager服务ip地址，需要修改-->
 eggroll.resourcemanager.clustermanager.port=4670	<--clustermanager服务端口，建议默认-->
 eggroll.resourcemanager.nodemanager.host=127.0.0.1	<--nodemanager服务ip地址，需要修改-->
 eggroll.resourcemanager.nodemanager.port=4671	<--nodemanager服务端口：1、部署单机版与clustermanager相同，建议默认；2、部署集群版需修改为其他可用端口，需要修改-->
+
+# dashboard
+eggroll.dashboard.server.port=8083     <--dashboard服务端口,选择没有占用的端口即可-->
+eggroll.security.session.expired.time=30    <--session会话（登录）过期时间,单位分钟-->
+eggroll.security.login.username=admin   <--配置的登录用户名-->
+eggroll.security.login.password=admin   <--配置的登录密码-->
+eggroll.security.encrypt.public_key=   <--登录密码加密公钥-->
+eggroll.security.encrypt.private_key=   <--登录密码加密私钥-->
+eggroll.security.encrypt.enable=false   <--是否开启加密，true开启，false关闭-->
 
 <--以下几项默认即可-->
 eggroll.data.dir=data/			<--存放缓存数据目录，默认即可-->
@@ -101,14 +109,7 @@ eggroll.session.start.timeout.ms=180000		<--session超时设定ms数，默认即
 eggroll.rollpair.transferpair.sendbuf.size=4150000		<--rollpair传输块大小，默认即可-->
 <--以上几项默认即可-->
 
-# dashboard
-eggroll.dashboard.server.port=8083     <--dashboard服务端口,选择没有占用的端口即可-->
-eggroll.security.session.expired.time=30    <--session会话（登录）过期时间,单位分钟-->
-eggroll.security.login.username=admin   <--配置的登录用户名-->
-eggroll.security.login.password=admin   <--配置的登录密码-->
-eggroll.security.encrypt.public_key=   <--登录密码加密公钥-->
-eggroll.security.encrypt.private_key=   <--登录密码加密私钥-->
-eggroll.security.encrypt.enable=false   <--是否开启加密，true开启，false关闭-->
+
 
 ```
 
@@ -169,7 +170,7 @@ sh bin/eggroll.sh dashboard restart [time]
 sh bin/eggroll.sh nodemanager stop
 
 
-将各节点对应的服务启动成功后, 部署完成, 进入测试步骤.
+将各节点对应的服务启动成功后, 部署完成
 
 ```
 
