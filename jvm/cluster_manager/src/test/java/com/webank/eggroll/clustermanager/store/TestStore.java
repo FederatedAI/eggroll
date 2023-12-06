@@ -20,8 +20,9 @@ public class TestStore {
         erStoreLocator.setName("nn");
         erStoreLocator.setPath("/data/a11");
         erStoreLocator.setTotalPartitions(8);
-        erStoreLocator.setPartitioner("aaa0");
-        erStoreLocator.setSerdes("aaa");
+        erStoreLocator.setKeySerdesType(0);
+        erStoreLocator.setValueSerdesType(0);
+        erStoreLocator.setPartitionerType(0);
         erStore.setStoreLocator(erStoreLocator);
         ClusterManagerClient clusterManagerClient = new ClusterManagerClient(endpoint);
         ErStore orCreateStore = clusterManagerClient.getOrCreateStore(new Context(), erStore);
