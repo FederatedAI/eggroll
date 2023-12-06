@@ -166,6 +166,17 @@ alter table session_processor modify column session_id VARCHAR(767);
 
 ```
 
+> 3、eggroll_2.2.x -> eggroll_3.0.x
+
+```
+touch mysql_file.sql
+vim mysql_file.sql
+
+use eggroll_meta;
+ALTER TABLE session_main ADD COLUMN status_reason VARCHAR(255) NULL AFTER status;
+ALTER TABLE session_main ADD COLUMN before_status VARCHAR(255) NULL AFTER status_reason;
+ALTER TABLE session_processor ADD COLUMN before_status VARCHAR(255) NULL AFTER status_reason;
+```
 ## 4 脚本执行
 
 - 4.1 使用-h 打印命令行帮助
