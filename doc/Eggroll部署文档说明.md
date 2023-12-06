@@ -116,6 +116,18 @@ eggroll.session.processors.per.node=4		<--单节点启动egg pair个数，小于
 eggroll.session.start.timeout.ms=180000		<--session超时设定ms数，默认即可-->
 eggroll.rollpair.transferpair.sendbuf.size=4150000		<--rollpair传输块大小，默认即可-->
 <--以上几项默认即可-->
+
+# jettyserver
+eggroll.dashboard.server.port=8083     <--dashboard服务端口,选择没有占用的端口即可-->
+eggroll.security.session.expired.time=30    <--session会话（登录）过期时间,单位分钟-->
+# login
+
+eggroll.security.login.username=admin   <--配置的登录用户名-->
+eggroll.security.login.password=admin   <--配置的登录密码-->
+eggroll.security.encrypt.public_key=   <--配置的公钥-->
+eggroll.security.encrypt.private_key=   <--配置的私钥-->
+eggroll.security.encrypt.enable=false   <--是否开启加密，true开启，false关闭-->
+
 ```
 
 ### 3.3  nodemanager多节点部署
