@@ -61,11 +61,6 @@ public class MetaInfo {
     @Config(confKey = "eggroll.zookeeper.register.enable", pattern = Dict.BOOLEAN_PATTERN)
     public static Boolean ZOOKEEPER_ENABLED = false;
 
-    @Config(confKey = "eggroll.zookeeper.server.port", pattern = Dict.POSITIVE_INTEGER_PATTERN)
-    public static Integer ZOOKEEPER_SERVER_PORT = 0;
-    @Config(confKey = "eggroll.zookeeper.server.host")
-    public static String ZOOKEEPER_SERVER_HOST = "";
-
     @Config(confKey = "eggroll.dashboard.server.port", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static Integer DASHBOARD_SERVER_PORT = 0;
 
