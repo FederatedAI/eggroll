@@ -18,8 +18,10 @@ from importlib import import_module
 
 from eggroll.core.meta_model import ErTask
 from eggroll.core.proto import meta_pb2
+from eggroll.trace import get_tracer
 
 L = logging.getLogger(__name__)
+tracer = get_tracer(__name__)
 
 
 class CommandRouter(object):
@@ -92,48 +94,50 @@ class CommandRouter(object):
         L.info("service:{} has registered".format(service_name))
 
     def dispatch(self, service_name: str, args, kwargs):
-        if service_name not in self._service_route_table:
-            raise ValueError(f"{service_name} has not been registered yet")
+        with tracer.start_as_current_span("command_router_dispatch") as span:
+            if service_name not in self._service_route_table:
+                raise ValueError(f"{service_name} has not been registered yet")
 
-        _instance, _class, _method = self._service_route_table[service_name]
+            _instance, _class, _method = self._service_route_table[service_name]
 
-        if not _instance:
-            _instance = _class()
+            if not _instance:
+                _instance = _class()
 
-        task_name = ""
-        deserialized_args = list()
-        for arg in args:
-            task = meta_pb2.Task()
-            msg_len = task.ParseFromString(arg)
-            deserialized_task = ErTask.from_proto(task)
-            if not task_name:
-                task_name = deserialized_task._name
-            deserialized_args.append(deserialized_task)
+            task_name = ""
+            deserialized_args = list()
+            for arg in args:
+                task = meta_pb2.Task()
+                msg_len = task.ParseFromString(arg)
+                deserialized_task = ErTask.from_proto(task)
+                if not task_name:
+                    task_name = deserialized_task.name
+                deserialized_args.append(deserialized_task)
 
-        L.debug(
-            f"[CS] calling: [{service_name}], task_name={task_name}, request={deserialized_args}, len={len(args)}"
-        )
-
-        start = time.time()
-        try:
-            call_result = _method(_instance, *deserialized_args)
-        except Exception as e:
-            L.exception(
-                f"Failed to dispatch to [{service_name}], task_name: {task_name}, request: {deserialized_args}"
-            )
-            raise e
-        elapsed = time.time() - start
-        if L.isEnabledFor(logging.TRACE):
-            L.trace(
-                f"[CS] called (elapsed={elapsed}): [{service_name}]: task_name={task_name}, request={deserialized_args}, result={call_result}"
-            )
-        else:
-            L.debug(
-                f"[CS] called (elapsed={elapsed}): [{service_name}], task_name={task_name}, request={deserialized_args}"
-            )
-
-        # todo:2: defaulting to pb message. need changes when other types of result is present
-        return [call_result.to_proto().SerializeToString()]
+            if L.isEnabledFor(logging.DEBUG):
+                L.debug(
+                    f"[CS] calling: [{service_name}], task_name={task_name}, request={deserialized_args}, len={len(args)}"
+                )
+            span.set_attribute("service_name", service_name)
+            span.set_attribute("task_name", task_name)
+            span.set_attribute("request", deserialized_args)
+            span.add_event("before_call")
+            start = time.time()
+            try:
+                call_result = _method(_instance, *deserialized_args)
+            except Exception as e:
+                L.exception(
+                    f"Failed to dispatch to [{service_name}], task_name: {task_name}, request: {deserialized_args}"
+                )
+                raise e
+            span.add_event("after_call")
+            span.set_attribute("result", call_result)
+            if L.isEnabledFor(logging.DEBUG):
+                elapsed = time.time() - start
+                L.debug(
+                    f"[CS] called (elapsed={elapsed}): [{service_name}], task_name={task_name}, request={deserialized_args}"
+                )
+            # todo:2: defaulting to pb message. need changes when other types of result is present
+            return [call_result.to_proto().SerializeToString()]
 
     def query(self, service_name: str):
         return self._service_route_table[service_name]

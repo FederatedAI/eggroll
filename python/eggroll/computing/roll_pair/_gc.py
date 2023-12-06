@@ -94,7 +94,7 @@ class GcRecorder(object):
                 continue
             if not rp_namespace_name:
                 continue
-            L.trace(f"GC thread destroying rp={rp_namespace_name}")
+            L.debug(f"GC thread destroying rp={rp_namespace_name}")
             self.record_rpc.create_rp(
                 id=-1,
                 namespace=rp_namespace_name[0],
@@ -117,7 +117,7 @@ class GcRecorder(object):
         if store_type != StoreTypes.ROLLPAIR_IN_MEMORY:
             return
         else:
-            L.trace(
+            L.debug(
                 "GC recording in memory table namespace={}, name={}".format(
                     namespace, name
                 )
@@ -126,7 +126,7 @@ class GcRecorder(object):
             if count is None:
                 count = 0
             self.gc_recorder[(namespace, name)] = count + 1
-            L.trace(f"GC recorded count={len(self.gc_recorder)}")
+            L.debug(f"GC recorded count={len(self.gc_recorder)}")
 
     def decrease_ref_count(self, er_store):
         if er_store._store_locator._store_type != StoreTypes.ROLLPAIR_IN_MEMORY:
@@ -136,6 +136,6 @@ class GcRecorder(object):
         record_count = 0 if ref_count is None or ref_count == 0 else (ref_count - 1)
         self.gc_recorder[t_ns_n] = record_count
         if record_count == 0 and t_ns_n in self.gc_recorder:
-            L.trace(f"GC put in queue. namespace={t_ns_n[0]}, name={t_ns_n[1]}")
+            L.debug(f"GC put in queue. namespace={t_ns_n[0]}, name={t_ns_n[1]}")
             self.gc_queue.put(t_ns_n)
             self.gc_recorder.pop(t_ns_n)

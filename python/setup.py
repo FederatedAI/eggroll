@@ -1,5 +1,5 @@
 #
-#  Copyright 2019 The FATE Authors. All Rights Reserved.
+#  Copyright 2019 The EGGROLL Authors. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -14,24 +14,32 @@
 #  limitations under the License.
 # -*- coding: utf-8 -*-
 
-import os
 from setuptools import find_packages, setup
 
 
-packages = find_packages('..')
-filtered_packages = [pkg for pkg in packages if pkg.startswith("client")]
+packages = find_packages(".")
 package_data = {"": ["*"]}
 install_requires = [
     "click",
-    "requests<2.26.0",
-    "grpcio==1.46.3",
-    "numba==0.53.0",
-    "numpy==1.23.1",
-    "protobuf==3.19.6",
-    "ruamel.yaml==0.16.10"
+    "omegaconf",
+    "requests<3.0",
+    "grpcio",
+    "protobuf",
+    "ruamel.yaml",
 ]
 
-entry_points = {"console_scripts": ["eggroll = client.cli.eggroll:eggroll_cli"]}
+extras_require = {
+    "full": [
+        "cloudpickle",
+        "lmdb==1.3.0",
+        "psutil>=5.7.0",
+        "opentelemetry-api",
+        "opentelemetry-sdk",
+    ]
+}
+
+
+entry_points = {"console_scripts": ["eggroll = eggroll.client.cli.eggroll:eggroll_cli"]}
 
 setup_kwargs = {
     "name": "eggroll-client",
@@ -44,13 +52,13 @@ setup_kwargs = {
     "maintainer": None,
     "maintainer_email": None,
     "url": "https://fate.fedai.org/",
-    "packages": filtered_packages,
+    "packages": packages,
     "include_package_data": True,
     "package_data": package_data,
     "install_requires": install_requires,
+    "extras_require": extras_require,
     "entry_points": entry_points,
     "python_requires": ">=3.8",
 }
 
-os.chdir('..')
 setup(**setup_kwargs)
