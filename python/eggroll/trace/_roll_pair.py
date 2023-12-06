@@ -36,7 +36,7 @@ def roll_pair_method_trace(func):
     #     try:
     #         outerframes = inspect.getouterframes(inspect.currentframe(), 2)
     #         real_caller = outerframes[1]
-    #         L.trace(f'{{"metric_type": "func_profile", '
+    #         L.debug(f'{{"metric_type": "func_profile", '
     #                 f'"qualname": "{func.__qualname__}", '
     #                 f'"caller": "{real_caller.filename.rsplit("/", 1)[-1]}:{real_caller.lineno}", '
     #                 f'"cpu_time": {end_cpu_time - start_cpu_time}, '
@@ -44,7 +44,7 @@ def roll_pair_method_trace(func):
     #
     #         return result
     #     except Exception as e:
-    #         L.trace(f'{{"metric_type": "func_profile", '
+    #         L.debug(f'{{"metric_type": "func_profile", '
     #                 f'"qualname": "{func.__qualname__}", '
     #                 f'"caller": "unknown", '
     #                 f'"cpu_time": {end_cpu_time - start_cpu_time}, '
