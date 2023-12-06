@@ -35,6 +35,5 @@ cp -r jvm/node_manager/target/lib/* lib
 cp -r jvm/cluster_dashboard/target/cluster_dashboard-${version}.jar lib
 cp -r jvm/cluster_dashboard/target/lib/* lib
 
-
 tar -czf eggroll.tar.gz lib bin conf data python deploy
 cd $pwd
