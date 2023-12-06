@@ -20,7 +20,7 @@
 esc_c="\033[0m"
 error_c="\033[31m"
 ok_c="\033[32m"
-highlight_c="\033[43m"
+#highlight_c="\033[43m"
 
 # --------------- Logging Functions ---------------
 print_info() {
@@ -112,7 +112,7 @@ processor_tag=${property_value}
 if [ -z "${processor_tag}" ];then
 	processor_tag=EGGROLL_DAEMON
 fi
-print_info "processor_tag=$processor_tag"
+
 
 
 main() {
@@ -146,7 +146,7 @@ action() {
 	case "$action" in
 	  debug)
 	  stop
-	  sleep_time=${3:-5}
+	  sleep_time=${3:-2}
     print_info "Waiting ${sleep_time} seconds"
     sleep "$sleep_time"
 	  debug
@@ -168,7 +168,7 @@ action() {
 			;;
 		restart)
 			stop
-			sleep_time=${3:-5}  # 默认 sleep_time 为 5，如果传入了参数，则使用传入的值
+			sleep_time=${3:-2}  # 默认 sleep_time 为 5，如果传入了参数，则使用传入的值
 			print_info "Waiting ${sleep_time} seconds"
       sleep "$sleep_time"
 			start
@@ -183,8 +183,7 @@ action() {
 all() {
 	for module in "${modules[@]}"; do
 		main
-		print_info "$module=${main_class}"
-		print_info "Processing: ${highlight_c}${module} ${action}"
+		print_info "Processing: ${module} ${action}"
 		action "$@"
 	done
 }
@@ -202,7 +201,7 @@ usage() {
       echo -e "  `basename ${0}` [component] status         - Check and report the status of the server application."
       echo -e "  `basename ${0}` [component] restart [time] - Restart the server application. Optionally, specify a sleep time (in seconds) between stop and start."
       echo -e "  `basename ${0}` [component] debug          - Start the server application in debug mode."
-      echo -e "  ${ok_c}The component${esc_c} include: {clustermanager | nodemanager | dashboard | all} "
+      echo -e "  The ${ok_c}component${esc_c} include: {clustermanager | nodemanager | dashboard | all} "
       echo ""
       echo -e "${ok_c}Examples:${esc_c}"
       echo "  `basename ${0}` clustermanager start"
@@ -210,7 +209,7 @@ usage() {
       echo ""
       echo -e "${ok_c}Notes:${esc_c}"
       echo "  - The restart command, if given an optional sleep time, will wait for the specified number of seconds between stopping and starting the service."
-      echo "    If not provided, it defaults to 10 seconds."
+      echo "    If not provided, it defaults to 2 seconds."
       echo "  - Ensure that the required Java environment is correctly configured on the system."
       echo ""
       echo "For more detailed information, refer to the script's documentation or visit the official documentation website."
@@ -222,62 +221,11 @@ multiple() {
 		module=${!i//\//}
 		main
 		print_info "$module:${main_class}"
-		print_info "Processing: ${highlight_c}${module} ${action}"
+		print_info "Processing: ${module} ${action}"
 		action "$@"
 	done
 }
 
-## --------------- Functions for start---------------
-## Check if the service is up and running
-#check_service_up() {
-#    local timeout_ms=$1 #2
-#    local interval_ms=$2 #3
-#    local http_port=$3 #4
-#    local cluster_pid=0
-#    local node_pid=0
-#    local elapsed_ms=0
-#    local spin_state=0
-#    # 查找包含 "clustermanager" 关键词的进程，并获取其 PID 赋值给变量 cluster_pid
-#    cluster_pid=$(ps aux | grep '[c]lustermanager' | grep -v grep | grep -v $$ | awk '{print $2}')
-#    # 查找包含 "nodemanager" 关键词的进程，并获取其 PID 赋值给变量 node_pid
-#    node_pid=$(ps aux | grep '[n]odemanager' | grep -v grep | grep -v $$ | awk '{print $2}')
-#    while ((elapsed_ms < timeout_ms)); do
-#        if ! kill -0 "${cluster_pid}" 2>/dev/null; then
-#            print_error "Process clustermanager with PID ${cluster_pid} is not running." "" "overwrite"
-#            echo
-#            return 1
-#        fi
-#        if ! kill -0 "${node_pid}" 2>/dev/null; then
-#            print_error "Process nodemanager with PID ${node_pid} is not running." "" "overwrite"
-#            echo
-#            return 1
-#        fi
-#
-#        if lsof -i :${http_port} | grep -q LISTEN; then
-#            print_ok "All service started successfully!" "overwrite"
-#            echo
-#            return 0
-#        else
-#            print_error "Process dashboard is not running" "overwrite"
-#            return 1
-#        fi
-#
-#        # Update spinning wheel
-#        case $spin_state in
-#            0) spinner_char="/" ;;
-#            1) spinner_char="-" ;;
-#            2) spinner_char="\\" ;;
-#            3) spinner_char="|" ;;
-#        esac
-#        print_info "$spinner_char" "overwrite"
-#        spin_state=$(((spin_state + 1) % 4))
-#        sleep $((interval_ms / 1000)).$((interval_ms % 1000))
-#        elapsed_ms=$((elapsed_ms + interval_ms))
-#    done
-#    print_error "Service did not start up within the expected time." "" "overwrite"
-#    echo
-#    return 1
-#}
 
 mklogsdir() {
 	if [[ ! -d "${EGGROLL_HOME}/logs/eggroll" ]]; then
@@ -296,7 +244,7 @@ status() {
   fi
 	# check service is up and running
 	if [[ -n ${pid} ]]; then
-    print_ok "Check service ${highlight_c}${module}${esc_c} is started: PID=${highlight_c}${pid}${esc_c}"
+    print_ok "Check service ${module} is started: PID=${pid}${esc_c}"
     print_info "The service status is:
     `ps aux | grep ${pid} | grep ${processor_tag} | grep ${main_class} | grep -v grep`"
     return 0
@@ -305,18 +253,39 @@ status() {
 		return 1
 	fi
 }
+# check java environment
+check_java_environment() {
+    #检查是否已经设置 JAVA_HOME 环境变量
+    if [ -n "$JAVA_HOME" ]; then
+        print_ok "JAVA_HOME is set to $JAVA_HOME"
+    else
+        print_error "JAVA_HOME is not set"
+        exit 1
+    fi
+    #检查 Java 可执行文件是否在系统 PATH 中
+    if command -v java &> /dev/null; then
+        print_ok "Java is installed and available in the system PATH"
+    else
+        print_error "Java is not found in the system PATH"
+        exit 1
+    fi
+
+    #检查 Java 版本
+    java_version=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}')
+    if [ -n "$java_version" ]; then
+        print_ok "Java version is $java_version"
+    else
+        print_error "Java version information is not available"
+        exit 1
+    fi
+}
 
 # Start service
 start() {
   print_info "--------------------------------starting--------------------------------"
   print_info "Checking Java environment..."
   # check the java environment
-  if [[ -n ${JAVA_HOME} ]]; then
-    print_ok "JAVA_HOME is already set, service starting..."
-  else
-    print_error "JAVA_HOME is not set, please set it first"
-    exit 1
-  fi
+  check_java_environment
 	if [ "${module}" = "dashboard" ]; then
     get_port_pid
   else
@@ -336,7 +305,7 @@ start() {
 			exec $cmd >> ${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.out 2>>${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.err &
 		fi
     # wait for connect DB
-    print_info "Waiting for connect DB..."
+    print_info "Waiting for start service..."
     sleep 5
     if [ "${module}" = "dashboard" ]; then
       get_port_pid
@@ -344,12 +313,12 @@ start() {
       getpid
     fi
 		if [[ $? -eq 0 ]]; then
-      print_ok "The ${highlight_c}${module}${esc_c} service start sucessfully. PID=${pid}"
+      print_ok "The ${module} service start sucessfully. PID=${pid}"
 		else
-			print_error "The ${highlight_c}${module}${esc_c} service start failed"
+			print_error "The ${module} service start failed"
 		fi
 	else
-		print_info "The ${highlight_c}${module}${esc_c} service already started. PID=${pid}"
+		print_info "The ${module} service already started. PID=${pid}"
 	fi
 }
 
@@ -379,12 +348,12 @@ debug() {
       getpid
     fi
 		if [[ $? -eq 0 ]]; then
-			print_ok "The ${highlight_c}${module}${esc_c} service debug sucessfully. PID=${pid}"
+			print_ok "The ${module} service debug sucessfully. PID=${pid}"
 		else
-			print_error "The ${highlight_c}${module}${esc_c} service debug failed"
+			print_error "The ${module} service debug failed"
 		fi
 	else
-		print_info "The ${highlight_c}${module}${esc_c} service already started. PID=${pid}"
+		print_info "The ${module} service already started. PID=${pid}"
 	fi
 }
 
@@ -398,7 +367,7 @@ stop() {
      getpid
    fi
 	if [[ -n ${pid} ]]; then
-		print_info "The system is stopping the ${highlight_c}${module}${esc_c} service. PID=${pid}"
+		print_info "The system is stopping the ${module} service. PID=${pid}"
 		print_info "The more information:
 		`ps aux | grep ${pid} | grep ${processor_tag} | grep ${main_class} | grep -v grep`"
 	  for _ in {1..100}; do
@@ -414,9 +383,9 @@ stop() {
             return
         fi
     done
-    kill_process "${pid}" -9 && print_ok "Stop the service ${highlight_c}${module}${esc_c} success (SIGKILL)" || print_error "Stop service failed"
+    kill_process "${pid}" -9 && print_ok "Stop the service ${module} success (SIGKILL)" || print_error "Stop service failed"
 	else
-		print_ok "The ${highlight_c}${module}${esc_c} service is not running(NOT ACTIVE))"
+		print_ok "The ${module} service is not running(NOT ACTIVE))"
 	fi
 }
 # Shut service(FORCE KILL). now not use, stop has force kill
@@ -428,7 +397,7 @@ shut() {
     getpid
   fi
 	if [[ -n ${pid} ]]; then
-	  print_info "The ${highlight_c}${module}${esc_c} service is force killing. PID=${pid}"
+	  print_info "The ${module} service is force killing. PID=${pid}"
 		print_info "The more information:
 		`ps aux | grep ${pid} | grep ${processor_tag} | grep ${main_class} | grep -v grep`"
 		kill -9 ${pid}
@@ -443,9 +412,9 @@ shut() {
       fi
 			flag=$?
 		done
-		print_info "The ${highlight_c}${module}${esc_c} service is force kill success"
+		print_info "The ${module} service is force kill success"
 	else
-		print_info "The ${highlight_c}${module}${esc_c} service is not running"
+		print_info "The ${module} service is not running"
 	fi
 }
 
