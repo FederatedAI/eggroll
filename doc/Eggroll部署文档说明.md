@@ -96,36 +96,18 @@ eggroll.resourcemanager.bootstrap.egg_pair.pythonpath=python		<--python文件路
 eggroll.resourcemanager.bootstrap.egg_pair.filepath=python/eggroll/roll_pair/egg_pair.py	<--egg_pair.py文件路径，默认即可-->
 eggroll.resourcemanager.bootstrap.egg_pair.ld_library_path=		<--egg_pair ld_library_path路径，默认即可-->
 
-eggroll.resourcemanager.bootstrap.egg_frame.exepath=bin/roll_frame/egg_frame_bootstrap.sh		<--egg_frame_bootstrap.sh文件路径-->
-eggroll.resourcemanager.bootstrap.egg_frame.javahome=	<--java环境变量，系统安装jdk1.8-->
-eggroll.resourcemanager.bootstrap.egg_frame.classpath=conf/:lib/*	<--eggroll启动时读取classpath文件路径-->
-eggroll.resourcemanager.bootstrap.egg_frame.mainclass=com.webank.eggroll.rollframe.EggFrameBootstrap	<--roll_frame主类-->
-eggroll.resourcemanager.bootstrap.egg_frame.jvm.options=	<--jvm启动参数-->
-
-# roll_frame
-arrow.enable_unsafe_memory_access=true
-
-# hadoop
-hadoop.fs.defaultFS=file:///
-
-# hadoop HA mode
-hadoop.dfs.nameservices=
-hadoop.dfs.namenode.rpc-address.nn1=
-hadoop.dfs.namenode.rpc-address.nn2=
 eggroll.session.processors.per.node=4		<--单节点启动egg pair个数，小于或等于cpu核数，建议16-->
 eggroll.session.start.timeout.ms=180000		<--session超时设定ms数，默认即可-->
 eggroll.rollpair.transferpair.sendbuf.size=4150000		<--rollpair传输块大小，默认即可-->
 <--以上几项默认即可-->
 
-# jettyserver
+# dashboard
 eggroll.dashboard.server.port=8083     <--dashboard服务端口,选择没有占用的端口即可-->
 eggroll.security.session.expired.time=30    <--session会话（登录）过期时间,单位分钟-->
-# login
-
 eggroll.security.login.username=admin   <--配置的登录用户名-->
 eggroll.security.login.password=admin   <--配置的登录密码-->
-eggroll.security.encrypt.public_key=   <--配置的公钥-->
-eggroll.security.encrypt.private_key=   <--配置的私钥-->
+eggroll.security.encrypt.public_key=   <--登录密码加密公钥-->
+eggroll.security.encrypt.private_key=   <--登录密码加密私钥-->
 eggroll.security.encrypt.enable=false   <--是否开启加密，true开启，false关闭-->
 
 ```
