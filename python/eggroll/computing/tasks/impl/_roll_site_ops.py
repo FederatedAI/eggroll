@@ -300,9 +300,9 @@ class _BatchStreamStatus:
         )
 
     def set_done(self, rs_header):
-        L.trace(f"set done. rs_key={rs_header.get_rs_key()}, rs_header={rs_header}")
-        self._total_batches = rs_header._total_batches
-        self._total_streams = rs_header._total_streams
+        L.debug(f"set done. rs_key={rs_header.get_rs_key()}, rs_header={rs_header}")
+        self._total_batches = rs_header.total_batches
+        self._total_streams = rs_header.total_streams
         self._stage = "done"
         if self._total_batches != len(self._batch_seq_to_pair_counter):
             self._is_in_order = False
@@ -311,11 +311,11 @@ class _BatchStreamStatus:
             )
 
     def count_batch(self, rs_header: ErRollSiteHeader, batch_pairs):
-        L.trace(
+        L.debug(
             f"count batch. rs_key={rs_header.get_rs_key()}, rs_header={rs_header}, batch_pairs={batch_pairs}"
         )
-        batch_seq_id = rs_header._batch_seq
-        stream_seq_id = rs_header._stream_seq
+        batch_seq_id = rs_header.batch_seq
+        stream_seq_id = rs_header.stream_seq
         if self._rs_header is None:
             self._rs_header = rs_header
             self._rs_key = rs_header.get_rs_key()
@@ -328,8 +328,8 @@ class _BatchStreamStatus:
         self._stream_seq_to_batch_seq[stream_seq_id] = batch_seq_id
 
     def check_finish(self):
-        if L.isEnabledFor(logging.TRACE):
-            L.trace(
+        if L.isEnabledFor(logging.DEBUG):
+            L.debug(
                 f"checking finish. rs_key={self._rs_key}, rs_header={self._rs_header}, stage={self._stage}, total_batches={self._total_batches}, len={len(self._batch_seq_to_pair_counter)}"
             )
         if self._stage == "done" and self._total_batches == len(

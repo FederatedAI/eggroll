@@ -1,5 +1,4 @@
 import configparser
-import os
 import pprint
 import typing
 
@@ -32,6 +31,13 @@ class Config(object):
         dot_list_config = omegaconf.OmegaConf.from_dotlist(dot_list)
         self.config = omegaconf.OmegaConf.merge(self.config, dot_list_config)
         self.loaded_history.append(f"load_properties: {config_file}")
+        return self
+
+    def load_options(self, options: dict):
+        dot_list = [f"{k}={v}" for k, v in options.items()]
+        dot_list_config = omegaconf.OmegaConf.from_dotlist(dot_list)
+        self.config = omegaconf.OmegaConf.merge(self.config, dot_list_config)
+        self.loaded_history.append(f"load_options: {options}")
         return self
 
     def load_env(self):
@@ -70,7 +76,7 @@ class Config(object):
                 raise ConfigError(
                     self,
                     key.key,
-                    f"`{key.key}` not found both in option=`{option}` and config=`{config.config}`",
+                    f"`{key.key}` not found both in option=`{option}` and config=`{self.config}`",
                 )
             elif isinstance(value, omegaconf.Container):
                 raise ConfigError(
@@ -143,9 +149,5 @@ def load_config(properties_file):
     config.load_default()
     if properties_file is not None:
         config.load_properties(properties_file)
-    elif "EGGROLL_HOME" in os.environ:
-        path = os.path.join(os.environ["EGGROLL_HOME"], "conf", "eggroll.properties")
-        if os.path.exists(path):
-            config.load_properties(path)
     config.load_env()
     return config

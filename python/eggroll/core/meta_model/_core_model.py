@@ -678,6 +678,9 @@ class ErStore(RpcMessage):
         return ErPartition(id=i, store_locator=self._store_locator, processor=processor)
 
     @property
+    def partitions(self):
+        return self._partitions
+    @property
     def store_locator(self):
         return self._store_locator
 
