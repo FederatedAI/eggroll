@@ -92,7 +92,7 @@
                         <configuration>
                             <sources>
                                 <source>${pom.basedir}/main/java</source>
-<!--                                <source>${pom.basedir}/main/scala</source>-->
+                                <!--                                <source>${pom.basedir}/main/scala</source>-->
                             </sources>
                         </configuration>
                     </execution>
@@ -435,6 +435,14 @@
                     <exclusion>
                         <groupId>org.slf4j</groupId>
                         <artifactId>slf4j-log4j12</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>ch.qos.logback</groupId>
+                        <artifactId>logback-classic</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>ch.qos.logback</groupId>
+                        <artifactId>logback-core</artifactId>
                     </exclusion>
                 </exclusions>
             </dependency>
