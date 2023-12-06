@@ -18,14 +18,14 @@ import uuid
 from typing import Callable, Iterable
 
 from eggroll.computing import tasks
-from eggroll.core.client import CommandClient
-from eggroll.core.constants import StoreTypes
+from eggroll.computing.tasks.store import StoreTypes
+from eggroll.core.command.command_client import CommandClient
 from eggroll.core.meta_model import (
     ErStoreLocator,
     ErStore,
     ErPartition,
 )
-from eggroll.core.session import ErSession
+from eggroll.session import ErSession
 from ._gc import GcRecorder
 from ._roll_pair import RollPair
 
@@ -34,7 +34,7 @@ L = logging.getLogger(__name__)
 
 class RollPairContext(object):
     def __init__(self, session: ErSession):
-        if not session.get_session_meta().is_active():
+        if not session.is_active():
             raise Exception(
                 f"session_id={session.get_session_id()} is not ACTIVE. current status={session.get_session_meta().status}"
             )

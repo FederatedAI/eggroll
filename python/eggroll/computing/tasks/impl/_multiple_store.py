@@ -6,14 +6,11 @@ import typing
 from threading import Thread
 from typing import TypeVar, Iterable, Tuple, Callable
 
-from eggroll.computing.roll_pair.transfer_pair import TransferPair, BatchBroker
-from eggroll.computing.tasks import consts
+from eggroll.computing.tasks import consts, store, shutil, job_util, transfer
 from eggroll.computing.tasks.submit_utils import (
     block_submit_unary_unit_job,
     block_submit_unary_unit_tasks,
 )
-from eggroll.core import shutil
-from eggroll.core.constants import StoreTypes
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import (
     ErFunctor,
@@ -22,13 +19,7 @@ from eggroll.core.meta_model import (
     ErStoreLocator,
     ErPartition,
 )
-from eggroll.core.meta_model import ErJob, ErTask
-from eggroll.core.model.task import (
-    GetAllRequest,
-    CountResponse,
-)
-from eggroll.core.transfer.transfer_service import TransferService
-from eggroll.core.utils import generate_job_id, generate_task_id
+from eggroll.core.meta_model import ErJob, ErTask, GetAllRequest, CountResponse
 from ._task import Task, EnvOptions
 
 if typing.TYPE_CHECKING:
@@ -47,18 +38,18 @@ class GetAll(Task):
         request = job.first_functor.deserialized_as(GetAllRequest)
 
         def generate_broker():
-            with task.first_input.get_adapter(
-                env_options.data_dir
+            with store.get_adapter(
+                task.first_input, env_options.data_dir
             ) as db, db.iteritems() as rb:
                 limit = None if request.limit < 0 else request.limit
                 try:
-                    yield from TransferPair.pair_to_bin_batch(
+                    yield from transfer.TransferPair.pair_to_bin_batch(
                         config=env_options.config, input_iter=rb, limit=limit
                     )
                 finally:
-                    TransferService.remove_broker(tag)
+                    transfer.TransferService.remove_broker(tag)
 
-        TransferService.set_broker(tag, generate_broker())
+        transfer.TransferService.set_broker(tag, generate_broker())
 
     @classmethod
     def submit(cls, rp: "RollPair", limit=None):
@@ -66,7 +57,7 @@ class GetAll(Task):
             raise ValueError(f"limit:{limit} must be positive int")
         if limit is None:
             limit = -1
-        job_id = generate_job_id(rp.session_id, consts.GET_ALL)
+        job_id = job_util.generate_job_id(rp.session_id, consts.GET_ALL)
 
         block_submit_unary_unit_job(
             command_client=rp.command_client,
@@ -83,7 +74,7 @@ class GetAll(Task):
             ),
             output_types=[ErTask],
         )
-        transfer_pair = TransferPair(config=rp.config, transfer_id=job_id)
+        transfer_pair = transfer.TransferPair(config=rp.config, transfer_id=job_id)
         done_cnt = 0
         for k, v in transfer_pair.gather(config=rp.config, store=rp.get_store()):
             done_cnt += 1
@@ -93,7 +84,9 @@ class GetAll(Task):
 class PutAll(Task):
     @classmethod
     def run(cls, env_options: EnvOptions, job: ErJob, task: ErTask):
-        TransferPair(config=env_options.config, transfer_id=task.id).store_broker(
+        transfer.TransferPair(
+            config=env_options.config, transfer_id=task.id
+        ).store_broker(
             config=env_options.config,
             data_dir=env_options.data_dir,
             store_partition=task.first_output,
@@ -107,7 +100,7 @@ class PutAll(Task):
         kv_list: Iterable[Tuple[bytes, bytes]],
         partitioner: Callable[[bytes, int], int],
     ):
-        job_id = generate_job_id(rp.session_id, consts.PUT_ALL)
+        job_id = job_util.generate_job_id(rp.session_id, consts.PUT_ALL)
 
         # TODO:1: consider multiprocessing scenario. parallel size should be sent to egg_pair to set write signal count
 
@@ -128,9 +121,9 @@ class PutAll(Task):
             target=send_command, name=f"put_all-send_command-{job_id}"
         )
         th.start()
-        shuffler = TransferPair(config=rp.config, transfer_id=job_id)
+        shuffler = transfer.TransferPair(config=rp.config, transfer_id=job_id)
         fifo_broker = FifoBroker(config=rp.config)
-        bb = BatchBroker(config=rp.config, broker=fifo_broker)
+        bb = transfer.BatchBroker(config=rp.config, broker=fifo_broker)
         scatter_future = shuffler.scatter(
             rp.config, fifo_broker, partitioner, rp.get_store()
         )
@@ -150,12 +143,12 @@ class PutAll(Task):
 class Count(Task):
     @classmethod
     def run(cls, env_options: EnvOptions, _job: ErJob, task: ErTask):
-        with task.first_input.get_adapter(env_options.data_dir) as input_adapter:
+        with store.get_adapter(task.first_input, env_options.data_dir) as input_adapter:
             return CountResponse(value=input_adapter.count())
 
     @classmethod
     def submit(cls, rp: "RollPair"):
-        job_id = generate_job_id(rp.session_id, tag=consts.COUNT)
+        job_id = job_util.generate_job_id(rp.session_id, tag=consts.COUNT)
         job = ErJob(id=job_id, name=consts.COUNT, inputs=[ErJobIO(rp.get_store())])
         task_results = block_submit_unary_unit_job(
             command_client=rp.command_client, job=job, output_types=[CountResponse]
@@ -210,8 +203,6 @@ class Destroy(Task):
             f"destroying store_type={store_type}, namespace={namespace}, name={name}"
         )
         if name == "*":
-            from eggroll.core._data_path import get_db_path_from_partition
-
             target_paths = list()
             if store_type == "*":
                 store_types = os.listdir(env_options.data_dir)
@@ -220,8 +211,8 @@ class Destroy(Task):
                         os.path.join(env_options.data_dir, store_type, namespace)
                     )
             else:
-                db_path = get_db_path_from_partition(
-                    env_options.data_dir, task.first_input
+                db_path = store.get_db_path_from_partition(
+                    task.first_input, env_options.data_dir
                 )
                 target_paths.append(db_path[: db_path.rfind("*")])
 
@@ -247,7 +238,7 @@ class Destroy(Task):
         block_submit_unary_unit_job(
             command_client=rp.command_client,
             job=ErJob(
-                id=generate_job_id(rp.session_id, consts.DESTROY),
+                id=job_util.generate_job_id(rp.session_id, consts.DESTROY),
                 name=consts.DESTROY,
                 inputs=[ErJobIO(rp.get_store())],
                 functors=[],
@@ -281,7 +272,7 @@ class Destroy(Task):
                     namespace=namespace, name=name, store_type=store_type
                 )
             )
-            job_id = generate_job_id(namespace, tag=consts.CLEANUP)
+            job_id = job_util.generate_job_id(namespace, tag=consts.CLEANUP)
             job = ErJob(
                 id=job_id,
                 name=consts.DESTROY,
@@ -297,7 +288,7 @@ class Destroy(Task):
             for server_node, eggs in rpc.session.eggs.items():
                 egg = eggs[0]
                 task = ErTask(
-                    id=generate_task_id(job_id, egg.command_endpoint.host),
+                    id=job_util.generate_task_id(job_id, egg.command_endpoint.host),
                     name=job.name,
                     inputs=cleanup_partitions,
                     job=job,
@@ -316,9 +307,9 @@ class Destroy(Task):
             store_options.update(options)
             final_options = store_options.copy()
 
-            store = ErStore(
+            _store = ErStore(
                 store_locator=ErStoreLocator(
-                    store_type=StoreTypes.ROLLPAIR_LMDB,
+                    store_type=store.StoreTypes.ROLLPAIR_LMDB,
                     namespace=namespace,
                     name=name,
                     total_partitions=total_partitions,
@@ -326,7 +317,7 @@ class Destroy(Task):
                 options=final_options,
             )
             task_results = rpc.session.cluster_manager_client.get_store_from_namespace(
-                store
+                _store
             )
             L.debug("res={}".format(task_results._stores))
             if task_results._stores is not None:

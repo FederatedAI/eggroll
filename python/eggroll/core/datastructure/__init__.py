@@ -23,15 +23,22 @@ from queue import SimpleQueue
 L = logging.getLogger(__name__)
 
 
-def create_executor_pool(canonical_name: str = None, max_workers=None, thread_name_prefix=None, *args,
-                         **kwargs) -> _base.Executor:
+def create_executor_pool(
+    canonical_name: str = None,
+    max_workers=None,
+    thread_name_prefix=None,
+    *args,
+    **kwargs
+) -> _base.Executor:
     if not canonical_name:
         canonical_name = "concurrent.futures.ThreadPoolExecutor"
     module_name, class_name = canonical_name.rsplit(".", 1)
     _module = import_module(module_name)
     _class = getattr(_module, class_name)
 
-    return _class(max_workers=max_workers, thread_name_prefix=thread_name_prefix, *args, **kwargs)
+    return _class(
+        max_workers=max_workers, thread_name_prefix=thread_name_prefix, *args, **kwargs
+    )
 
 
 def create_simple_queue(*args, **kwargs):

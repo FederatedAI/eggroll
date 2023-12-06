@@ -1,8 +1,9 @@
-import os
+import configparser
 import pprint
 import typing
-import configparser
+
 import omegaconf
+
 from eggroll.config.defaults import DefaultConfig
 
 
@@ -18,7 +19,9 @@ class Config(object):
     def load_default(self):
         default_config = omegaconf.OmegaConf.structured(DefaultConfig)
         self.config = omegaconf.OmegaConf.merge(self.config, default_config)
-        self.loaded_history.append(f"load_default: {DefaultConfig.__module__}:{DefaultConfig.__qualname__}")
+        self.loaded_history.append(
+            f"load_default: {DefaultConfig.__module__}:{DefaultConfig.__qualname__}"
+        )
         return self
 
     def load_properties(self, config_file):
@@ -30,8 +33,16 @@ class Config(object):
         self.loaded_history.append(f"load_properties: {config_file}")
         return self
 
+    def load_options(self, options: dict):
+        dot_list = [f"{k}={v}" for k, v in options.items()]
+        dot_list_config = omegaconf.OmegaConf.from_dotlist(dot_list)
+        self.config = omegaconf.OmegaConf.merge(self.config, dot_list_config)
+        self.loaded_history.append(f"load_options: {options}")
+        return self
+
     def load_env(self):
         import os
+
         accept_envs = []
         for k, v in os.environ.items():
             if k.lower().startswith("eggroll."):
@@ -43,7 +54,9 @@ class Config(object):
         return self
 
     def from_structured(self, dataclass_type: typing.Type):
-        self.config = omegaconf.OmegaConf.merge(self.config, omegaconf.OmegaConf.structured(dataclass_type))
+        self.config = omegaconf.OmegaConf.merge(
+            self.config, omegaconf.OmegaConf.structured(dataclass_type)
+        )
         return self
 
     @property
@@ -56,22 +69,36 @@ class Config(object):
         if key.key in option:
             return option[key.key]
         else:
-            value = omegaconf.OmegaConf.select(self.config, key.key, throw_on_missing=True)
+            value = omegaconf.OmegaConf.select(
+                self.config, key.key, throw_on_missing=True
+            )
             if value is None:
-                raise ConfigError(self, key.key,
-                                  f"`{key.key}` not found both in option=`{option}` and config=`{config.config}`")
+                raise ConfigError(
+                    self,
+                    key.key,
+                    f"`{key.key}` not found both in option=`{option}` and config=`{self.config}`",
+                )
             elif isinstance(value, omegaconf.Container):
-                raise ConfigError(self, key.key,
-                                  f"`{key.key}` found in config but not in leaf: value=`{value}`")
+                raise ConfigError(
+                    self,
+                    key.key,
+                    f"`{key.key}` found in config but not in leaf: value=`{value}`",
+                )
             return value
 
 
-class DotKey:
+class DotKey(str):
     def __init__(self, key):
         self.key = key
 
     def __getattr__(self, item):
         return DotKey(f"{self.key}.{item}")
+
+    def __str__(self):
+        return f"<{self.__class__.__name__} key=self.key>"
+
+    def __repr__(self):
+        return self.key
 
 
 class ConfigKey:
@@ -92,10 +119,14 @@ class WrappedDictConfig:
                 return attr
 
         except omegaconf.errors.MissingMandatoryValue as e:
-            raise ConfigError(self._base, e.full_key, f"config on `{e.full_key}` is missing") from e
+            raise ConfigError(
+                self._base, e.full_key, f"config on `{e.full_key}` is missing"
+            ) from e
 
         except omegaconf.errors.OmegaConfBaseException as e:
-            raise ConfigError(self._base, e.full_key, f"config on `{e.full_key}` error") from e
+            raise ConfigError(
+                self._base, e.full_key, f"config on `{e.full_key}` error"
+            ) from e
 
     def __str__(self):
         return str(self.config)
@@ -118,20 +149,5 @@ def load_config(properties_file):
     config.load_default()
     if properties_file is not None:
         config.load_properties(properties_file)
-    elif "EGGROLL_HOME" in os.environ:
-        path = os.path.join(os.environ["EGGROLL_HOME"], "conf", "eggroll.properties")
-        if os.path.exists(path):
-            config.load_properties(path)
     config.load_env()
     return config
-
-
-if __name__ == "__main__":
-    os.environ["eggroll.data.dir"] = "bb"
-    os.environ["eggroll.logs.dir"] = "cc"
-    config = Config()
-    config.load_default()
-    config.load_env()
-
-    print(config.get_option({"eggroll.core2": 1}, ConfigKey.eggroll.core.grpc.server.channel.max.inbound.message.size))
-    # config.load_properties("/Users/sage/MergeFATE/eggroll/conf/eggroll.properties")

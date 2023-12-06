@@ -3,7 +3,7 @@ import logging
 import typing
 from typing import Callable, Iterable
 
-from eggroll.computing.tasks import consts
+from eggroll.computing.tasks import consts, store, job_util
 from eggroll.computing.tasks.submit_utils import block_submit_unary_unit_job
 from eggroll.core.meta_model import (
     ErJob,
@@ -11,7 +11,6 @@ from eggroll.core.meta_model import (
     ErTask,
     ErJobIO,
 )
-from eggroll.core.utils import generate_job_id
 from ._task import Task, EnvOptions
 
 if typing.TYPE_CHECKING:
@@ -30,19 +29,19 @@ class BinarySortedMapPartitionsWithIndex(Task):
         with contextlib.ExitStack() as stack:
             left_input_read_iterator = stack.enter_context(
                 stack.enter_context(
-                    task.first_input.get_adapter(env_options.data_dir)
+                    store.get_adapter(task.first_input, env_options.data_dir)
                 ).iteritems()
             )
             assert left_input_read_iterator.is_sorted(), "left input must be sorted"
             right_input_read_iterator = stack.enter_context(
                 stack.enter_context(
-                    task.second_input.get_adapter(env_options.data_dir)
+                    store.get_adapter(task.second_input, env_options.data_dir)
                 ).iteritems()
             )
             assert right_input_read_iterator.is_sorted(), "right input must be sorted"
             output_write_batch = stack.enter_context(
                 stack.enter_context(
-                    task.first_output.get_adapter(env_options.data_dir)
+                    store.get_adapter(task.first_output, env_options.data_dir)
                 ).new_batch()
             )
             f = job.first_functor.load_with_cloudpickle()
@@ -67,7 +66,7 @@ class BinarySortedMapPartitionsWithIndex(Task):
             func=func,
         )
         job = ErJob(
-            id=generate_job_id(
+            id=job_util.generate_job_id(
                 left.session_id, consts.BINARY_SORTED_MAP_PARTITIONS_WITH_INDEX
             ),
             name=consts.BINARY_SORTED_MAP_PARTITIONS_WITH_INDEX,

@@ -41,11 +41,11 @@ def get_system_metric(interval=1):
     for k, v in net_end.items():
         net[k] = net_end[k] - net_start[k]
 
-    result['cpu_percent'] = cpu_percent
-    result['memory'] = memory
-    result['io'] = io
-    result['net'] = net
-    result['metric_type'] = 'system'
+    result["cpu_percent"] = cpu_percent
+    result["memory"] = memory
+    result["io"] = io
+    result["net"] = net
+    result["metric_type"] = "system"
 
     return result
 
