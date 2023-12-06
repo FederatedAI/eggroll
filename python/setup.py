@@ -33,6 +33,8 @@ extras_require = {
         "cloudpickle",
         "lmdb==1.3.0",
         "psutil>=5.7.0",
+        "opentelemetry-api",
+        "opentelemetry-sdk",
     ]
 }
 
