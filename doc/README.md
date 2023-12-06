@@ -1,3 +1,0 @@
-# Eggroll
-
-README coming soon :)

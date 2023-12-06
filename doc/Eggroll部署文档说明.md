@@ -79,11 +79,19 @@ eggroll.resourcemanager.clustermanager.jdbc.password=数据库密码
 <--eggroll相关配置参数说明：
 	1、以下包含的路径都是相对Eggroll的实际部署目录之下的相对路径，若不在Eggroll的实际部署目录之下，可用系统绝对路径；
 	2、根据部署方法分为三个修改级别：需要修改、建议默认、默认即可，其中端口为建议默认但需要根据实际服务器端口是否可用或部署方式来考虑是否修改，以避免端口冲突。-->
-
 eggroll.resourcemanager.clustermanager.host=127.0.0.1	<--clustermanager服务ip地址，需要修改-->
 eggroll.resourcemanager.clustermanager.port=4670	<--clustermanager服务端口，建议默认-->
 eggroll.resourcemanager.nodemanager.host=127.0.0.1	<--nodemanager服务ip地址，需要修改-->
 eggroll.resourcemanager.nodemanager.port=4671	<--nodemanager服务端口：1、部署单机版与clustermanager相同，建议默认；2、部署集群版需修改为其他可用端口，需要修改-->
+
+# dashboard
+eggroll.dashboard.server.port=8083     <--dashboard服务端口,选择没有占用的端口即可-->
+eggroll.security.session.expired.time=30    <--session会话（登录）过期时间,单位分钟-->
+eggroll.security.login.username=admin   <--配置的登录用户名-->
+eggroll.security.login.password=admin   <--配置的登录密码-->
+eggroll.security.encrypt.public_key=   <--登录密码加密公钥-->
+eggroll.security.encrypt.private_key=   <--登录密码加密私钥-->
+eggroll.security.encrypt.enable=false   <--是否开启加密，true开启，false关闭-->
 
 <--以下几项默认即可-->
 eggroll.data.dir=data/			<--存放缓存数据目录，默认即可-->
@@ -96,37 +104,12 @@ eggroll.resourcemanager.bootstrap.egg_pair.pythonpath=python		<--python文件路
 eggroll.resourcemanager.bootstrap.egg_pair.filepath=python/eggroll/roll_pair/egg_pair.py	<--egg_pair.py文件路径，默认即可-->
 eggroll.resourcemanager.bootstrap.egg_pair.ld_library_path=		<--egg_pair ld_library_path路径，默认即可-->
 
-eggroll.resourcemanager.bootstrap.egg_frame.exepath=bin/roll_frame/egg_frame_bootstrap.sh		<--egg_frame_bootstrap.sh文件路径-->
-eggroll.resourcemanager.bootstrap.egg_frame.javahome=	<--java环境变量，系统安装jdk1.8-->
-eggroll.resourcemanager.bootstrap.egg_frame.classpath=conf/:lib/*	<--eggroll启动时读取classpath文件路径-->
-eggroll.resourcemanager.bootstrap.egg_frame.mainclass=com.webank.eggroll.rollframe.EggFrameBootstrap	<--roll_frame主类-->
-eggroll.resourcemanager.bootstrap.egg_frame.jvm.options=	<--jvm启动参数-->
-
-# roll_frame
-arrow.enable_unsafe_memory_access=true
-
-# hadoop
-hadoop.fs.defaultFS=file:///
-
-# hadoop HA mode
-hadoop.dfs.nameservices=
-hadoop.dfs.namenode.rpc-address.nn1=
-hadoop.dfs.namenode.rpc-address.nn2=
 eggroll.session.processors.per.node=4		<--单节点启动egg pair个数，小于或等于cpu核数，建议16-->
 eggroll.session.start.timeout.ms=180000		<--session超时设定ms数，默认即可-->
 eggroll.rollpair.transferpair.sendbuf.size=4150000		<--rollpair传输块大小，默认即可-->
 <--以上几项默认即可-->
 
-# jettyserver
-eggroll.dashboard.server.port=8083     <--dashboard服务端口,选择没有占用的端口即可-->
-eggroll.security.session.expired.time=30    <--session会话（登录）过期时间,单位分钟-->
-# login
 
-eggroll.security.login.username=admin   <--配置的登录用户名-->
-eggroll.security.login.password=admin   <--配置的登录密码-->
-eggroll.security.encrypt.public_key=   <--配置的公钥-->
-eggroll.security.encrypt.private_key=   <--配置的私钥-->
-eggroll.security.encrypt.enable=false   <--是否开启加密，true开启，false关闭-->
 
 ```
 
@@ -187,7 +170,7 @@ sh bin/eggroll.sh dashboard restart [time]
 sh bin/eggroll.sh nodemanager stop
 
 
-将各节点对应的服务启动成功后, 部署完成, 进入测试步骤.
+将各节点对应的服务启动成功后, 部署完成
 
 ```
 
