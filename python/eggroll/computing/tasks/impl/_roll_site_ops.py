@@ -4,21 +4,17 @@ import threading
 import typing
 from collections import defaultdict, namedtuple
 
-from eggroll.computing.tasks import consts
+from eggroll.computing.tasks import consts, store, job_util, transfer
 from eggroll.computing.tasks.submit_utils import block_submit_unary_unit_job
 from eggroll.config import Config
 from eggroll.core.datastructure.broker import BrokerClosed
 from eggroll.core.meta_model import (
-    ErFunctor,
+    ErJob,
+    ErPartition,
+    ErTask,
     ErJobIO,
-)
-from eggroll.core.meta_model import ErJob
-from eggroll.core.meta_model import ErPartition
-from eggroll.core.meta_model import ErTask
-from eggroll.core.pair_store.format import ArrayByteBuffer, PairBinReader
-from eggroll.core.transfer.transfer_service import TransferService
-from eggroll.core.transfer_model import ErRollSiteHeader
-from eggroll.core.transfer_model import (
+    ErFunctor,
+    ErRollSiteHeader,
     ErRollSitePullGetHeaderRequest,
     ErRollSitePullGetHeaderResponse,
     ErRollSitePullGetPartitionStatusRequest,
@@ -26,7 +22,6 @@ from eggroll.core.transfer_model import (
     ErRollSitePullClearStatusRequest,
     ErRollSitePullClearStatusResponse,
 )
-from eggroll.core.utils import generate_job_id
 from ._task import Task, EnvOptions
 
 if typing.TYPE_CHECKING:
@@ -50,7 +45,7 @@ class PullGetHeader(Task):
             else consts.PULL_GET_HEADER
         )
         stores = [rp.get_store()]
-        job_id = generate_job_id(rp.session_id, tag=job_tag)
+        job_id = job_util.generate_job_id(rp.session_id, tag=job_tag)
         job = ErJob(
             id=job_id,
             name=consts.PULL_GET_HEADER,
@@ -107,7 +102,7 @@ class PullGetPartitionStatus(object):
             else consts.PULL_GET_PARTITION_STATUS
         )
         stores = [rp.get_store()]
-        job_id = generate_job_id(rp.session_id, tag=job_tag)
+        job_id = job_util.generate_job_id(rp.session_id, tag=job_tag)
         job = ErJob(
             id=job_id,
             name=consts.PULL_GET_PARTITION_STATUS,
@@ -158,7 +153,7 @@ class PullClearStatus(object):
             else consts.PULL_CLEAR_STATUS
         )
         stores = [rp.get_store()]
-        job_id = generate_job_id(rp.session_id, tag=job_tag)
+        job_id = job_util.generate_job_id(rp.session_id, tag=job_tag)
         job = ErJob(
             id=job_id,
             name=consts.PULL_CLEAR_STATUS,
@@ -211,14 +206,16 @@ class PutBatchTask:
             )
             bss = _BatchStreamStatus.get_or_create(self.tag)
             try:
-                broker = TransferService.get_or_create_broker(
+                broker = transfer.TransferService.get_or_create_broker(
                     config=config, key=self.tag, write_signals=1
                 )
 
                 iter_wait = 0
                 iter_timeout = config.eggroll.core.fifobroker.iter.timeout.sec
                 batch_get_interval = 0.1
-                with self.partition.get_adapter(data_dir) as db, db.new_batch() as wb:
+                with store.get_adapter(
+                    self.partition, data_dir
+                ) as db, db.new_batch() as wb:
                     # for batch in broker:
                     while not broker.is_closable():
                         try:
@@ -238,8 +235,8 @@ class PutBatchTask:
                         rs_header = ErRollSiteHeader.from_proto_string(batch.header.ext)
                         batch_pairs = 0
                         if batch.data:
-                            bin_data = ArrayByteBuffer(batch.data)
-                            reader = PairBinReader(
+                            bin_data = store.ArrayByteBuffer(batch.data)
+                            reader = store.PairBinReader(
                                 pair_buffer=bin_data, data=batch.data
                             )
                             for k_bytes, v_bytes in reader.read_all():
@@ -260,7 +257,7 @@ class PutBatchTask:
                 )
                 raise e
             finally:
-                TransferService.remove_broker(self.tag)
+                transfer.TransferService.remove_broker(self.tag)
 
     def get_status(self, timeout):
         return _BatchStreamStatus.wait_finish(self.tag, timeout)
@@ -303,9 +300,9 @@ class _BatchStreamStatus:
         )
 
     def set_done(self, rs_header):
-        L.trace(f"set done. rs_key={rs_header.get_rs_key()}, rs_header={rs_header}")
-        self._total_batches = rs_header._total_batches
-        self._total_streams = rs_header._total_streams
+        L.debug(f"set done. rs_key={rs_header.get_rs_key()}, rs_header={rs_header}")
+        self._total_batches = rs_header.total_batches
+        self._total_streams = rs_header.total_streams
         self._stage = "done"
         if self._total_batches != len(self._batch_seq_to_pair_counter):
             self._is_in_order = False
@@ -314,11 +311,11 @@ class _BatchStreamStatus:
             )
 
     def count_batch(self, rs_header: ErRollSiteHeader, batch_pairs):
-        L.trace(
+        L.debug(
             f"count batch. rs_key={rs_header.get_rs_key()}, rs_header={rs_header}, batch_pairs={batch_pairs}"
         )
-        batch_seq_id = rs_header._batch_seq
-        stream_seq_id = rs_header._stream_seq
+        batch_seq_id = rs_header.batch_seq
+        stream_seq_id = rs_header.stream_seq
         if self._rs_header is None:
             self._rs_header = rs_header
             self._rs_key = rs_header.get_rs_key()
@@ -331,8 +328,8 @@ class _BatchStreamStatus:
         self._stream_seq_to_batch_seq[stream_seq_id] = batch_seq_id
 
     def check_finish(self):
-        if L.isEnabledFor(logging.TRACE):
-            L.trace(
+        if L.isEnabledFor(logging.DEBUG):
+            L.debug(
                 f"checking finish. rs_key={self._rs_key}, rs_header={self._rs_header}, stage={self._stage}, total_batches={self._total_batches}, len={len(self._batch_seq_to_pair_counter)}"
             )
         if self._stage == "done" and self._total_batches == len(
@@ -360,7 +357,7 @@ class _BatchStreamStatus:
         bss = cls.get_or_create(tag)
         finished = bss._stream_finish_event.wait(timeout)
         if finished:
-            TransferService.remove_broker(tag)
+            transfer.TransferService.remove_broker(tag)
             # del cls._recorder[tag]
 
         return BSS(

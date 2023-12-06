@@ -49,12 +49,20 @@ class GrpcChannelFactory(object):
     _pool_lock = threading.Lock()
 
     @classmethod
-    def create_channel(cls, config: Config, endpoint: ErEndpoint, is_secure_channel=False, refresh=False):
+    def create_channel(
+        cls,
+        config: Config,
+        endpoint: ErEndpoint,
+        is_secure_channel=False,
+        refresh=False,
+    ):
         target = endpoint.endpoint_str()
         with GrpcChannelFactory._pool_lock:
             if refresh or cls._should_refresh(target):
                 old_channel = GrpcChannelFactory.pool.get(target, None)
-                GrpcChannelFactory.pool[target] = cls._create_grpc_channel(config, target)
+                GrpcChannelFactory.pool[target] = cls._create_grpc_channel(
+                    config, target
+                )
                 if old_channel is not None:
                     old_channel.close()
             return GrpcChannelFactory.pool[target]
@@ -101,7 +109,9 @@ class GrpcChannelFactory(object):
                 ),
                 (
                     "grpc.keepalive_permit_without_calls",
-                    int(config.eggroll.core.grpc.channel.keepalive.permit.without.calls.enabled),
+                    int(
+                        config.eggroll.core.grpc.channel.keepalive.permit.without.calls.enabled
+                    ),
                 ),
                 (
                     "grpc.per_rpc_retry_buffer_size",

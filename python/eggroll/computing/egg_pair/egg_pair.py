@@ -24,10 +24,9 @@ import threading
 import grpc
 
 from eggroll.config import Config, ConfigKey
-from eggroll.core.client import NodeManagerClient
+from eggroll.core.command.command_client import NodeManagerClient
 from eggroll.core.command.command_router import CommandRouter
 from eggroll.core.command.command_service import CommandServicer
-from eggroll.core.constants import ProcessorTypes, ProcessorStatus
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErProcessor, ErEndpoint
@@ -36,13 +35,16 @@ from eggroll.core.proto import (
     transfer_pb2_grpc,
     deepspeed_download_pb2_grpc,
 )
-from eggroll.core.transfer.transfer_service import (
-    GrpcTransferServicer,
-    GrpcDsDownloadServicer,
-)
 from eggroll.trace import get_system_metric
 
 L = logging.getLogger(__name__)
+
+
+class ProcessorStatus(object):
+    NEW = "NEW"
+    RUNNING = "RUNNING"
+    STOPPED = "STOPPED"
+    KILLED = "KILLED"
 
 
 def serve(
@@ -109,6 +111,11 @@ def serve(
     command_servicer = CommandServicer()
     command_pb2_grpc.add_CommandServiceServicer_to_server(
         command_servicer, command_server
+    )
+
+    from eggroll.computing.tasks.transfer.transfer_service import (
+        GrpcTransferServicer,
+        GrpcDsDownloadServicer,
     )
 
     transfer_servicer = GrpcTransferServicer()
@@ -197,7 +204,7 @@ def serve(
         myself = ErProcessor(
             id=processor_id,
             server_node_id=server_node_id,
-            processor_type=ProcessorTypes.EGG_PAIR,
+            processor_type=ErProcessor.ProcessorTypes.EGG_PAIR,
             command_endpoint=ErEndpoint(host="localhost", port=port),
             transfer_endpoint=ErEndpoint(host="localhost", port=transfer_port),
             pid=pid,

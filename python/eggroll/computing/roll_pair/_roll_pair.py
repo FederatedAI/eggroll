@@ -17,8 +17,8 @@ import typing
 from typing import Callable, Tuple, Iterable, List
 
 from eggroll.computing import tasks
-from eggroll.core.client import CommandClient
-from eggroll.core.constants import StoreTypes
+from eggroll.computing.tasks.store import StoreTypes
+from eggroll.core.command.command_client import CommandClient
 from eggroll.core.meta_model import (
     ErStore,
 )
