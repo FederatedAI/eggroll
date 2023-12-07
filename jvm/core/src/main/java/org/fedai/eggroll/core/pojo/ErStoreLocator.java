@@ -1,8 +1,7 @@
-package com.eggroll.core.pojo;
+package org.fedai.eggroll.core.pojo;
 
-import com.eggroll.core.config.Dict;
-import com.eggroll.core.constant.StringConstants;
-import com.google.protobuf.InvalidProtocolBufferException;
+import org.fedai.eggroll.core.config.Dict;
+import org.fedai.eggroll.core.constant.StringConstants;
 import com.webank.eggroll.core.meta.Meta;
 import lombok.Data;
 import org.apache.commons.lang3.StringUtils;

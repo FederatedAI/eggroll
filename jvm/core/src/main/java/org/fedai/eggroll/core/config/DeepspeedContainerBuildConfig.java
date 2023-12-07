@@ -1,13 +1,11 @@
-package com.eggroll.core.config;
+package org.fedai.eggroll.core.config;
 
-import com.eggroll.core.containers.container.Container;
-import com.eggroll.core.containers.container.PythonContainerRuntimeConfig;
-import com.eggroll.core.containers.container.WarpedDeepspeedContainerConfig;
-import com.eggroll.core.containers.container.WorkingDirectoryPreparer;
+import org.fedai.eggroll.core.containers.container.PythonContainerRuntimeConfig;
+import org.fedai.eggroll.core.containers.container.WarpedDeepspeedContainerConfig;
+import org.fedai.eggroll.core.containers.container.WorkingDirectoryPreparer;
 import lombok.Data;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 
 @Data
