@@ -23,7 +23,7 @@ from zipfile import ZIP_DEFLATED, ZIP_STORED
 import grpc
 from grpc._cython import cygrpc
 
-from eggroll.config import Config, ConfigKey
+from eggroll.config import Config, ConfigKey, ConfigUtils
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
 from eggroll.core.grpc.factory import GrpcChannelFactory
@@ -297,8 +297,8 @@ class GrpcTransferService(TransferService):
     def start(self, config: Config, options: dict = None):
         if dict is None:
             options = {}
-        _executor_pool_type = config.get_option(
-            option=options, key=ConfigKey.eggroll.core.default.executor.pool
+        _executor_pool_type = ConfigUtils.get_option(
+            config, option=options, key=ConfigKey.eggroll.core.default.executor.pool
         )
         server = grpc.server(
             create_executor_pool(
@@ -316,7 +316,9 @@ class GrpcTransferService(TransferService):
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(
             transfer_servicer, server
         )
-        port = config.get_option(options, ConfigKey.eggroll.transfer.service.port)
+        port = ConfigUtils.get_option(
+            config, options, ConfigKey.eggroll.transfer.service.port
+        )
         port = server.add_insecure_port(f"[::]:{port}")
         L.info(f"transfer service started at port={port}")
         print(f"transfer service started at port={port}")

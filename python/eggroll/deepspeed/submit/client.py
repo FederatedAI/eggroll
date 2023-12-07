@@ -8,7 +8,7 @@ from contextlib import ExitStack
 from multiprocessing.dummy import Pool as ThreadPool
 from typing import Dict, List, Optional
 
-from eggroll.config import load_config, ConfigKey
+from eggroll.config import load_config, ConfigKey, ConfigUtils
 from eggroll.core.command.command_status import SessionStatus
 from eggroll.core.command.command_uri import SessionCommands, JobCommands
 from eggroll.core.proto import (
