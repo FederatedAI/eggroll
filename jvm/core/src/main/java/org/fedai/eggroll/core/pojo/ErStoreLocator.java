@@ -1,10 +1,11 @@
-package org.fedai.eggroll.core.pojo;
+package com.eggroll.core.pojo;
 
+import com.eggroll.core.config.Dict;
+import com.eggroll.core.constant.StringConstants;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.eggroll.core.meta.Meta;
 import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
-import org.fedai.eggroll.core.config.Dict;
-import org.fedai.eggroll.core.constant.StringConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,26 +22,28 @@ public class ErStoreLocator implements RpcMessage, Cloneable {
     private String name;
     private String path;
     private Integer totalPartitions;
-    private String partitioner;
-    private String serdes;
+    private Integer keySerdesType;
+    private Integer valueSerdesType;
+    private Integer partitionerType;
 
     public ErStoreLocator() {
 
     }
 
-    public ErStoreLocator(long id, String storeType, String namespace, String name, String path, int totalPartitions, String partitioner, String serdes) {
+    public ErStoreLocator(long id, String storeType, String namespace, String name, String path, int totalPartitions, int keySerdesType, int valueSerdesType, int partitionerType) {
         this.id = id;
         this.storeType = storeType;
         this.namespace = namespace;
         this.name = name;
         this.path = path;
         this.totalPartitions = totalPartitions;
-        this.partitioner = partitioner;
-        this.serdes = serdes;
+        this.keySerdesType = keySerdesType;
+        this.valueSerdesType = valueSerdesType;
+        this.partitionerType = partitionerType;
     }
 
     public ErStoreLocator(String storeType, String namespace, String name) {
-        this(-1L, storeType, namespace, name, "", 0, "", "");
+        this(-1L, storeType, namespace, name, "", 0, 0, 0, 0);
     }
 
     public String toPath(String delim) {
@@ -66,7 +69,7 @@ public class ErStoreLocator implements RpcMessage, Cloneable {
             newName = this.name + delimiter + newPostfix;
         }
 
-        return new ErStoreLocator(this.id, this.storeType, this.namespace, newName, this.path, this.totalPartitions, this.partitioner, this.serdes);
+        return new ErStoreLocator(this.id, this.storeType, this.namespace, newName, this.path, this.totalPartitions, this.keySerdesType, this.valueSerdesType, this.partitionerType);
     }
 
     public Meta.StoreLocator toProto() {
@@ -77,8 +80,9 @@ public class ErStoreLocator implements RpcMessage, Cloneable {
                 .setName(this.name)
                 .setPath(this.path)
                 .setTotalPartitions(this.totalPartitions)
-                .setPartitioner(this.partitioner)
-                .setSerdes(this.serdes);
+                .setKeySerdesType(this.keySerdesType)
+                .setValueSerdesType(this.valueSerdesType)
+                .setPartitionerType(this.partitionerType);
         return builder.build();
     }
 
@@ -104,8 +108,9 @@ public class ErStoreLocator implements RpcMessage, Cloneable {
             this.name = storeLocator.getName();
             this.path = storeLocator.getPath();
             this.totalPartitions = storeLocator.getTotalPartitions();
-            this.partitioner = storeLocator.getPartitioner();
-            this.serdes = storeLocator.getSerdes();
+            this.keySerdesType = storeLocator.getKeySerdesType();
+            this.valueSerdesType = storeLocator.getValueSerdesType();
+            this.partitionerType = storeLocator.getPartitionerType();
         } catch (Exception e) {
             log.error("deserialize error : ", e);
         }
