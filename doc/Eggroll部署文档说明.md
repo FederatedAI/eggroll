@@ -22,16 +22,16 @@
 
 ```shell
 git clone -b v3.0.0 https://github.com/FederatedAI/eggroll.git
-cd eggroll
-windows : deploy/auto-packaging.bat
-linux : sh deploy/auto-packaging.sh
+cd eggroll/deploy
+windows : auto-packaging.bat
+linux : sh auto-packaging.sh
 ```
 
+## 3    部署
+###3.1 部署架构
 
 
-## 3    部署发送
-
-### 3.1  解压
+### 3.2  解压文件
 
 将eggroll.tar.gz移到或发送到eggroll的安装目录下，然后执行：
 
@@ -56,7 +56,7 @@ tar -xzf eggroll.tar.gz
  |--create-eggroll-meta-tables.sql
 ```
 
-### 3.2  修改配置文件
+### 3.3  修改配置文件
 
 各配置文件修改说明如下：
 
@@ -113,7 +113,7 @@ eggroll.rollpair.transferpair.sendbuf.size=4150000		<--rollpair传输块大小�
 
 ```
 
-### 3.3  nodemanager多节点部署
+### 3.4  nodemanager多节点部署
 ```properties
 <-- 数据库配置要跟集群内clustermanager一致>
 eggroll.resourcemanager.clustermanager.jdbc.driver.class.name=com.mysql.cj.jdbc.Driver
@@ -174,27 +174,8 @@ sh bin/eggroll.sh nodemanager stop
 
 ```
 
+###常见问题
 
-
-## 5    测试
-
-### 5.1  初始化环境变量
-
-登录服务器进行测试时需要执行以下语句进行环境变量初始化
-
-```shell
-source ${EGGROLL_HOME}/init_env.sh       --${EGGROLL_HOME} means the absolute path of eggroll
-```
-
-### 6.2.  roll_pair测试
-
-```shell
-cd ${EGGROLL_HOME}/python/eggroll/roll_pair/test
-python -m unittest test_roll_pair.TestRollPairStandalone		--单机模式
-python -m unittest test_roll_pair.TestRollPairCluster			--集群模式
-```
-
-等待执行完成出现"OK"字段为成功。
 
 
 

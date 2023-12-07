@@ -24,6 +24,7 @@ import org.fedai.eggroll.core.pojo.*;
 import org.fedai.eggroll.core.postprocessor.ApplicationStartedRunner;
 import org.fedai.eggroll.core.utils.JsonUtil;
 import org.fedai.eggroll.core.utils.LockUtils;
+import org.mybatis.guice.transactional.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -206,6 +207,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         return nodeHeartbeat;
     }
 
+    @Transactional
     public ErServerNode updateNode(ErServerNode serverNode, Boolean needUpdateResource, Boolean isHeartbeat) {
         serverNodeService.updateByErNode(serverNode, isHeartbeat);
         if (needUpdateResource) {
@@ -214,6 +216,7 @@ public class ClusterManagerService implements ApplicationStartedRunner {
         return serverNode;
     }
 
+    @Transactional
     public ErServerNode registerResource(ErServerNode data) {
         log.info("node {} register resource {}", data.getId(), JsonUtil.object2Json(data.getResources()));
         NodeResource nodeResource = new NodeResource();
