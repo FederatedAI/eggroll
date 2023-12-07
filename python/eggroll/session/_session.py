@@ -16,10 +16,12 @@ import os
 from concurrent.futures import wait, FIRST_EXCEPTION
 
 from eggroll.config import Config, ConfigKey, ConfigUtils
+from eggroll.core.command import command_utils
 from eggroll.core.command.command_client import ClusterManagerClient
 from eggroll.core.command.command_status import SessionStatus
 from eggroll.core.datastructure.threadpool import ErThreadUnpooledExecutor
 from eggroll.core.meta_model import ErSessionMeta, ErPartition, ErStore
+
 from ._utils import get_stack, time_now, get_self_ip
 
 L = logging.getLogger(__name__)
@@ -92,29 +94,28 @@ class ErSession(object):
             thread_name_prefix="session_server",
         )
 
-        from time import monotonic, sleep
-
-        timeout = config.eggroll.session.start.timeout.ms / 1000 + 2
-        endtime = monotonic() + timeout
-
-        # TODO:0: ignores exception while starting up in standalone mod
-        while True:
-            try:
-                if not processors:
-                    self.__session_meta = (
-                        self._cluster_manager_client.get_or_create_session(session_meta)
-                    )
-                else:
-                    self.__session_meta = self._cluster_manager_client.register_session(
-                        session_meta
-                    )
-                break
-            except Exception as e:
-                print(e)
-                if monotonic() < endtime:
-                    sleep(0.1)
-                else:
-                    raise
+        try:
+            retry_timeout = config.eggroll.session.start.timeout.ms / 1000.0
+            retry_interval = config.eggroll.session.start.retry.interval.ms / 1000.0
+            retry_max = config.eggroll.session.start.retry.max.count
+            if not processors:
+                self.__session_meta = command_utils.command_call_retry(
+                    self._cluster_manager_client.get_or_create_session,
+                    (session_meta,),
+                    retry_timeout=retry_timeout,
+                    retry_interval=retry_interval,
+                    retry_max=retry_max,
+                )
+            else:
+                self.__session_meta = command_utils.command_call_retry(
+                    self._cluster_manager_client.register_session,
+                    (session_meta,),
+                    retry_timeout=retry_timeout,
+                    retry_interval=retry_interval,
+                    retry_max=retry_max,
+                )
+        except Exception as e:
+            raise RuntimeError(f"session init failed: {e}") from e
 
         self.__exit_tasks = list()
         self.__processors = self.__session_meta.processors
