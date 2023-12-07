@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 from omegaconf import MISSING, DictConfig
 
 
@@ -81,10 +82,24 @@ class DefaultConfig:
             @dataclass
             class StartConfig:
                 @dataclass
+                class RetryConfig:
+                    @dataclass
+                    class IntervalConfig:
+                        ms: int = 100
+
+                    @dataclass
+                    class MaxConfig:
+                        count: int = 3
+
+                    max: MaxConfig = MaxConfig()
+                    interval: IntervalConfig = IntervalConfig()
+
+                @dataclass
                 class TimeoutConfig:
                     ms: int = 180000
 
                 timeout: TimeoutConfig = TimeoutConfig()
+                retry: RetryConfig = RetryConfig()
 
             processors: ProcessorsConfig = ProcessorsConfig()
             start: StartConfig = StartConfig()
