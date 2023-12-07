@@ -105,7 +105,7 @@ public class MetaInfo {
     @Config(confKey = "eggroll.core.grpc.channel.keepalive.time.sec", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static Integer CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_TIME_SEC = 7200;
     @Config(confKey = "eggroll.core.grpc.channel.keepalive.timeout.sec", pattern = Dict.POSITIVE_INTEGER_PATTERN)
-    public static Integer CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_TIMEOUT_SEC = 3600;
+    public static Integer CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_TIMEOUT_SEC = 20;
     @Config(confKey = "eggroll.core.grpc.channel.max.inbound.metadata.size", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static Integer CONFKEY_CORE_GRPC_CHANNEL_MAX_INBOUND_METADATA_SIZE = 128 << 20;
     @Config(confKey = "eggroll.core.grpc.channel.max.inbound.message.size", pattern = Dict.POSITIVE_INTEGER_PATTERN)
@@ -293,7 +293,7 @@ public class MetaInfo {
     public static Integer CONFKEY_SESSION_CONTEXT_ROLLPAIR_COUNT;
 
     @Config(confKey = "eggroll.session.start.timeout.ms", pattern = Dict.POSITIVE_INTEGER_PATTERN)
-    public static Integer EGGROLL_SESSION_START_TIMEOUT_MS = 20000;
+    public static Integer EGGROLL_SESSION_START_TIMEOUT_MS = 180000;
 
 
     @Config(confKey = "eggroll.session.status.new.timeout.ms", pattern = Dict.POSITIVE_INTEGER_PATTERN)
