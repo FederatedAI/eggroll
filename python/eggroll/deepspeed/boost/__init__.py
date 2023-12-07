@@ -1,3 +1,1 @@
-import os
-
-
+from ._init import init_deepspeed
