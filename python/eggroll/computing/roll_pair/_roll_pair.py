@@ -78,6 +78,11 @@ class RollPair(object):
         return False
 
     def __del__(self):
+        if self.ctx.session.is_stopped():
+            # when session stopped, gc_recorder will be cleared, so we just return
+            # notice that, when this happens, log will be disabled, so we can't log anything
+            # L.exception(f"try to cleanup store={self._store} but session stopped")
+            return
         if self.destroyed:
             L.debug(f"store={self._store} has been destroyed before")
             return
@@ -88,10 +93,6 @@ class RollPair(object):
         if not self.should_cleanup:
             L.debug(f"store={self._store} should not cleanup")
             return
-        if self.ctx.session.is_stopped():
-            L.exception(f"try to cleanup store={self._store} but session stopped")
-            return
-
         self.ctx.gc_recorder.decrease_ref_count(self._store)
 
     def __repr__(self):

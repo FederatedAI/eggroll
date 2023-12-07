@@ -26,6 +26,8 @@ install_requires = [
     "grpcio",
     "protobuf",
     "ruamel.yaml",
+    "opentelemetry-api",
+    "opentelemetry-sdk",
 ]
 
 extras_require = {
@@ -33,8 +35,6 @@ extras_require = {
         "cloudpickle",
         "lmdb==1.3.0",
         "psutil>=5.7.0",
-        "opentelemetry-api",
-        "opentelemetry-sdk",
     ]
 }
 
@@ -42,11 +42,11 @@ extras_require = {
 entry_points = {"console_scripts": ["eggroll = eggroll.client.cli.eggroll:eggroll_cli"]}
 
 setup_kwargs = {
-    "name": "eggroll-client",
+    "name": "eggroll",
     "version": "3.0.0",
-    "description": "Clients for Eggroll",
+    "description": "Python Side Client and Server for Eggroll",
     "long_description_content_type": "text/markdown",
-    "long_description": "Clients for Eggroll",
+    "long_description": "Python Side Client and Server for Eggroll",
     "author": "FederatedAI",
     "author_email": "contact@FedAI.org",
     "maintainer": None,
