@@ -17,7 +17,7 @@
 import logging
 import typing
 
-from eggroll.config import ConfigKey
+from eggroll.config import ConfigKey, ConfigUtils
 from eggroll.core.datastructure import create_executor_pool
 
 L = logging.getLogger(__name__)
@@ -47,11 +47,13 @@ class RollSiteBase:
         self.local_role = self.ctx.role
 
         if RollSiteBase._receive_executor_pool is None:
-            receive_executor_pool_size = self.ctx.config.get_option(
-                options, ConfigKey.eggroll.rollsite.receive.executor.pool.max.size
+            receive_executor_pool_size = ConfigUtils.get_option(
+                self.ctx.config,
+                options,
+                ConfigKey.eggroll.rollsite.receive.executor.pool.max.size,
             )
-            receive_executor_pool_type = self.ctx.config.get_option(
-                options, ConfigKey.eggroll.core.default.executor.pool
+            receive_executor_pool_type = ConfigUtils.get_option(
+                self.ctx.config, options, ConfigKey.eggroll.core.default.executor.pool
             )
             self._receive_executor_pool = create_executor_pool(
                 canonical_name=receive_executor_pool_type,

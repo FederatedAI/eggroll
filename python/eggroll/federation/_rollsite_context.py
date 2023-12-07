@@ -22,6 +22,7 @@ from eggroll.config import ConfigKey
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint
 from eggroll.session import ErSession
+from eggroll.config import ConfigUtils
 
 L = logging.getLogger(__name__)
 
@@ -57,8 +58,8 @@ class RollSiteContext:
         self.rp_ctx.session.add_exit_task(self._wait_push_complete)
 
         # push session
-        self.push_session_enabled = self._config.get_option(
-            options, ConfigKey.eggroll.rollsite.push.session.enabled
+        self.push_session_enabled = ConfigUtils.get_option(
+            self._config, options, ConfigKey.eggroll.rollsite.push.session.enabled
         )
         if self.push_session_enabled:
             # create session for push roll_pair and object
@@ -74,8 +75,8 @@ class RollSiteContext:
                 self._push_session.stop()
 
             self.rp_ctx.session.add_exit_task(stop_push_session)
-        self._wait_push_exit_timeout = self._config.get_option(
-            options, ConfigKey.eggroll.rollsite.push.overall.timeout.sec
+        self._wait_push_exit_timeout = ConfigUtils.get_option(
+            self._config, options, ConfigKey.eggroll.rollsite.push.overall.timeout.sec
         )
 
         L.info(f"inited RollSiteContext: {self.__dict__}")

@@ -64,28 +64,6 @@ class Config(object):
         # use `DefaultConfig.EggrollConfig` typing here is on purpose for better IDE support
         return WrappedDictConfig(self, self.config.eggroll)
 
-    def get_option(self, option: dict, key: typing.Any):
-        assert isinstance(key, DotKey)
-        if key.key in option:
-            return option[key.key]
-        else:
-            value = omegaconf.OmegaConf.select(
-                self.config, key.key, throw_on_missing=True
-            )
-            if value is None:
-                raise ConfigError(
-                    self,
-                    key.key,
-                    f"`{key.key}` not found both in option=`{option}` and config=`{self.config}`",
-                )
-            elif isinstance(value, omegaconf.Container):
-                raise ConfigError(
-                    self,
-                    key.key,
-                    f"`{key.key}` found in config but not in leaf: value=`{value}`",
-                )
-            return value
-
 
 class DotKey(str):
     def __init__(self, key):
@@ -99,6 +77,43 @@ class DotKey(str):
 
     def __repr__(self):
         return self.key
+
+
+class ConfigUtils:
+    @staticmethod
+    def set(
+        config: typing.Union[Config, typing.Dict], key: typing.Any, value: typing.Any
+    ):
+        assert isinstance(key, DotKey)
+        if isinstance(config, Config):
+            omegaconf.OmegaConf.update(config.config, key.key, value)
+        elif isinstance(config, dict):
+            config[key.key] = value
+        else:
+            raise ValueError(f"config type={type(config)} not supported")
+
+    @staticmethod
+    def get_option(config: Config, option: dict, key: typing.Any):
+        assert isinstance(key, DotKey)
+        if key.key in option:
+            return option[key.key]
+        else:
+            value = omegaconf.OmegaConf.select(
+                config.config, key.key, throw_on_missing=True
+            )
+            if value is None:
+                raise ConfigError(
+                    config,
+                    key.key,
+                    f"`{key.key}` not found both in option=`{option}` and config=`{config.config}`",
+                )
+            elif isinstance(value, omegaconf.Container):
+                raise ConfigError(
+                    config,
+                    key.key,
+                    f"`{key.key}` found in config but not in leaf: value=`{value}`",
+                )
+            return value
 
 
 class ConfigKey:

@@ -15,7 +15,7 @@ import logging
 import os
 from concurrent.futures import wait, FIRST_EXCEPTION
 
-from eggroll.config import Config, ConfigKey
+from eggroll.config import Config, ConfigKey, ConfigUtils
 from eggroll.core.command.command_client import ClusterManagerClient
 from eggroll.core.command.command_status import SessionStatus
 from eggroll.core.datastructure.threadpool import ErThreadUnpooledExecutor
@@ -38,14 +38,17 @@ def session_init(
         config = Config().load_default()
     if config_properties_file is not None:
         config.load_properties(config_properties_file)
-    if config_options is None:
-        config_options = {}
     config.load_env()
+    if config_options is not None:
+        config.load_options(config_options)
     if host is not None:
-        config_options[ConfigKey.eggroll.resourcemanager.clustermanager.host] = host
+        ConfigUtils.set(
+            config, ConfigKey.eggroll.resourcemanager.clustermanager.host, host
+        )
     if port is not None:
-        config_options[ConfigKey.eggroll.resourcemanager.clustermanager.port] = port
-    config.load_options(config_options)
+        ConfigUtils.set(
+            config, ConfigKey.eggroll.resourcemanager.clustermanager.port, port
+        )
     er_session = ErSession(config=config, session_id=session_id, options=options)
     return er_session
 
@@ -74,7 +77,7 @@ class ErSession(object):
             os.environ["EGGROLL_DEBUG"] = "0"
 
         self.__options = options.copy()
-        self.__options[ConfigKey.eggroll.session.id] = self.__session_id
+        ConfigUtils.set(self.__options, ConfigKey.eggroll.session.id, self.__session_id)
         self._cluster_manager_client = ClusterManagerClient(config=config)
         session_meta = ErSessionMeta(
             id=self.__session_id,

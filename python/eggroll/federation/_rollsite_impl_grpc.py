@@ -26,6 +26,7 @@ from eggroll.computing.tasks import consts, store, transfer
 from eggroll.computing.tasks.store import StoreTypes
 from eggroll.config import Config
 from eggroll.config import ConfigKey
+from eggroll.config import ConfigUtils
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErTask, ErRollSiteHeader
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
@@ -136,33 +137,33 @@ class RollSiteGrpc(RollSiteImplBase):
             options = dict()
         super().__init__(name, tag, rs_ctx)
         config = rs_ctx.config
-        self.batch_body_bytes = config.get_option(
-            options, ConfigKey.eggroll.rollsite.adapter.sendbuf.size
+        self.batch_body_bytes = ConfigUtils.get_option(
+            config, options, ConfigKey.eggroll.rollsite.adapter.sendbuf.size
         )
         # TODO:0: configurable
-        self.push_batches_per_stream = config.get_option(
-            options, ConfigKey.eggroll.rollsite.push.batches.per.stream
+        self.push_batches_per_stream = ConfigUtils.get_option(
+            config, options, ConfigKey.eggroll.rollsite.push.batches.per.stream
         )
-        self.push_per_stream_timeout = config.get_option(
-            options, ConfigKey.eggroll.rollsite.push.stream.timeout.sec
+        self.push_per_stream_timeout = ConfigUtils.get_option(
+            config, options, ConfigKey.eggroll.rollsite.push.stream.timeout.sec
         )
-        self.push_max_retry = config.get_option(
-            options, ConfigKey.eggroll.rollsite.push.max.retry
+        self.push_max_retry = ConfigUtils.get_option(
+            config, options, ConfigKey.eggroll.rollsite.push.max.retry
         )
-        self.push_long_retry = config.get_option(
-            options, ConfigKey.eggroll.rollsite.push.long.retry
+        self.push_long_retry = ConfigUtils.get_option(
+            config, options, ConfigKey.eggroll.rollsite.push.long.retry
         )
-        self.pull_header_interval = config.get_option(
-            options, ConfigKey.eggroll.rollsite.pull.header.interval.sec
+        self.pull_header_interval = ConfigUtils.get_option(
+            config, options, ConfigKey.eggroll.rollsite.pull.header.interval.sec
         )
-        self.pull_header_timeout = config.get_option(
-            options, ConfigKey.eggroll.rollsite.pull.header.timeout.sec
+        self.pull_header_timeout = ConfigUtils.get_option(
+            config, options, ConfigKey.eggroll.rollsite.pull.header.timeout.sec
         )
-        self.pull_interval = config.get_option(
-            options, ConfigKey.eggroll.rollsite.pull.interval.sec
+        self.pull_interval = ConfigUtils.get_option(
+            config, options, ConfigKey.eggroll.rollsite.pull.interval.sec
         )
-        self.pull_max_retry = config.get_option(
-            options, ConfigKey.eggroll.rollsite.pull.max.retry
+        self.pull_max_retry = ConfigUtils.get_option(
+            config, options, ConfigKey.eggroll.rollsite.pull.max.retry
         )
         L.debug(
             f"RollSite __init__: push_batch_per_stream={self.push_batches_per_stream}, "
