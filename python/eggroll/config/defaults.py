@@ -82,7 +82,7 @@ class DefaultConfig:
             class StartConfig:
                 @dataclass
                 class TimeoutConfig:
-                    ms: int = 20000
+                    ms: int = 180000
 
                 timeout: TimeoutConfig = TimeoutConfig()
 
@@ -144,7 +144,7 @@ class DefaultConfig:
 
                 @dataclass
                 class SendbufConfig:
-                    size: int = MISSING
+                    size: int = 250000
 
                 sendbuf: SendbufConfig = SendbufConfig()
                 executor: ExecutorConfig = ExecutorConfig()

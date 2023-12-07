@@ -26,7 +26,13 @@ L = logging.getLogger(__name__)
 
 
 def session_init(
-    session_id, options: dict = None, config=None, config_options=None, config_properties_file=None
+    session_id,
+    host: str = None,
+    port: int = None,
+    options: dict = None,
+    config=None,
+    config_options=None,
+    config_properties_file=None,
 ) -> "ErSession":
     if config is None:
         config = Config().load_default()
@@ -34,8 +40,12 @@ def session_init(
         config.load_properties(config_properties_file)
     if config_options is None:
         config_options = {}
-    config.load_options(config_options)
     config.load_env()
+    if host is not None:
+        config_options[ConfigKey.eggroll.resourcemanager.clustermanager.host] = host
+    if port is not None:
+        config_options[ConfigKey.eggroll.resourcemanager.clustermanager.port] = port
+    config.load_options(config_options)
     er_session = ErSession(config=config, session_id=session_id, options=options)
     return er_session
 
