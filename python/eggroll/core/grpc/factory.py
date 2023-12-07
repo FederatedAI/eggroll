@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from eggroll import  trace
 import ipaddress
 import logging
 import threading
@@ -22,6 +23,7 @@ from eggroll.core.meta_model import ErEndpoint
 from eggroll.config import Config
 
 L = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 def wrap_host_scheme(host):
@@ -71,7 +73,7 @@ class GrpcChannelFactory(object):
     def _should_refresh(cls, target):
         if (cached_channel := GrpcChannelFactory.pool.get(target, None)) is not None:
             cached_channel_state = _get_state(cached_channel)
-            L.debug(f"old channel to {target}'s status={cached_channel_state}")
+            # L.debug(f"old channel to {target}'s status={cached_channel_state}")
             if not _is_channel_shutdown(cached_channel_state):
                 return False
         return True
