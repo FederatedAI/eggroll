@@ -18,6 +18,7 @@ import threading
 import time
 import typing
 
+from eggroll import trace
 from eggroll.config import Config
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.grpc.factory import GrpcChannelFactory
@@ -42,6 +43,7 @@ from .command_uri import (
 )
 
 L = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 class CommandCallError(Exception):
@@ -107,41 +109,40 @@ class CommandClient(object):
         endpoint: ErEndpoint,
         command_uri: CommandURI,
     ):
-        request = None
-        try:
-            request = ErCommandRequest(
-                uri=command_uri.uri,
-                args=map_and_listify(to_proto_string, inputs),
-            )
-            start = time.time()
-            L.debug(f"[CC] calling: {endpoint} {command_uri} {request}")
-            _channel = self._channel_factory.create_channel(self._config, endpoint)
-            _command_stub = command_pb2_grpc.CommandServiceStub(_channel)
-            response = _command_stub.call(request.to_proto())
-            er_response = ErCommandResponse.from_proto(response)
-            elapsed = time.time() - start
-            L.debug(
-                f"[CC] called (elapsed={elapsed}): {endpoint}, {command_uri}, {request}, {er_response}"
-            )
-            byte_results = er_response._results
-
-            if len(byte_results):
-                zipped = zip(output_types, byte_results)
-                return list(
-                    map(
-                        lambda t: t[0].from_proto_string(t[1])
-                        if t[1] is not None
-                        else None,
-                        zipped,
-                    )
+        with tracer.start_span("sync_send") as span:
+            request = None
+            try:
+                request = ErCommandRequest(
+                    uri=command_uri.uri,
+                    args=map_and_listify(to_proto_string, inputs),
                 )
-            else:
-                return []
-        except Exception as e:
-            L.exception(
-                f"Error calling to {endpoint}, command_uri: {command_uri}, req:{request}"
-            )
-            raise CommandCallError(command_uri, endpoint, e) from e
+                span.set_attribute("endpoint", f"{endpoint}")
+                span.set_attribute("command_uri", f"{command_uri}")
+                span.set_attribute("request", f"{request}")
+                _channel = self._channel_factory.create_channel(self._config, endpoint)
+                _command_stub = command_pb2_grpc.CommandServiceStub(_channel)
+                response = _command_stub.call(request.to_proto())
+                er_response = ErCommandResponse.from_proto(response)
+                span.set_attribute("response", f"{er_response}")
+                byte_results = er_response._results
+
+                if len(byte_results):
+                    zipped = zip(output_types, byte_results)
+                    return list(
+                        map(
+                            lambda t: t[0].from_proto_string(t[1])
+                            if t[1] is not None
+                            else None,
+                            zipped,
+                        )
+                    )
+                else:
+                    return []
+            except Exception as e:
+                L.exception(
+                    f"Error calling to {endpoint}, command_uri: {command_uri}, req:{request}"
+                )
+                raise CommandCallError(command_uri, endpoint, e) from e
 
     def async_call(
         self, args, output_types: list, command_uri: CommandURI, callback=None
