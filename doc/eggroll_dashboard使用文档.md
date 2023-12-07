@@ -2,13 +2,13 @@
 
 ## 1.登录页面
 
-![登录页面](./images/登录页面.png)
+![登录页面](images/登录页面.png)
 
 需要先登录才能使用，账号和密码目前可以在配置文件里面配置。
 
 ## 2.首页介绍
 
-![登录页面](./images/首页1.png)
+![登录页面](images/首页1.png)
 
 菜单栏：
 
@@ -20,7 +20,7 @@
 
 ## 3.节点信息页面
 
-![image-20231122193850061](./images/节点信息.png)
+![image-20231122193850061](images/节点信息.png)
 
 这个页面分为上下两层，上面部分是节点信息，用来展示每个节点的信息，有两个操作按钮，分别是：Get Config、 Get Resource。
 
@@ -34,7 +34,7 @@ Get Resource：获取当前节点资源(CPU、GPU和PHYSICAL_MEMORY)
 
 ## 4.Session信息页面
 
-![image-20231122194810711](./images/session信息.png)
+![image-20231122194810711](images/session信息.png)
 
 session信息页面用来查询所有session的页面，有三个搜索框分别是：Session ID、Status和CreatedAt，对应下面列表的其中三个字段，可用于模糊查询。此列表后方有2个按钮是：Processor信息和kill。
 
@@ -44,7 +44,7 @@ kill：可以kill当前的session任务
 
 ## 5.Processer信息页面
 
-![image-20231122195439311](./images/Processer信息.png)
+![image-20231122195439311](images/Processer信息.png)
 
 Processer信息页面是用来展示和查询所有子进程信息的页面。其中有5个字段可以用来筛选列表。列表后方有2个按钮，分别是：Resource信息和kill
 
