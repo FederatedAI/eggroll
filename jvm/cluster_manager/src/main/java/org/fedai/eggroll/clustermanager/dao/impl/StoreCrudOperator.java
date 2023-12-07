@@ -1,24 +1,22 @@
-package org.fedai.eggroll.clustermanager.dao.impl;
+package com.webank.eggroll.clustermanager.dao.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import com.eggroll.core.config.Dict;
+import com.eggroll.core.constant.StringConstants;
+import com.eggroll.core.context.Context;
+import com.eggroll.core.exceptions.CrudException;
+import com.eggroll.core.pojo.*;
+import com.eggroll.core.utils.JsonUtil;
+import com.eggroll.core.utils.LockUtils;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.webank.eggroll.clustermanager.entity.ServerNode;
+import com.webank.eggroll.clustermanager.entity.StoreLocator;
+import com.webank.eggroll.clustermanager.entity.StoreOption;
+import com.webank.eggroll.clustermanager.entity.StorePartition;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.fedai.eggroll.clustermanager.entity.ServerNode;
-import org.fedai.eggroll.clustermanager.entity.StoreLocator;
-import org.fedai.eggroll.clustermanager.entity.StoreOption;
-import org.fedai.eggroll.clustermanager.entity.StorePartition;
-import org.fedai.eggroll.core.config.Dict;
-import org.fedai.eggroll.core.constant.StringConstants;
-import org.fedai.eggroll.core.context.Context;
-import org.fedai.eggroll.core.exceptions.CrudException;
-import org.fedai.eggroll.core.pojo.*;
-import org.fedai.eggroll.core.utils.JsonUtil;
-import org.fedai.eggroll.core.utils.LockUtils;
 import org.mybatis.guice.transactional.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +26,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
@@ -78,7 +75,7 @@ public class StoreCrudOperator {
                 .orderByAsc(StorePartition::getStorePartitionId);
         List<StorePartition> storePartitionResult = storePartitionService.list(queryStorePartition);
         if (storePartitionResult.isEmpty()) {
-            throw new IllegalStateException("store locator found but no partition found");
+            throw new IllegalStateException("store locator found but no partition found: " + input.getStoreLocator().getNamespace() + "/" + input.getStoreLocator().getName());
         }
 
         List<Long> missingNodeId = new ArrayList<>();
@@ -114,8 +111,9 @@ public class StoreCrudOperator {
                 , store.getName()
                 , store.getPath()
                 , store.getTotalPartitions()
-                , store.getPartitioner()
-                , store.getSerdes());
+                , store.getKeySerdesType()
+                , store.getValueSerdesType()
+                , store.getPartitionerType());
         QueryWrapper<StoreOption> storeOptionWrapper = new QueryWrapper<>();
         storeOptionWrapper.lambda().eq(StoreOption::getStoreLocatorId, storeLocatorId);
         List<StoreOption> storeOpts = storeOptionService.list(storeOptionWrapper);
@@ -129,6 +127,7 @@ public class StoreCrudOperator {
             }
         }
 
+        // process output partitions
         List<ErPartition> outputPartitions = new ArrayList<>();
         for (StorePartition p : storePartitionResult) {
 
@@ -308,8 +307,9 @@ public class StoreCrudOperator {
                     , store.getName()
                     , store.getPath()
                     , store.getTotalPartitions()
-                    , store.getPartitioner()
-                    , store.getSerdes());
+                    , store.getKeySerdesType()
+                    , store.getValueSerdesType()
+                    , store.getPartitionerType());
             erStoreArr.add(new ErStore(erStoreLocator, new ArrayList<>(), new ConcurrentHashMap<>()));
         }
         return new ErStoreList(erStoreArr, new ConcurrentHashMap<>());
