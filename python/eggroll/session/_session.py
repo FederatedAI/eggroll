@@ -94,25 +94,28 @@ class ErSession(object):
             thread_name_prefix="session_server",
         )
 
-        retry_timeout = config.eggroll.session.start.timeout.ms / 1000.0
-        retry_interval = config.eggroll.session.start.retry.interval.ms / 1000.0
-        retry_max = config.eggroll.session.start.retry.max.count
-        if not processors:
-            self.__session_meta = command_utils.command_call_retry(
-                self._cluster_manager_client.get_or_create_session,
-                (session_meta,),
-                retry_timeout=retry_timeout,
-                retry_interval=retry_interval,
-                retry_max=retry_max,
-            )
-        else:
-            self.__session_meta = command_utils.command_call_retry(
-                self._cluster_manager_client.register_session,
-                (session_meta,),
-                retry_timeout=retry_timeout,
-                retry_interval=retry_interval,
-                retry_max=retry_max,
-            )
+        try:
+            retry_timeout = config.eggroll.session.start.timeout.ms / 1000.0
+            retry_interval = config.eggroll.session.start.retry.interval.ms / 1000.0
+            retry_max = config.eggroll.session.start.retry.max.count
+            if not processors:
+                self.__session_meta = command_utils.command_call_retry(
+                    self._cluster_manager_client.get_or_create_session,
+                    (session_meta,),
+                    retry_timeout=retry_timeout,
+                    retry_interval=retry_interval,
+                    retry_max=retry_max,
+                )
+            else:
+                self.__session_meta = command_utils.command_call_retry(
+                    self._cluster_manager_client.register_session,
+                    (session_meta,),
+                    retry_timeout=retry_timeout,
+                    retry_interval=retry_interval,
+                    retry_max=retry_max,
+                )
+        except Exception as e:
+            raise RuntimeError(f"session init failed: {e}") from e
 
         self.__exit_tasks = list()
         self.__processors = self.__session_meta.processors
