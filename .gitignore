@@ -10,6 +10,7 @@ jvm/**/target
 python/**/__pycache__
 **/.idea
 **/pid
+data/**
 !data/meta_h2
 logs/**
 cpp/roll_frame/build

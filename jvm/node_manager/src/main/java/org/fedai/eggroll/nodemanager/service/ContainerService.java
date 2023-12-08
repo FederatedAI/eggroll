@@ -92,7 +92,11 @@ public class ContainerService {
         } catch (InterruptedException e) {
             logger.error("InterruptedException: {}", e.getMessage());
         }
-        return thread.isAlive();
+        final boolean alive = thread.isAlive();
+        if(!alive){
+            logger.error("Start process thread isAlive : {}",alive);
+        }
+        return alive;
     }
 
     private boolean stop(Context context, ContainerParam param) {
