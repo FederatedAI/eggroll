@@ -62,6 +62,7 @@ enum ContentType {
   ALL = 0;
   MODELS = 1;
   LOGS = 2;
+  RESULT = 3;
 }
 
 message DownloadContainersResponse {
