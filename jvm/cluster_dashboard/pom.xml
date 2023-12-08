@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <artifactId>eggroll-all</artifactId>
-        <groupId>com.webank.eggroll</groupId>
+        <groupId>org.fedai.eggroll</groupId>
         <relativePath>../pom.xml</relativePath>
         <version>3.0.0</version>
     </parent>
@@ -16,50 +16,51 @@
         <dependency>
             <groupId>org.javatuples</groupId>
             <artifactId>javatuples</artifactId>
-            <version>1.2</version>
         </dependency>
-
 
         <dependency>
             <groupId>com.google.inject.extensions</groupId>
             <artifactId>guice-servlet</artifactId>
-            <version>4.2.3</version>
         </dependency>
 
         <dependency>
             <groupId>javax.servlet</groupId>
             <artifactId>javax.servlet-api</artifactId>
-            <version>4.0.1</version>
         </dependency>
+        <dependency>
+            <groupId>javax.validation</groupId>
+            <artifactId>validation-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>commons-codec</groupId>
+            <artifactId>commons-codec</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>com.github.pagehelper</groupId>
             <artifactId>pagehelper</artifactId>
-            <version>5.2.0</version>
         </dependency>
 
         <!-- jetty -->
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-servlet</artifactId>
-            <version>9.4.43.v20210629</version>
         </dependency>
 
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-server</artifactId>
-            <version>9.4.43.v20210629</version>
         </dependency>
 
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-webapp</artifactId>
-            <version>9.4.43.v20210629</version>
         </dependency>
 
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-security</artifactId>
-            <version>9.4.43.v20210629</version>
         </dependency>
 
         <dependency>
@@ -68,14 +69,13 @@
         </dependency>
 
         <dependency>
-            <groupId>com.webank.eggroll</groupId>
-            <artifactId>new_core</artifactId>
-            <version>${eggroll.version}</version>
+            <groupId>org.fedai.eggroll</groupId>
+            <artifactId>core</artifactId>
         </dependency>
+
         <dependency>
-            <groupId>com.webank.eggroll</groupId>
+            <groupId>org.fedai.eggroll</groupId>
             <artifactId>cluster_manager</artifactId>
-            <version>3.0.0</version>
         </dependency>
 
         <dependency>
@@ -152,12 +152,6 @@
         <dependency>
             <groupId>commons-collections</groupId>
             <artifactId>commons-collections</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.webank.eggroll</groupId>
-            <artifactId>cluster_manager</artifactId>
-            <version>3.0.0</version>
-            <scope>compile</scope>
         </dependency>
     </dependencies>
 

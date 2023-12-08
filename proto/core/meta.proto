@@ -178,3 +178,37 @@ message NodeHeartbeat {
   repeated int32 gpuProcessors=5;
   repeated int32 cpuProcessors=6;
 }
+
+message MetaInfoResponse{
+	map<string, string> metaMap = 1;
+}
+
+message MetaInfoRequest{
+	string key = 1;
+}
+
+message QueueViewResponse{
+  int32 queueSize = 1;
+}
+message QueueViewRequest{
+  string key = 1;
+}
+
+message CheckResourceEnoughRequest {
+  string resource_type = 1;
+  int64 required_resource_count = 2;
+  string check_type = 3;
+}
+
+message CheckResourceEnoughResponse {
+  bool is_enough = 1;
+  ServerCluster clusterInfo = 2;
+}
+
+message queryClusterInfoRequest {
+
+}
+
+message queryClusterInfoResponse {
+  ServerCluster clusterInfo = 2;
+}
