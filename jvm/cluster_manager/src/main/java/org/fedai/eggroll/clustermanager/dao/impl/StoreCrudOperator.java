@@ -1,4 +1,4 @@
-package com.webank.eggroll.clustermanager.dao.impl;
+package org.fedai.eggroll.clustermanager.dao.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
@@ -189,8 +189,9 @@ public class StoreCrudOperator {
         newStoreLocator.setName(inputStoreLocator.getName());
         newStoreLocator.setPath(inputStoreLocator.getPath());
         newStoreLocator.setTotalPartitions(inputStoreLocator.getTotalPartitions());
-        newStoreLocator.setPartitioner(inputStoreLocator.getPartitioner());
-        newStoreLocator.setSerdes(inputStoreLocator.getSerdes());
+        newStoreLocator.setPartitionerType(inputStoreLocator.getPartitionerType());
+        newStoreLocator.setKeySerdesType(inputStoreLocator.getKeySerdesType());
+        newStoreLocator.setValueSerdesType(inputStoreLocator.getValueSerdesType());
         newStoreLocator.setStatus(Dict.NORMAL);
         boolean addStoreLocatorFlag = storeLocatorService.save(newStoreLocator);
         if (!addStoreLocatorFlag) {
