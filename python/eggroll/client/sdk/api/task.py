@@ -31,6 +31,7 @@ class ContentType(enum.Enum):
     ALL = 0
     MODELS = 1
     LOGS = 2
+    RESULT = 3
 
     def to_proto(self):
         if self == ContentType.ALL:
@@ -39,6 +40,8 @@ class ContentType(enum.Enum):
             return containers_pb2.MODELS
         if self == ContentType.LOGS:
             return containers_pb2.LOGS
+        if self == ContentType.RESULT:
+            return containers_pb2.RESULT
         raise NotImplementedError(f"{self}")
 
 
