@@ -8,6 +8,14 @@ class DefaultConfig:
     @dataclass
     class EggrollConfig:
         @dataclass
+        class DashboardConfig:
+            @dataclass
+            class ServerConfig:
+                port: int = 8083
+
+            server: ServerConfig = ServerConfig()
+
+        @dataclass
         class TransferConfig:
             @dataclass
             class ServiceConfig:
@@ -37,6 +45,18 @@ class DefaultConfig:
             @dataclass
             class NodemanagerConfig:
                 @dataclass
+                class GpuConfig:
+                    @dataclass
+                    class NumConfig:
+                        shell: str = MISSING
+
+                    num: NumConfig = NumConfig()
+
+                @dataclass
+                class NetConfig:
+                    device: str = MISSING
+
+                @dataclass
                 class ContainersConfig:
                     @dataclass
                     class DataConfig:
@@ -47,6 +67,8 @@ class DefaultConfig:
                 host: str = MISSING
                 port: int = MISSING
                 containers: ContainersConfig = ContainersConfig()
+                net: NetConfig = NetConfig()
+                gpu: GpuConfig = GpuConfig()
 
             @dataclass
             class ProcessConfig:
@@ -351,11 +373,27 @@ class DefaultConfig:
         @dataclass
         class SecurityConfig:
             @dataclass
+            class EncryptConfig:
+                public_key: str = MISSING
+                private_key: str = MISSING
+                enable: bool = False
+
+            @dataclass
+            class SessionConfig:
+                @dataclass
+                class ExpiredConfig:
+                    time: int = 30
+
+                expired: ExpiredConfig = ExpiredConfig()
+
+            @dataclass
             class LoginConfig:
                 username: str = MISSING
                 password: str = MISSING
 
             login: LoginConfig = LoginConfig()
+            session: SessionConfig = SessionConfig()
+            encrypt: EncryptConfig = EncryptConfig()
 
         @dataclass
         class ContainerConfig:
@@ -604,5 +642,6 @@ class DefaultConfig:
         home: str = MISSING
         gc: GCConfig = GCConfig()
         transfer: TransferConfig = TransferConfig()
+        dashboard: DashboardConfig = DashboardConfig()
 
     eggroll: EggrollConfig = EggrollConfig()
