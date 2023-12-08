@@ -5,6 +5,7 @@ import com.google.inject.Singleton;
 import org.fedai.eggroll.clustermanager.cluster.ClusterManagerService;
 import org.fedai.eggroll.clustermanager.cluster.ClusterResourceManager;
 import org.fedai.eggroll.clustermanager.dao.impl.ServerNodeService;
+import org.fedai.eggroll.clustermanager.dao.impl.StoreCrudOperator;
 import org.fedai.eggroll.clustermanager.job.JobServiceHandler;
 import org.fedai.eggroll.clustermanager.processor.DefaultProcessorManager;
 import org.fedai.eggroll.clustermanager.session.DefaultSessionManager;
@@ -38,7 +39,7 @@ public class CommandServiceProvider extends AbstractCommandServiceProvider {
     @Inject
     ServerNodeService serverNodeService;
     @Inject
-    com.webank.eggroll.clustermanager.dao.impl.StoreCrudOperator storeCrudOperator;
+    StoreCrudOperator storeCrudOperator;
     @Inject
     ClusterManagerService clusterManagerService;
     @Inject
