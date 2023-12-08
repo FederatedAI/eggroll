@@ -1,0 +1,68 @@
+Metadata-Version: 2.1
+Name: pystack-debugger
+Version: 0.10.0
+Summary: Tool to print python thread and greenlet stacks
+Home-page: https://github.com/wooparadog/pystack/
+Author: Haochuan Guo
+Author-email: guohaochuan@gmail.com
+Maintainer: Jiangge Zhang
+Maintainer-email: tonyseek@gmail.com
+License: MIT
+Keywords: pystack,pstack,jstack,gdb,lldb,greenlet
+Platform: linux
+Platform: darwin
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: System Administrators
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: MacOS
+Classifier: Operating System :: POSIX
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Topic :: Software Development
+Classifier: Topic :: Software Development :: Debuggers
+Classifier: Topic :: Utilities
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: click (<6.0,>=5.1)
+
+[![PyPI](https://img.shields.io/pypi/v/pystack-debugger.svg)](https://pypi.org/project/pystack-debugger/)
+
+# pystack
+
+The pystack is to python as jstack is to java.
+
+It's a debug tool to print python threads or greenlet stacks.
+
+Idea stolen from [pyrasite](https://github.com/lmacken/pyrasite).
+
+## Install
+
+    $ pip install pystack-debugger
+
+## Usage
+
+You may need to run it with `sudo`.
+
+    $ sudo pystack [--include-greenlet] <pid>
+
+## Compatibility
+
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pystack-debugger.svg)](https://pypi.org/project/pystack-debugger/)
+[![PyPI - Implementation](https://img.shields.io/pypi/implementation/pystack-debugger.svg)](https://pypi.org/project/pystack-debugger/)
+
+The pystack is compatible with CPython 2.7+ and CPython 3.6+ in both client
+(the debugger) and server (the destination process).
+
+Using PyPy may work in client (the debugger) but it is untested. Do not attempt
+to attach a PyPI process as destination since the pystack debugger uses gdb/lldb
+to invoke the CPython ABI.

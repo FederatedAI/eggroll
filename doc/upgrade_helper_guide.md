@@ -1,6 +1,6 @@
 
 # eggroll升级工具文档说明
-此文档兼容eggroll2.0.x -> 2.2.1
+此文档兼容 eggroll2.0.x -> 3.0.x /  eggroll2.2.x -> 3.0.x
 
 ## 1. 环境要求
 ### 1.1   python3环境
@@ -11,7 +11,6 @@
 ## 2. 参数说明
 ```
  -c --nm_file <必选:eggroll集群cm或nm节点ip集合>
- -r --rs_file <必选:eggroll集群仅仅部署rollsite节点的ip集合,内容可以为空,文件不能为空>
  -e --egg_home <必选:eggroll home目录>
  -k --pkg_base_path <必选:eggroll 升级版本文件的基路径,路径下同EGGROLL_HOME目录一样,见3.1.1
  -m --mysql_home <必选:mysql home 目录>
@@ -48,7 +47,6 @@ sh bin/eggroll.sh all stop
 cd /data/projects/common/supervisord
 sh service.sh stop fate-clustermanager
 sh service.sh stop fate-nodemanager
-sh service.sh stop fate-rollsite
 ```
 
 - eggroll手动备份
@@ -56,11 +54,15 @@ sh service.sh stop fate-rollsite
 ```
 cd ${EGGROLL_HOME}
 mv bin bin_bak
+mv conf conf_back
+mv data data_back
 mv deploy deploy_bak
 mv lib lib_bak
 mv python python_bak
 
 cp -r bin_bak bin
+cp -r conf_back conf
+cp -r data_back data
 cp -r deploy_bak deploy
 cp -r lib_bak lib
 cp -r python_bak python
@@ -87,7 +89,7 @@ ${MYSQL_HOME_PATH}/bin/mysqldump -h <mysql-host> -u <username> -p<passwd> -P <po
 
 > 获取升级脚本
 
-[升级脚本](https://github.com/WeBankFinTech/eggroll/blob/dev-2.2.1/deploy/upgrade_helper.py)
+[升级脚本](https://github.com/WeBankFinTech/eggroll/blob/dev-3.0.0-rc/deploy/upgrade_helper.py)
 
 ```
 export PKG_BASE_PATH={your upgrade eggroll version eggroll home dir}
@@ -101,7 +103,8 @@ python ${PKG_BASE_PATH}/deploy/upgrade_helper.py --help
 ```
 ├─eggroll
       ├─bin 
-      ├─deploy 
+      ├─conf 
+      ├─deploy  
       ├─lib  
       └─python 
    
@@ -137,7 +140,7 @@ touch  rs_ip_list
 
 - 此文件需要根据eggroll升级版本号变更eggroll元数据库
 
-> 1、eggroll_2.0.x -> 2.2.x
+> 1、eggroll_2.0.x -> 3.0.x
 
 ```
 touch mysql_file.sql
@@ -149,20 +152,23 @@ alter table store_option add store_option_id SERIAL PRIMARY KEY;
 alter table session_option add store_option_id SERIAL PRIMARY KEY;
 alter table session_main modify column session_id VARCHAR(767);
 alter table session_processor modify column session_id VARCHAR(767);
+
+alter table session_main add column status_reason VARCHAR(255) NULL AFTER status;
+alter table session_main add column before_status VARCHAR(255) NULL AFTER status_reason;
+alter table session_processor add column before_status VARCHAR(255) NULL AFTER status_reason;
+
 ```
 
-> 2、eggroll_2.2.x -> eggroll_2.2.x
+> 2、eggroll_2.2.x -> eggroll_3.0.x
 
 ```
 touch mysql_file.sql
 vim mysql_file.sql
 
 use eggroll_meta;
-alter table store_option add store_option_id SERIAL PRIMARY KEY;
-alter table session_option add store_option_id SERIAL PRIMARY KEY;
-alter table session_main modify column session_id VARCHAR(767);
-alter table session_processor modify column session_id VARCHAR(767);
-
+alter table session_main add column status_reason VARCHAR(255) NULL AFTER status;
+alter table session_main add column before_status VARCHAR(255) NULL AFTER status_reason;
+alter table session_processor add column before_status VARCHAR(255) NULL AFTER status_reason;
 
 ```
 
@@ -193,7 +199,6 @@ python upgrade_helper.py
 ```
 python ${PKG_BASE_PATH}/deploy/upgrade_helper.py \
 -c ${your create nm_ip_list file path contains the file name} \
--r ${your create rs_ip_list file path contains the file name} \
 -e ${EGGROLL_HOME} \
 -k ${PKG_BASE_PATH} \
 -m ${mysql home path} \
@@ -210,6 +215,21 @@ python ${PKG_BASE_PATH}/deploy/upgrade_helper.py \
 > 执行一次失败后,恢复`eggroll手动备份`方可再次执行升级脚本
 
 > 以上文件、目录均为绝对路径
+
+- 4.3 启动服务
+> 进入eggroll home目录
+
+- allinone 部署方式的启动服务方法
+```
+cd ${EGGROLL_HOME}
+sh bin/eggroll.sh all start
+```
+- ansible 部署方式的启动服务方法
+```
+cd /data/projects/common/supervisord
+sh service.sh stop fate-clustermanager
+sh service.sh stop fate-nodemanager
+```
 
 - 4.3 检查日志
 ```
@@ -258,7 +278,6 @@ ${MYSQL_HOME}/bin/mysql -ufate -p -S ${MYSQL_HOME}/run/mysql.sock -h 192.168.0.1
 ```
 python ${PKG_BASE_PATH}/deploy/upgrade_helper.py \
 -c ${your create nm_ip_list file path contains the file name} \
--r ${your create rs_ip_list file path contains the file name} \
 -e ${EGGROLL_HOME} \
 -k ${PKG_BASE_PATH} \
 -m ${MYSQL_HOME} \
