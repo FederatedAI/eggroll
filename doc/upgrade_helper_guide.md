@@ -157,6 +157,11 @@ alter table session_main add column status_reason VARCHAR(255) NULL AFTER status
 alter table session_main add column before_status VARCHAR(255) NULL AFTER status_reason;
 alter table session_processor add column before_status VARCHAR(255) NULL AFTER status_reason;
 
+alter table store_locator add column key_serdes_type INT NOT NULL DEFAULT 0;
+alter table store_locator add column value_serdes_type INT NOT NULL DEFAULT 0;
+alter table store_locator add column partitioner_type INT NOT NULL DEFAULT 0;
+alter table store_locator add column version INT NOT NULL DEFAULT 0;
+
 ```
 
 > 2、eggroll_2.2.x -> eggroll_3.0.x
@@ -168,7 +173,14 @@ vim mysql_file.sql
 use eggroll_meta;
 alter table session_main add column status_reason VARCHAR(255) NULL AFTER status;
 alter table session_main add column before_status VARCHAR(255) NULL AFTER status_reason;
+
 alter table session_processor add column before_status VARCHAR(255) NULL AFTER status_reason;
+
+alter table store_locator add column key_serdes_type INT NOT NULL DEFAULT 0;
+alter table store_locator add column value_serdes_type INT NOT NULL DEFAULT 0;
+alter table store_locator add column partitioner_type INT NOT NULL DEFAULT 0;
+alter table store_locator add column version INT NOT NULL DEFAULT 0;
+
 
 ```
 
