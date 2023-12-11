@@ -2,6 +2,7 @@ package org.fedai.eggroll.webapp.utils;
 
 import javax.crypto.Cipher;
 import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
@@ -149,7 +150,7 @@ public class StandardRSAUtils {
         }
         byte[] decryptedData = out.toByteArray();
         out.close();
-        return new String(decryptedData);
+        return new String(decryptedData, StandardCharsets.UTF_8).trim();
     }
 
     /**
