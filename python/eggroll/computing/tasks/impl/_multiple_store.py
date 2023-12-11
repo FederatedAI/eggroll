@@ -25,6 +25,8 @@ from ._task import Task, EnvOptions
 if typing.TYPE_CHECKING:
     from eggroll.computing.roll_pair import RollPair
     from eggroll.computing.roll_pair import RollPairContext
+    from eggroll.core.command.command_client import CommandClient
+    from eggroll.session import ErSession
 
 L = logging.getLogger(__name__)
 
@@ -57,7 +59,7 @@ class GetAll(Task):
             raise ValueError(f"limit:{limit} must be positive int")
         if limit is None:
             limit = -1
-        job_id = job_util.generate_job_id(rp.session_id, consts.GET_ALL)
+        job_id = job_util.generate_job_id(session_id=rp.session_id, tag=consts.GET_ALL)
 
         block_submit_unary_unit_job(
             command_client=rp.command_client,
@@ -100,7 +102,7 @@ class PutAll(Task):
         kv_list: Iterable[Tuple[bytes, bytes]],
         partitioner: Callable[[bytes, int], int],
     ):
-        job_id = job_util.generate_job_id(rp.session_id, consts.PUT_ALL)
+        job_id = job_util.generate_job_id(session_id=rp.session_id, tag=consts.PUT_ALL)
 
         # TODO:1: consider multiprocessing scenario. parallel size should be sent to egg_pair to set write signal count
 
@@ -148,7 +150,7 @@ class Count(Task):
 
     @classmethod
     def submit(cls, rp: "RollPair"):
-        job_id = job_util.generate_job_id(rp.session_id, tag=consts.COUNT)
+        job_id = job_util.generate_job_id(session_id=rp.session_id, tag=consts.COUNT)
         job = ErJob(id=job_id, name=consts.COUNT, inputs=[ErJobIO(rp.get_store())])
         task_results = block_submit_unary_unit_job(
             command_client=rp.command_client, job=job, output_types=[CountResponse]
@@ -238,7 +240,9 @@ class Destroy(Task):
         block_submit_unary_unit_job(
             command_client=rp.command_client,
             job=ErJob(
-                id=job_util.generate_job_id(rp.session_id, consts.DESTROY),
+                id=job_util.generate_job_id(
+                    session_id=rp.session_id, tag=consts.DESTROY
+                ),
                 name=consts.DESTROY,
                 inputs=[ErJobIO(rp.get_store())],
                 functors=[],
@@ -246,6 +250,24 @@ class Destroy(Task):
             output_types=[ErTask],
         )
         rp.ctx.session.cluster_manager_client.delete_store(rp.get_store())
+
+    @classmethod
+    def destroy(
+        cls, session: "ErSession", command_client: "CommandClient", store: ErStore
+    ):
+        block_submit_unary_unit_job(
+            command_client=command_client,
+            job=ErJob(
+                id=job_util.generate_job_id(
+                    session_id=session.get_session_id(), tag=consts.DESTROY
+                ),
+                name=consts.DESTROY,
+                inputs=[ErJobIO(store)],
+                functors=[],
+            ),
+            output_types=[ErTask],
+        )
+        session.cluster_manager_client.delete_store(store)
 
     @classmethod
     def submit_cleanup(
@@ -272,7 +294,7 @@ class Destroy(Task):
                     namespace=namespace, name=name, store_type=store_type
                 )
             )
-            job_id = job_util.generate_job_id(namespace, tag=consts.CLEANUP)
+            job_id = job_util.generate_job_id(session_id=namespace, tag=consts.CLEANUP)
             job = ErJob(
                 id=job_id,
                 name=consts.DESTROY,

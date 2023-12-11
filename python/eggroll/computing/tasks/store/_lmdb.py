@@ -47,7 +47,7 @@ class LmdbAdapter(PairAdapter):
         try:
             success = self.txn_w.put(key, value)
         except lmdb.BadValsizeError as e:
-            L.info(f"key={key}, value={value} raise lmdb.BadValsizeError")
+            L.error(f"key={key}, value={value} raise lmdb.BadValsizeError")
         return success
 
     def __init__(self, options):

@@ -45,7 +45,7 @@ class Reduce(Task):
 
     @classmethod
     def reduce(cls, rp: "RollPair", func):
-        job_id = job_util.generate_job_id(rp.session_id, tag=consts.REDUCE)
+        job_id = job_util.generate_job_id(session_id=rp.session_id, tag=consts.REDUCE)
         reduce_op = ErFunctor.from_func(name=consts.REDUCE, func=func)
         results = block_submit_unary_unit_job(
             command_client=rp.command_client,

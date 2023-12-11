@@ -102,6 +102,14 @@ class DefaultConfig:
                 per: PerConfig = PerConfig()
 
             @dataclass
+            class KillConfig:
+                @dataclass
+                class GracefullyWaitConfig:
+                    sec: float = 10.0
+
+                gracefully_wait: GracefullyWaitConfig = GracefullyWaitConfig()
+
+            @dataclass
             class StartConfig:
                 @dataclass
                 class RetryConfig:
@@ -125,6 +133,7 @@ class DefaultConfig:
 
             processors: ProcessorsConfig = ProcessorsConfig()
             start: StartConfig = StartConfig()
+            kill: KillConfig = KillConfig()
             id: str = MISSING
 
         @dataclass
