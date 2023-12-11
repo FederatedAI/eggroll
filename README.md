@@ -10,7 +10,7 @@ Building and Deploying Eggroll
 ---
 You can check the deploy document here:
 
-[English](https://github.com/WeBankFinTech/eggroll/blob/v2.x/deploy/Eggroll%20Deployment%20Guide.md) [简体中文](https://github.com/WeBankFinTech/eggroll/blob/v2.x/deploy/Eggroll%E9%83%A8%E7%BD%B2%E6%96%87%E6%A1%A3%E8%AF%B4%E6%98%8E.md)
+[English](doc/upgrade_helper_guide.md) [简体中文](doc/Eggroll部署文档说明.md)
 
 
 

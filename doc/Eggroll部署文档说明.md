@@ -29,7 +29,7 @@ linux : sh auto-packaging.sh
 
 ## 3    部署
 ###3.1 部署架构
-
+![部署架构](images/eggroll3.0.0_framework_cn.png)
 
 ### 3.2  解压文件
 
