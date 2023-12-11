@@ -215,7 +215,7 @@ def serve(
         L.info(f"egg_pair cluster_manager: {cluster_manager}")
         node_manager_client = NodeManagerClient(
             config=config,
-            host="localhost",
+            host=config.eggroll.resourcemanager.nodemanager.host,
             port=node_manager,
         )
 
