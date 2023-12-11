@@ -43,17 +43,28 @@ class RollPair(object):
         self._ctx = rp_ctx
         self._store = er_store
         self._session_id = self.ctx.session_id
-        if gc_enabled is not None:
-            gc_enabled = rp_ctx.rpc_gc_enable
-        self.gc_enabled = gc_enabled
-
         self._command_client = CommandClient(config=self.ctx.session.config)
 
-        # record store for gc
-        rp_ctx.gc_recorder.record(er_store)
+        # increase gc count only for in-memory store
+        if self._store.store_locator.store_type == StoreTypes.ROLLPAIR_IN_MEMORY:
+            rp_ctx.increase_store_gc_count(er_store)
 
-        # check if roll pair is destroyed
-        self.destroyed = False
+        self._is_destroyed = False
+        if gc_enabled is None:
+            gc_enabled = rp_ctx.is_rpc_gc_enabled
+        self._is_gc_enabled = gc_enabled
+
+    @property
+    def is_destroyed(self):
+        return self._is_destroyed
+
+    @is_destroyed.setter
+    def is_destroyed(self, value):
+        self._is_destroyed = value
+
+    @property
+    def is_gc_enabled(self):
+        return self._is_gc_enabled
 
     @property
     def command_client(self):
@@ -71,29 +82,23 @@ class RollPair(object):
     def ctx(self):
         return self._ctx
 
-    @property
-    def should_cleanup(self):
-        if self._store.store_locator.store_type == StoreTypes.ROLLPAIR_IN_MEMORY:
-            return True
-        return False
-
     def __del__(self):
         if self.ctx.session.is_stopped():
-            # when session stopped, gc_recorder will be cleared, so we just return
+            # when session stopped, gc_recorder will be cleared, so we just return.
             # notice that, when this happens, log will be disabled, so we can't log anything
             # L.exception(f"try to cleanup store={self._store} but session stopped")
             return
-        if self.destroyed:
-            L.debug(f"store={self._store} has been destroyed before")
+        if self.is_destroyed:
+            L.info(f"store={self._store} has been marked as destroyed before")
             return
-        if not self.gc_enabled:
-            L.debug(f"GC not enabled: store={self._store}")
+        if not self.is_gc_enabled:
+            L.info(f"store={self._store} gc disabled, will not be cleaned up")
             return
 
-        if not self.should_cleanup:
-            L.debug(f"store={self._store} should not cleanup")
-            return
-        self.ctx.gc_recorder.decrease_ref_count(self._store)
+        L.info(
+            f"{self} is being cleaned up, store reference of {self._store} will be decreased"
+        )
+        self.ctx.decrease_store_gc_count(self._store)
 
     def __repr__(self):
         return f"<{self.__class__.__name__}(_store={self._store}) at {hex(id(self))}>"
@@ -155,11 +160,11 @@ class RollPair(object):
 
     @roll_pair_method_trace
     def destroy(self):
-        if self.destroyed:
+        if self.is_destroyed:
             L.exception(f"store={self._store} has been destroyed before")
             raise ValueError(f"store:{self.get_store()} has been destroyed before")
         response = tasks.Destroy.submit(self)
-        self.destroyed = True
+        self.is_destroyed = True
         return response
 
     def copy_as(self, name: str, namespace: str, store_type: str):

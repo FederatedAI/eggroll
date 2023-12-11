@@ -673,6 +673,10 @@ class ErStore(RpcMessage):
         self._partitions = partitions
         self._options = options
 
+    @property
+    def options(self):
+        return self._options
+
     def create_partition(self, i):
         processor = self.get_partition(i).processor
         return ErPartition(id=i, store_locator=self._store_locator, processor=processor)

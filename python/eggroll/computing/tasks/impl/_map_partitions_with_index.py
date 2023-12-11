@@ -86,7 +86,7 @@ class MapReducePartitionsWithIndex(Task):
             body=MapPartitionsWithIndexRequest(shuffle=shuffle).to_proto_string(),
         )
         job_id = job_util.generate_job_id(
-            rp.session_id, consts.MAP_REDUCE_PARTITIONS_WITH_INDEX
+            session_id=rp.session_id, tag=consts.MAP_REDUCE_PARTITIONS_WITH_INDEX
         )
         output_store = rp.ctx.create_store(
             id=rp.get_store().store_locator.id,

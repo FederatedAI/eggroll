@@ -10,7 +10,7 @@ def get_stack():
     )
 
 
-DEFAULT_DATETIME_FORMAT = "%Y%m%d.%H%M%S.%f"
+DEFAULT_DATETIME_FORMAT = "%Y%m%d%H%M%S%f"
 
 
 def time_now(format: str = DEFAULT_DATETIME_FORMAT):

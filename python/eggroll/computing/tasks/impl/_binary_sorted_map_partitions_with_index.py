@@ -67,7 +67,8 @@ class BinarySortedMapPartitionsWithIndex(Task):
         )
         job = ErJob(
             id=job_util.generate_job_id(
-                left.session_id, consts.BINARY_SORTED_MAP_PARTITIONS_WITH_INDEX
+                session_id=left.session_id,
+                tag=consts.BINARY_SORTED_MAP_PARTITIONS_WITH_INDEX,
             ),
             name=consts.BINARY_SORTED_MAP_PARTITIONS_WITH_INDEX,
             inputs=[ErJobIO(left.get_store()), ErJobIO(right.get_store())],

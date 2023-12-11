@@ -39,13 +39,12 @@ class PullGetHeader(Task):
 
     @classmethod
     def submit(cls, rp: "RollPair", tag: str, timeout: float, description: str = None):
-        job_tag = (
-            f"{consts.PULL_GET_HEADER}-{description}"
-            if description
-            else consts.PULL_GET_HEADER
-        )
         stores = [rp.get_store()]
-        job_id = job_util.generate_job_id(rp.session_id, tag=job_tag)
+        job_id = job_util.generate_job_id(
+            session_id=rp.session_id,
+            tag=consts.PULL_GET_HEADER,
+            description=description,
+        )
         job = ErJob(
             id=job_id,
             name=consts.PULL_GET_HEADER,
@@ -96,13 +95,12 @@ class PullGetPartitionStatus(object):
 
     @classmethod
     def submit(cls, rp: "RollPair", tag: str, timeout: float, description: str = None):
-        job_tag = (
-            f"{consts.PULL_GET_PARTITION_STATUS}-{description}"
-            if description
-            else consts.PULL_GET_PARTITION_STATUS
-        )
         stores = [rp.get_store()]
-        job_id = job_util.generate_job_id(rp.session_id, tag=job_tag)
+        job_id = job_util.generate_job_id(
+            session_id=rp.session_id,
+            tag=consts.PULL_GET_PARTITION_STATUS,
+            description=description,
+        )
         job = ErJob(
             id=job_id,
             name=consts.PULL_GET_PARTITION_STATUS,
@@ -147,13 +145,12 @@ class PullClearStatus(object):
 
     @classmethod
     def submit(cls, rp: "RollPair", tag: str, description: str = None):
-        job_tag = (
-            f"{consts.PULL_CLEAR_STATUS}-{description}"
-            if description
-            else consts.PULL_CLEAR_STATUS
-        )
         stores = [rp.get_store()]
-        job_id = job_util.generate_job_id(rp.session_id, tag=job_tag)
+        job_id = job_util.generate_job_id(
+            session_id=rp.session_id,
+            tag=consts.PULL_CLEAR_STATUS,
+            description=description,
+        )
         job = ErJob(
             id=job_id,
             name=consts.PULL_CLEAR_STATUS,
