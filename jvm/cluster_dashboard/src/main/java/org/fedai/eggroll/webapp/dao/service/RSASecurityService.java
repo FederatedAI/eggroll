@@ -1,8 +1,7 @@
 package org.fedai.eggroll.webapp.dao.service;
 
-import com.webank.eggroll.webapp.utils.RSAUtils;
-import lombok.Value;
-import org.fedai.eggroll.core.config.MetaInfo;
+
+import org.fedai.eggroll.webapp.utils.RSAUtils;
 
 public class RSASecurityService implements SecurityService {
 
@@ -21,23 +20,21 @@ public class RSASecurityService implements SecurityService {
     }
 
     private String getPrivateKey() throws Exception {
-//        long currentTime = System.currentTimeMillis();
-//        if (lastRefreshTime == null || (currentTime - lastRefreshTime) > keyRefreshTime) {
-//            keyPair = RSAUtils.getKeyPair();
-//            lastRefreshTime = currentTime;
-//        }
-//        return keyPair.getPrivateKey();
-        return MetaInfo.ENCRYPT_PRIVATE_KEY;
-
+        long currentTime = System.currentTimeMillis();
+        if (lastRefreshTime == null || (currentTime - lastRefreshTime) > keyRefreshTime) {
+            keyPair = RSAUtils.getKeyPair();
+            lastRefreshTime = currentTime;
+        }
+        return keyPair.getPrivateKey();
+//        return MetaInfo.ENCRYPT_PRIVATE_KEY;
     }
 
     private String getPublicKey() throws Exception {
-//        long currentTime = System.currentTimeMillis();
-//        if (lastRefreshTime == null || (currentTime - lastRefreshTime) > keyRefreshTime) {
-//            keyPair = RSAUtils.getKeyPair();
-//            lastRefreshTime = currentTime;
-//        }
-//        return keyPair.getPublicKey();
-        return MetaInfo.ENCRYPT_PUBLIC_KEY;
+        long currentTime = System.currentTimeMillis();
+        if (lastRefreshTime == null || (currentTime - lastRefreshTime) > keyRefreshTime) {
+            keyPair = RSAUtils.getKeyPair();
+            lastRefreshTime = currentTime;
+        }
+        return keyPair.getPublicKey();
     }
 }
