@@ -22,12 +22,12 @@ class GcRecorder(object):
             "EGGROLL_GC_DISABLE" in os.environ
             and os.environ["EGGROLL_GC_DISABLE"] == "1"
         ):
-            L.info(
+            L.warning(
                 "global GC disabled, "
                 "will not execute gc but only record temporary RollPair during the whole session"
             )
         else:
-            L.info("global GC enabled. starting GC thread")
+            L.debug("global GC enabled. starting GC thread")
             self.gc_thread = Thread(target=self._runtime_gc_worker, daemon=True)
             self.gc_thread.start()
 
