@@ -44,6 +44,12 @@ class RollPairContext(object):
         self._command_client = CommandClient(config=session.config)
         self._session.add_exit_task(self._gc_recorder.flush)
 
+    def info(self):
+        return {
+            "session": self._session.info(),
+            "rpc_gc_enabled": self.is_rpc_gc_enabled,
+        }
+
     @property
     def is_rpc_gc_enabled(self):
         return self._rpc_gc_enable
