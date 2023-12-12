@@ -12,7 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from eggroll import  trace
+from eggroll import trace
 import ipaddress
 import logging
 import threading
