@@ -39,33 +39,22 @@ class RollPairContext(object):
                 f"session_id={session.get_session_id()} is not ACTIVE. current status={session.get_session_meta().status}"
             )
         self._session = session
-        self._session.add_exit_task(self.context_gc)
-        self.rpc_gc_enable = True
-        self.gc_recorder = GcRecorder(self)
+        self._gc_recorder = GcRecorder(self)
+        self._rpc_gc_enable = True
         self._command_client = CommandClient(config=session.config)
+        self._session.add_exit_task(self._gc_recorder.flush)
 
-        eggs = session.get_eggs()
+    @property
+    def is_rpc_gc_enabled(self):
+        return self._rpc_gc_enable
 
-    #     self._broadcast_eggs(eggs, session.get_eggs_count())
-    #
-    # def _broadcast_eggs(self, eggs, count):
-    #     rp = self.create_rp(
-    #         id=-1,
-    #         name=self.session_id,
-    #         namespace=f"er_session_meta",
-    #         total_partitions=count,
-    #         store_type=StoreTypes.ROLLPAIR_CACHE,
-    #         key_serdes_type=0,
-    #         value_serdes_type=0,
-    #         partitioner_type=0,
-    #         options={},
-    #     )
-    #
-    #     def _bc_eggs(_data_dir, _task: ErTask):
-    #
-    #         # add_runtime_storage("__eggs", eggs)
-    #
-    #     rp.with_stores(func=_bc_eggs, description="broadcast eggs")
+    def increase_store_gc_count(self, store: ErStore):
+        if self._rpc_gc_enable:
+            self._gc_recorder.increase_ref_count(store)
+
+    def decrease_store_gc_count(self, store: ErStore):
+        if self._rpc_gc_enable:
+            self._gc_recorder.decrease_ref_count(store)
 
     @property
     def config(self):
@@ -83,38 +72,31 @@ class RollPairContext(object):
     def session_id(self):
         return self._session.get_session_id()
 
-    def context_gc(self):
-        self.gc_recorder.stop()
-        if (
-            self.gc_recorder.gc_recorder is None
-            or len(self.gc_recorder.gc_recorder) == 0
-        ):
-            return
-
-        for (namespace, name), v in dict(self.gc_recorder.gc_recorder.items()).items():
-            L.debug(f"gc: namespace={namespace}, name={name}, v={v}")
-            # TODO: add api to check if store exists?
-            rp = self.create_rp(
-                id=-1,
-                namespace=namespace,
-                name=name,
-                total_partitions=1,
-                store_type=StoreTypes.ROLLPAIR_IN_MEMORY,
-                key_serdes_type=0,
-                value_serdes_type=0,
-                partitioner_type=0,
-                options={},
-            )
-            try:
-                rp.destroy()
-            except Exception as e:
-                raise RuntimeError(f"fail to destroy store={rp.get_store()}, error={e}")
-
     def route_to_egg(self, partition: ErPartition):
         return self._session.route_to_egg(partition)
 
     def populate_processor(self, store: ErStore):
         return self._session.populate_processor(store)
+
+    def destroy_store(
+        self, name: str, namespace: str, store_type: str = StoreTypes.ROLLPAIR_IN_MEMORY
+    ):
+        store = self.create_store(
+            id=-1,
+            name=name,
+            namespace=namespace,
+            total_partitions=1,
+            store_type=store_type,
+            key_serdes_type=0,
+            value_serdes_type=0,
+            partitioner_type=0,
+            options={},
+        )
+        tasks.Destroy.destroy(
+            session=self.session, command_client=self.command_client, store=store
+        )
+        if L.isEnabledFor(logging.DEBUG):
+            L.debug(f"destroyed store={store}")
 
     def create_rp(
         self,
@@ -205,7 +187,7 @@ class RollPairContext(object):
         self,
         data: Iterable,
         total_partitions: int,
-        partitioner: Callable[[bytes], int],
+        partitioner: Callable[[bytes, int], int],
         partitioner_type: int,
         key_serdes_type: int,
         value_serdes_type: int,

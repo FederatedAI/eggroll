@@ -36,9 +36,6 @@ class WithStores(Task):
     ):
         if options is None:
             options = {}
-        tag = (
-            f"{consts.WITH_STORES}-{description}" if description else consts.WITH_STORES
-        )
         stores = [rp.get_store()]
         if others is None:
             others = []
@@ -50,7 +47,9 @@ class WithStores(Task):
                 raise ValueError(
                     f"diff partitions: expected={total_partitions}, actual={other.get_partitions()}"
                 )
-        job_id = job_util.generate_job_id(rp.session_id, tag=tag)
+        job_id = job_util.generate_job_id(
+            session_id=rp.session_id, tag=consts.WITH_STORES, description=description
+        )
         job = ErJob(
             id=job_id,
             name=consts.WITH_STORES,
