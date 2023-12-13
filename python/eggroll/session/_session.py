@@ -127,7 +127,6 @@ class ErSession(object):
         self._eggs: typing.Dict[int, typing.List[ErProcessor]] = dict()
 
         for processor in self.__session_meta.processors:
-
             if processor.is_egg_pair():
                 server_node_id = processor.server_node_id
                 if server_node_id not in self._eggs:
@@ -140,7 +139,9 @@ class ErSession(object):
                     f"processor type {processor.processor_type} not supported in roll pair"
                 )
 
-    def info(self):
+    def info(self, level=0):
+        if level == 0:
+            return f"ErSession<session_id={self.__session_id}, total_processors={len(self.__processors)}>"
         return {
             "session_id": self.__session_id,
             "processors": {
@@ -148,23 +149,26 @@ class ErSession(object):
                 "details": {
                     node_id: {
                         "num_egg_in_node": len(egg_list),
-                        "details": [{
-                            "id": egg.id,
-                            "pid": egg.pid,
-                            "server_node_id": egg.server_node_id,
-                            "command_endpoint": {
-                                "host": egg.command_endpoint.host,
-                                "port": egg.command_endpoint.port,
-                            },
-                            "transfer_endpoint": {
-                                "host": egg.transfer_endpoint.host,
-                                "port": egg.transfer_endpoint.port,
-                            },
-                        } for egg in egg_list],
+                        "details": [
+                            {
+                                "id": egg.id,
+                                "pid": egg.pid,
+                                "server_node_id": egg.server_node_id,
+                                "command_endpoint": {
+                                    "host": egg.command_endpoint.host,
+                                    "port": egg.command_endpoint.port,
+                                },
+                                "transfer_endpoint": {
+                                    "host": egg.transfer_endpoint.host,
+                                    "port": egg.transfer_endpoint.port,
+                                },
+                            }
+                            for egg in egg_list
+                        ],
                     }
                     for node_id, egg_list in self._eggs.items()
                 },
-            }
+            },
         }
 
     @property
