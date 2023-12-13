@@ -17,9 +17,8 @@ import os
 
 import click
 from ruamel import yaml
-
-from eggroll.client.cli.commands import task
-from eggroll.client.sdk import EggrollClient
+from eggroll.cli.commands import task
+from eggroll.deepspeed._client import EggrollClient
 from eggroll.config import Config
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -55,7 +54,7 @@ def eggroll_cli(ctx, eggroll_properties):
             config.load_properties(eggroll_properties)
         config.load_env()
         ctx.obj["client"] = EggrollClient(
-            config=config, ip=cli_config.get("ip"), port=cli_config.get("port")
+            config=config, host=cli_config.get("ip"), port=cli_config.get("port")
         )
 
 

@@ -160,6 +160,20 @@ class DeepspeedJob:
         )
         return kill_response
 
+    def stop(self):
+        status = self.query_status()
+        if not status.get("status"):
+            return status
+        stop_job_request = deepspeed_pb2.StopJobRequest(session_id=self._session_id)
+        response = self._get_client().do_sync_request(
+            stop_job_request,
+            output_type=deepspeed_pb2.StopJobResponse,
+            command_uri=JobCommands.STOP_JOB,
+        )
+        status = self.query_status()
+        response = {"session_id": response.session_id, "status": status.get("status")}
+        return response
+
     def await_finished(self, timeout: int = 0, poll_interval: int = 1):
         deadline = time.time() + timeout
         query_response = self.query_status()

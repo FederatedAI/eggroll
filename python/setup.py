@@ -18,16 +18,18 @@ from setuptools import find_packages, setup
 
 
 packages = find_packages(".")
+filtered_packages = [pkg for pkg in packages if pkg.startswith("eggroll")]
 package_data = {"": ["*"]}
 install_requires = [
     "click",
     "omegaconf",
     "requests<3.0",
-    "grpcio",
-    "protobuf",
-    "ruamel.yaml",
+    "grpcio==1.46.3",
+    "protobuf==3.19.6",
+    "ruamel.yaml==0.16.0",
     "opentelemetry-api",
     "opentelemetry-sdk",
+    "torch",
 ]
 
 extras_require = {
@@ -39,7 +41,7 @@ extras_require = {
 }
 
 
-entry_points = {"console_scripts": ["eggroll = eggroll.client.cli.eggroll:eggroll_cli"]}
+entry_points = {"console_scripts": ["eggroll = eggroll.cli.eggroll:eggroll_cli"]}
 
 setup_kwargs = {
     "name": "eggroll",
