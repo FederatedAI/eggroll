@@ -89,13 +89,13 @@ class RollPair(object):
             # L.exception(f"try to cleanup store={self._store} but session stopped")
             return
         if self.is_destroyed:
-            L.info(f"store={self._store} has been marked as destroyed before")
+            L.debug(f"store={self._store} has been marked as destroyed before")
             return
         if not self.is_gc_enabled:
-            L.info(f"store={self._store} gc disabled, will not be cleaned up")
+            L.debug(f"store={self._store} gc disabled, will not be cleaned up")
             return
 
-        L.info(
+        L.debug(
             f"{self} is being cleaned up, store reference of {self._store} will be decreased"
         )
         self.ctx.decrease_store_gc_count(self._store)

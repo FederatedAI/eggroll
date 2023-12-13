@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import logging
+import typing
 from concurrent.futures import wait, FIRST_EXCEPTION
 
 from eggroll.config import Config, ConfigKey, ConfigUtils
@@ -19,7 +20,7 @@ from eggroll.core.command import command_utils
 from eggroll.core.command.command_client import ClusterManagerClient
 from eggroll.core.command.command_status import SessionStatus
 from eggroll.core.datastructure.threadpool import ErThreadUnpooledExecutor
-from eggroll.core.meta_model import ErSessionMeta, ErPartition, ErStore
+from eggroll.core.meta_model import ErSessionMeta, ErPartition, ErStore, ErProcessor
 from ._utils import get_stack, time_now, get_self_ip
 
 L = logging.getLogger(__name__)
@@ -123,7 +124,7 @@ class ErSession(object):
             or self.__session_meta.status == SessionStatus.KILLED
         )
         self._rolls = list()
-        self._eggs = dict()
+        self._eggs: typing.Dict[int, typing.List[ErProcessor]] = dict()
 
         for processor in self.__session_meta.processors:
             if processor.is_egg_pair():
@@ -137,6 +138,38 @@ class ErSession(object):
                 raise ValueError(
                     f"processor type {processor.processor_type} not supported in roll pair"
                 )
+
+    def info(self, level=0):
+        if level == 0:
+            return f"ErSession<session_id={self.__session_id}, total_processors={len(self.__processors)}>"
+        return {
+            "session_id": self.__session_id,
+            "processors": {
+                "total_eggs": len(self.__processors),
+                "details": {
+                    node_id: {
+                        "num_egg_in_node": len(egg_list),
+                        "details": [
+                            {
+                                "id": egg.id,
+                                "pid": egg.pid,
+                                "server_node_id": egg.server_node_id,
+                                "command_endpoint": {
+                                    "host": egg.command_endpoint.host,
+                                    "port": egg.command_endpoint.port,
+                                },
+                                "transfer_endpoint": {
+                                    "host": egg.transfer_endpoint.host,
+                                    "port": egg.transfer_endpoint.port,
+                                },
+                            }
+                            for egg in egg_list
+                        ],
+                    }
+                    for node_id, egg_list in self._eggs.items()
+                },
+            },
+        }
 
     @property
     def eggs(self):

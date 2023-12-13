@@ -298,13 +298,8 @@ def main():
     # init loggers
     session_id = args.session_id
     processor_id = args.processor_id
-    log_file = os.path.join(config.eggroll.logs.dir, session_id, f"egg_pair.log")
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format=f"[{processor_id}]%(asctime)s %(levelname)s %(filename)s:%(lineno)d %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        filename=log_file,
-    )
+    logs_dir = config.eggroll.logs.dir
+    setup_logger(session_id, processor_id, logs_dir)
 
     # data dir
     data_dir = config.eggroll.data.dir
@@ -325,6 +320,38 @@ def main():
     except Exception as e:
         L.exception(f"egg_pair server error: {e}")
         raise e
+
+
+def setup_logger(session_id: str, processor_id: str, logs_base_dir: str):
+    # TODO: make this configurable by config
+
+    logs_dir = os.path.join(logs_base_dir, session_id, "eggs")
+    os.makedirs(logs_dir, exist_ok=True)
+
+    base_format = f"[%(levelname)s][%(asctime)-8s][%(process)s][%(module)s.%(funcName)s][line:%(lineno)d]: %(message)s"
+    aggregated_format = f"[{processor_id}]{base_format}"
+
+    aggregated_log_file = os.path.join(logs_dir, f"LOG")
+    aggregated_error_file = os.path.join(logs_dir, f"ERROR")
+    log_file = os.path.join(logs_dir, f"LOG-{processor_id}")
+
+    aggregated_log_handler = logging.FileHandler(aggregated_log_file)
+    aggregated_log_handler.setLevel(logging.DEBUG)
+    aggregated_log_handler.setFormatter(logging.Formatter(aggregated_format))
+
+    aggregated_error_handler = logging.FileHandler(aggregated_error_file, delay=True)
+    aggregated_error_handler.setLevel(logging.ERROR)
+    aggregated_error_handler.setFormatter(logging.Formatter(aggregated_format))
+
+    log_handler = logging.FileHandler(log_file)
+    log_handler.setLevel(logging.DEBUG)
+    log_handler.setFormatter(logging.Formatter(base_format))
+
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format=base_format,
+        handlers=[aggregated_log_handler, aggregated_error_handler, log_handler],
+    )
 
 
 if __name__ == "__main__":
