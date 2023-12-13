@@ -26,7 +26,7 @@ public class PythonContainerRuntimeConfig {
         if (StringUtils.isBlank(value)) {
             value = MetaInfo.CONFKEY_RESOURCE_MANAGER_BOOTSTRAP_EGG_PAIR_VENV;
             if (StringUtils.isBlank(value)) {
-                throw new RuntimeException("python exec not found for key: " + key);
+                throw new RuntimeException("python exec not found for key: eggroll.container.python.exec" );
             }
             value += "/bin/python";
         }
