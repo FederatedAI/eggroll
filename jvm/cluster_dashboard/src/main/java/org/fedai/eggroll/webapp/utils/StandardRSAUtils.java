@@ -2,6 +2,7 @@ package org.fedai.eggroll.webapp.utils;
 
 import javax.crypto.Cipher;
 import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
@@ -122,9 +123,9 @@ public class StandardRSAUtils {
      * @return
      * @throws Exception
      */
-    public static String decryptByPrivateKey(String passwordPei, String privateKey)
+    public static String decryptByPrivateKey(String encryptedDataStr, String privateKey)
             throws Exception {
-        byte[] encryptedData = Base64.getDecoder().decode(passwordPei);
+        byte[] encryptedData = Base64.getDecoder().decode(encryptedDataStr);
         byte[] keyBytes = Base64.getDecoder().decode(privateKey);
         PKCS8EncodedKeySpec pkcs8KeySpec = new PKCS8EncodedKeySpec(keyBytes);
         KeyFactory keyFactory = KeyFactory.getInstance(KEY_ALGORITHM);
@@ -149,7 +150,7 @@ public class StandardRSAUtils {
         }
         byte[] decryptedData = out.toByteArray();
         out.close();
-        return new String(decryptedData);
+        return new String(decryptedData, StandardCharsets.UTF_8).trim();
     }
 
     /**
