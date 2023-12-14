@@ -180,12 +180,9 @@ def get_log(ctx, **kwargs):
     client: EggrollClient = ctx.obj["client"]
     client._session_id = kwargs.get("session_id")
     response = client.write_logs_to(
-        # config=config,
-        # sessionId=kwargs.get("session_id"),
         rank=kwargs.get("rank"),
-        # path=kwargs.get("path"),
         start_line=kwargs.get("tail"),
+        path=kwargs.get("path"),
         log_type=kwargs.get("log_type"),
-        logging=[],
     )
     prettify(response)

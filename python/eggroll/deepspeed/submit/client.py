@@ -397,6 +397,7 @@ class DeepspeedJob:
         rank: str = "0",
         start_line: int = 0,
         log_type: str = "INFO",
+        path: str = None,
         logging: object = None,
     ):
         flag = [0]
@@ -404,6 +405,7 @@ class DeepspeedJob:
             extend_pb2.GetLogRequest(
                 sessionId=self.session_id,
                 rank=rank,
+                path=path,
                 startLine=start_line,
                 logType=log_type,
             ),
