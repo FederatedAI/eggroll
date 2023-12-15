@@ -27,12 +27,14 @@ class _ContentTypeEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._En
     ALL: _ContentType.ValueType  # 0
     MODELS: _ContentType.ValueType  # 1
     LOGS: _ContentType.ValueType  # 2
+    RESULT: _ContentType.ValueType  # 3
 
 class ContentType(_ContentType, metaclass=_ContentTypeEnumTypeWrapper): ...
 
 ALL: ContentType.ValueType  # 0
 MODELS: ContentType.ValueType  # 1
 LOGS: ContentType.ValueType  # 2
+RESULT: ContentType.ValueType  # 3
 global___ContentType = ContentType
 
 @typing_extensions.final
@@ -294,13 +296,13 @@ class DownloadContainersRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     SESSION_ID_FIELD_NUMBER: builtins.int
-    RANKS_FIELD_NUMBER: builtins.int
+    CONTAINER_IDS_FIELD_NUMBER: builtins.int
     COMPRESS_METHOD_FIELD_NUMBER: builtins.int
     COMPRESS_LEVEL_FIELD_NUMBER: builtins.int
     CONTENT_TYPE_FIELD_NUMBER: builtins.int
     session_id: builtins.str
     @property
-    def ranks(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.int]: ...
+    def container_ids(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.int]: ...
     compress_method: builtins.str
     compress_level: builtins.int
     content_type: global___ContentType.ValueType
@@ -308,12 +310,12 @@ class DownloadContainersRequest(google.protobuf.message.Message):
         self,
         *,
         session_id: builtins.str = ...,
-        ranks: collections.abc.Iterable[builtins.int] | None = ...,
+        container_ids: collections.abc.Iterable[builtins.int] | None = ...,
         compress_method: builtins.str = ...,
         compress_level: builtins.int = ...,
         content_type: global___ContentType.ValueType = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["compress_level", b"compress_level", "compress_method", b"compress_method", "content_type", b"content_type", "ranks", b"ranks", "session_id", b"session_id"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["compress_level", b"compress_level", "compress_method", b"compress_method", "container_ids", b"container_ids", "content_type", b"content_type", "session_id", b"session_id"]) -> None: ...
 
 global___DownloadContainersRequest = DownloadContainersRequest
 
@@ -340,19 +342,19 @@ global___DownloadContainersResponse = DownloadContainersResponse
 class ContainerContent(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    RANK_FIELD_NUMBER: builtins.int
+    CONTAINER_ID_FIELD_NUMBER: builtins.int
     CONTENT_FIELD_NUMBER: builtins.int
     COMPRESS_METHOD_FIELD_NUMBER: builtins.int
-    rank: builtins.int
+    container_id: builtins.int
     content: builtins.bytes
     compress_method: builtins.str
     def __init__(
         self,
         *,
-        rank: builtins.int = ...,
+        container_id: builtins.int = ...,
         content: builtins.bytes = ...,
         compress_method: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["compress_method", b"compress_method", "content", b"content", "rank", b"rank"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["compress_method", b"compress_method", "container_id", b"container_id", "content", b"content"]) -> None: ...
 
 global___ContainerContent = ContainerContent
