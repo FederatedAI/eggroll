@@ -239,7 +239,7 @@ class MapReducePartitionsWithIndex(Task):
                 store.get_adapter(task.first_output, env_options.data_dir)
             )
             output_write_batch = stack.enter_context(output_adapter.new_batch())
-            partition_id = task.id
+            partition_id = task.first_input.id
             value = map_op(partition_id, input_iterator)
             if isinstance(value, typing.Iterable):
                 for k1, v1 in value:
