@@ -18,7 +18,7 @@ import os
 import click
 from ruamel import yaml
 from eggroll.cli.commands import task
-from eggroll.deepspeed._client import EggrollClient
+from eggroll.deepspeed.sdk_client import EggrollClient
 from eggroll.config import Config
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])

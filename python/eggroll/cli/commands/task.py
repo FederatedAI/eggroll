@@ -20,7 +20,7 @@ import tempfile
 import click
 import time
 
-from eggroll.deepspeed._client import EggrollClient
+from eggroll.deepspeed.sdk_client import EggrollClient
 from ..utils.cli_utils import prettify, unzip
 from eggroll.config import Config
 
@@ -86,7 +86,7 @@ def submit(ctx, **kwargs):
         if response["status"] != "NEW":
             break
     log_type = kwargs.get("log_type") if not kwargs.get("log_type") else "stdout"
-    response = client.write_logs_to(log_type=log_type)
+    response = client.get_log(sessionId=session_id, logType=log_type)
     if response["status"]:
         response = client.query_status()
     prettify(response)
@@ -99,8 +99,7 @@ def query(ctx, **kwargs):
     client: EggrollClient = ctx.obj["client"]
     client._session_id = kwargs.get("session_id")
     response = client.query_status()
-    print(f'query status:{client._session_id}, status:{response.status}')
-    prettify({"session_id": client._session_id, "status": response.status})
+    prettify(response)
 
 
 @task.command("kill", short_help="Kill job")
@@ -179,10 +178,11 @@ def get_log(ctx, **kwargs):
     config = Config().load_default()
     client: EggrollClient = ctx.obj["client"]
     client._session_id = kwargs.get("session_id")
-    response = client.write_logs_to(
+    response = client.get_log(
+        sessionId = client._session_id,
         rank=kwargs.get("rank"),
-        start_line=kwargs.get("tail"),
         path=kwargs.get("path"),
-        log_type=kwargs.get("log_type"),
+        startLine=kwargs.get("tail"),
+        logType=kwargs.get("log_type"),
     )
     prettify(response)
