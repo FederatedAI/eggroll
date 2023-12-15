@@ -4,9 +4,8 @@
 """Generated protocol buffer code."""
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import descriptor_pool as _descriptor_pool
-from google.protobuf import message as _message
-from google.protobuf import reflection as _reflection
 from google.protobuf import symbol_database as _symbol_database
+from google.protobuf.internal import builder as _builder
 # @@protoc_insertion_point(imports)
 
 _sym_db = _symbol_database.Default()
@@ -16,32 +15,15 @@ _sym_db = _symbol_database.Default()
 
 DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0c\x65xtend.proto\x12 com.webank.eggroll.core.transfer\"b\n\rGetLogRequest\x12\x11\n\tsessionId\x18\x01 \x01(\t\x12\x0c\n\x04rank\x18\x02 \x01(\t\x12\x0c\n\x04path\x18\x03 \x01(\t\x12\x11\n\tstartLine\x18\x04 \x01(\x05\x12\x0f\n\x07logType\x18\x05 \x01(\t\":\n\x0eGetLogResponse\x12\x0c\n\x04\x63ode\x18\x01 \x01(\t\x12\r\n\x05\x64\x61tas\x18\x02 \x03(\t\x12\x0b\n\x03msg\x18\x03 \x01(\t2\x87\x01\n\x14\x45xtendTransferServer\x12o\n\x06getLog\x12/.com.webank.eggroll.core.transfer.GetLogRequest\x1a\x30.com.webank.eggroll.core.transfer.GetLogResponse(\x01\x30\x01\x62\x06proto3')
 
-
-
-_GETLOGREQUEST = DESCRIPTOR.message_types_by_name['GetLogRequest']
-_GETLOGRESPONSE = DESCRIPTOR.message_types_by_name['GetLogResponse']
-GetLogRequest = _reflection.GeneratedProtocolMessageType('GetLogRequest', (_message.Message,), {
-  'DESCRIPTOR' : _GETLOGREQUEST,
-  '__module__' : 'extend_pb2'
-  # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.transfer.GetLogRequest)
-  })
-_sym_db.RegisterMessage(GetLogRequest)
-
-GetLogResponse = _reflection.GeneratedProtocolMessageType('GetLogResponse', (_message.Message,), {
-  'DESCRIPTOR' : _GETLOGRESPONSE,
-  '__module__' : 'extend_pb2'
-  # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.transfer.GetLogResponse)
-  })
-_sym_db.RegisterMessage(GetLogResponse)
-
-_EXTENDTRANSFERSERVER = DESCRIPTOR.services_by_name['ExtendTransferServer']
+_globals = globals()
+_builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
+_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'extend_pb2', _globals)
 if _descriptor._USE_C_DESCRIPTORS == False:
-
   DESCRIPTOR._options = None
-  _GETLOGREQUEST._serialized_start=50
-  _GETLOGREQUEST._serialized_end=148
-  _GETLOGRESPONSE._serialized_start=150
-  _GETLOGRESPONSE._serialized_end=208
-  _EXTENDTRANSFERSERVER._serialized_start=211
-  _EXTENDTRANSFERSERVER._serialized_end=346
+  _globals['_GETLOGREQUEST']._serialized_start=50
+  _globals['_GETLOGREQUEST']._serialized_end=148
+  _globals['_GETLOGRESPONSE']._serialized_start=150
+  _globals['_GETLOGRESPONSE']._serialized_end=208
+  _globals['_EXTENDTRANSFERSERVER']._serialized_start=211
+  _globals['_EXTENDTRANSFERSERVER']._serialized_end=346
 # @@protoc_insertion_point(module_scope)
