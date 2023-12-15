@@ -23,6 +23,8 @@ public class WarpedDeepspeedContainerConfig {
     private String backend;
     Logger logger = LoggerFactory.getLogger(WarpedDeepspeedContainerConfig.class);
 
+    private Map<String, String> containerResourceEnvironments = new HashMap<>();
+
     public WarpedDeepspeedContainerConfig(List<Integer> cudaVisibleDevices, int worldSize, int crossRank, int crossSize,
                                           int localSize, int localRank, int rank, StoreConfig storeConfig,
                                           String backend) {
@@ -75,5 +77,21 @@ public class WarpedDeepspeedContainerConfig {
         envMap.put("EGGROLL_DEEPSPEED_STORE_PREFIX", storeConfig.getPrefix());
         envMap.put("EGGROLL_DEEPSPEED_BACKEND", getBackend());
         return envMap;
+    }
+
+    public Map<String, String> getEggrollContainerResourceEnvironments() {
+        return containerResourceEnvironments;
+    }
+
+    public void setEggrollContainerResourceLogsDir(String logsDir) {
+        containerResourceEnvironments.put("EGGROLL_DEEPSPEED_CONTAINER_LOGS_DIR", logsDir);
+    }
+
+    public void setEggrollContainerResourceModelsDir(String modelsDir) {
+        containerResourceEnvironments.put("EGGROLL_DEEPSPEED_CONTAINER_MODELS_DIR", modelsDir);
+    }
+
+    public void setEggrollContainerResourceResultDir(String resultsDir) {
+        containerResourceEnvironments.put("EGGROLL_DEEPSPEED_CONTAINER_RESULT_DIR", resultsDir);
     }
 }

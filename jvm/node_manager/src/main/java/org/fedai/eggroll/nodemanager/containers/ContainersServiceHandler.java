@@ -89,7 +89,12 @@ public class ContainersServiceHandler {
         String sessionId = startDeepspeedContainerRequest.getSessionId();
         logger.info("(sessionId=" + sessionId + ") starting deepspeed containers");
         startDeepspeedContainerRequest.getDeepspeedConfigs().forEach((containerId, deepspeedConfig) -> {
+            Integer rank = deepspeedConfig.getRank();
             WarpedDeepspeedContainerConfig warpedDeepspeedContainerConfig = new WarpedDeepspeedContainerConfig(deepspeedConfig);
+            // add resource env
+            warpedDeepspeedContainerConfig.setEggrollContainerResourceLogsDir(getContainerLogsDir(sessionId, rank).toString());
+            warpedDeepspeedContainerConfig.setEggrollContainerResourceModelsDir(getContainerModelsDir(sessionId, rank).toString());
+            warpedDeepspeedContainerConfig.setEggrollContainerResourceResultDir(getContainerResultDir(sessionId, rank).toString());
             Map<String, String> envMap = new HashMap<>();
             envMap.putAll(startDeepspeedContainerRequest.getEnvironmentVariables());
             envMap.putAll(ExtendEnvConf.confMap);
@@ -229,6 +234,10 @@ public class ContainersServiceHandler {
 
     private Path getContainerLogsDir(String sessionId, long rank) {
         return getContainerWorkspace(sessionId, rank).resolve(Dict.LOGS);
+    }
+
+    private Path getContainerResultDir(String sessionId, long rank) {
+        return getContainerWorkspace(sessionId, rank).resolve(Dict.RESULT);
     }
 
 
