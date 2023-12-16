@@ -138,9 +138,9 @@ def download(ctx, **kwargs):
     client: EggrollClient = ctx.obj["client"]
     download_dir = kwargs.get("download_dir")
     client._session_id = kwargs.get("session_id")
-    status = client.query_status()
-    if status["message"]:
-        return prettify(status)
+    response = client.query_status()
+    if response.get("message", None):
+        return prettify(response)
 
     os.makedirs(download_dir, exist_ok=True)
     with tempfile.TemporaryDirectory() as temp_dir:
