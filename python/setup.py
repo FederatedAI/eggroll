@@ -24,12 +24,11 @@ install_requires = [
     "click",
     "omegaconf",
     "requests<3.0",
-    "grpcio==1.46.3",
-    "protobuf==3.19.6",
+    "grpcio==1.59.3",
+    "protobuf==4.24.4",
     "ruamel.yaml==0.16.0",
     "opentelemetry-api",
     "opentelemetry-sdk",
-    "torch",
 ]
 
 extras_require = {
