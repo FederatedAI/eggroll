@@ -573,8 +573,7 @@ public class JobServiceHandler {
                 for (SessionRanksTemp rank : sessionRanks) {
                     sessionRankList.add(Arrays.asList(rank.getServerNodeId(),rank.getContainerId(),rank.getGlobalRank(),rank.getLocalRank(),rank.getIndex()));
                 }
-
-                contentMap.put(String.join(":",serverNodeInDb.getHost(),serverNodeInDb.getPort().toString()), sessionRankList);
+                contentMap.put(serverNodeInDb.getServerNodeId().toString(), sessionRankList);
                 ErProcessor erProcessor = new ErProcessor();
                 erProcessor.setSessionId(sessionId);
                 erProcessor.setServerNodeId(serverNodeId);
@@ -603,7 +602,7 @@ public class JobServiceHandler {
 
         newErSessionMeta.getProcessors().forEach(p -> {
             if (contentMap.containsKey(p.getServerNodeId())) {
-                contentMap.put(p.getTransferEndpoint().toString(), p.getServerNodeId());
+                contentMap.put(p.getTransferEndpoint().toString(), contentMap.get(p.getServerNodeId()));
                 contentMap.remove(p.getServerNodeId());
             } else {
                 log.info("download cannot found node {}", p.getServerNodeId());
