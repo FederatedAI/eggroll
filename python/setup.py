@@ -18,15 +18,14 @@ from setuptools import find_packages, setup
 
 
 packages = find_packages(".")
-filtered_packages = [pkg for pkg in packages if pkg.startswith("eggroll")]
 package_data = {"": ["*"]}
 install_requires = [
     "click",
     "omegaconf",
-    "requests<3.0",
-    "grpcio==1.59.3",
-    "protobuf==4.24.4",
-    "ruamel.yaml==0.16.0",
+    "requests",
+    "grpcio",
+    "protobuf",
+    "ruamel.yaml",
     "opentelemetry-api",
     "opentelemetry-sdk",
 ]
