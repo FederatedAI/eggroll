@@ -20,7 +20,7 @@ import tempfile
 import click
 import time
 
-from eggroll.client.sdk import EggrollClient
+from eggroll.deepspeed.sdk_client import EggrollClient
 from ..utils.cli_utils import prettify, unzip
 from eggroll.config import Config
 
@@ -70,27 +70,25 @@ def submit(ctx, **kwargs):
         f"deepspeed_session_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f')}"
     )
     print(f"session_id:{session_id}")
-    client.task.submit(
+    client._session_id = session_id
+    client.submit(
         world_size=world_size,
         files=files,
         resource_options=resource_options,
         options=options,
         command_arguments=command_arguments,
-        session_id=session_id,
     )
 
     while True:
-        response = client.task.query_status(session_id=session_id)
+        response = client.query_status()
         print(f'task session_id:{session_id} status:{response["status"]}')
         time.sleep(1)
         if response["status"] != "NEW":
             break
     log_type = kwargs.get("log_type") if not kwargs.get("log_type") else "stdout"
-    response = client.task.get_log(
-        config=config, sessionId=session_id, logType=log_type
-    )
+    response = client.get_log(sessionId=session_id, logType=log_type)
     if response["status"]:
-        response = client.task.query_status(session_id=session_id)
+        response = client.query_status()
     prettify(response)
 
 
@@ -99,7 +97,8 @@ def submit(ctx, **kwargs):
 @click.pass_context
 def query(ctx, **kwargs):
     client: EggrollClient = ctx.obj["client"]
-    response = client.task.query_status(session_id=kwargs.get("session_id"))
+    client._session_id = kwargs.get("session_id")
+    response = client.query_status()
     prettify(response)
 
 
@@ -108,7 +107,8 @@ def query(ctx, **kwargs):
 @click.pass_context
 def kill(ctx, **kwargs):
     client: EggrollClient = ctx.obj["client"]
-    response = client.task.kill_job(session_id=kwargs.get("session_id"))
+    client._session_id = kwargs.get("session_id")
+    response = client.kill()
     prettify(response)
 
 
@@ -117,7 +117,8 @@ def kill(ctx, **kwargs):
 @click.pass_context
 def stop(ctx, **kwargs):
     client: EggrollClient = ctx.obj["client"]
-    response = client.task.stop_job(session_id=kwargs.get("session_id"))
+    client._session_id = kwargs.get("session_id")
+    response = client.stop()
     prettify(response)
 
 
@@ -136,15 +137,15 @@ def stop(ctx, **kwargs):
 def download(ctx, **kwargs):
     client: EggrollClient = ctx.obj["client"]
     download_dir = kwargs.get("download_dir")
-    status = client.task.query_status(session_id=kwargs.get("session_id"))
-    if status["message"]:
-        return prettify(status)
+    client._session_id = kwargs.get("session_id")
+    response = client.query_status()
+    if response.get("message", None):
+        return prettify(response)
 
     os.makedirs(download_dir, exist_ok=True)
     with tempfile.TemporaryDirectory() as temp_dir:
         rank_to_path = lambda rank: f"{temp_dir}/{rank}.zip"
-        client.task.download_job_to(
-            session_id=kwargs.get("session_id"),
+        client.download_job_to(
             rank_to_path=rank_to_path,
             content_type=kwargs.get("content_type"),
             ranks=kwargs.get("ranks", None),
@@ -176,8 +177,8 @@ def download(ctx, **kwargs):
 def get_log(ctx, **kwargs):
     config = Config().load_default()
     client: EggrollClient = ctx.obj["client"]
-    response = client.task.get_log(
-        config=config,
+    client._session_id = kwargs.get("session_id")
+    response = client.get_log(
         sessionId=kwargs.get("session_id"),
         rank=kwargs.get("rank"),
         path=kwargs.get("path"),

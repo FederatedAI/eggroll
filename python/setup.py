@@ -22,7 +22,7 @@ package_data = {"": ["*"]}
 install_requires = [
     "click",
     "omegaconf",
-    "requests<3.0",
+    "requests",
     "grpcio",
     "protobuf",
     "ruamel.yaml",
@@ -39,7 +39,7 @@ extras_require = {
 }
 
 
-entry_points = {"console_scripts": ["eggroll = eggroll.client.cli.eggroll:eggroll_cli"]}
+entry_points = {"console_scripts": ["eggroll = eggroll.cli.eggroll:eggroll_cli"]}
 
 setup_kwargs = {
     "name": "eggroll",
