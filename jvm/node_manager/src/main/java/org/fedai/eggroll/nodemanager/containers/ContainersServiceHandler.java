@@ -229,15 +229,15 @@ public class ContainersServiceHandler {
     }
 
     private Path getContainerModelsDir(String sessionId, long rank) {
-        return getContainerWorkspace(sessionId, rank).resolve(Dict.MODELS);
+        return getContainerWorkspace(sessionId, rank).resolve(Dict.MODELS).toAbsolutePath();
     }
 
     private Path getContainerLogsDir(String sessionId, long rank) {
-        return getContainerWorkspace(sessionId, rank).resolve(Dict.LOGS);
+        return getContainerWorkspace(sessionId, rank).resolve(Dict.LOGS).toAbsolutePath();
     }
 
     private Path getContainerResultDir(String sessionId, long rank) {
-        return getContainerWorkspace(sessionId, rank).resolve(Dict.RESULT);
+        return getContainerWorkspace(sessionId, rank).resolve(Dict.RESULT).toAbsolutePath();
     }
 
 
