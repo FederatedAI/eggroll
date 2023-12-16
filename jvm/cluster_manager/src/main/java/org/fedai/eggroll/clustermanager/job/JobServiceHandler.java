@@ -573,7 +573,8 @@ public class JobServiceHandler {
                 for (SessionRanksTemp rank : sessionRanks) {
                     sessionRankList.add(Arrays.asList(rank.getServerNodeId(),rank.getContainerId(),rank.getGlobalRank(),rank.getLocalRank(),rank.getIndex()));
                 }
-                contentMap.put(serverNodeInDb.getServerNodeId().toString(), sessionRankList);
+
+                contentMap.put(String.join(":",serverNodeInDb.getHost(),serverNodeInDb.getPort().toString()), sessionRankList);
                 ErProcessor erProcessor = new ErProcessor();
                 erProcessor.setSessionId(sessionId);
                 erProcessor.setServerNodeId(serverNodeId);
