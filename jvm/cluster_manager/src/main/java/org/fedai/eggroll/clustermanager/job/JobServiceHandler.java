@@ -601,9 +601,9 @@ public class JobServiceHandler {
         }
 
         newErSessionMeta.getProcessors().forEach(p -> {
-            if (contentMap.containsKey(p.getServerNodeId())) {
-                contentMap.put(p.getTransferEndpoint().toString(), contentMap.get(p.getServerNodeId()));
-                contentMap.remove(p.getServerNodeId());
+            if (contentMap.containsKey(p.getServerNodeId().toString())) {
+                contentMap.put(p.getTransferEndpoint().toString(), contentMap.get(p.getServerNodeId().toString()));
+                contentMap.remove(p.getServerNodeId().toString());
             } else {
                 log.info("download cannot found node {}", p.getServerNodeId());
             }
