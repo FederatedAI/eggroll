@@ -152,6 +152,8 @@ public class Dict {
 
     public static final String MODELS = "models";
     public static final String LOGS = "logs";
+
+    public static final String RESULT = "result";
     public static final String ZIP = "zip";
     public static final String IP = "ip";
     public static final String PORT = "port";
