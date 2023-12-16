@@ -76,6 +76,9 @@ public class DeepspeedContainerBuildConfig {
         for (Map.Entry<String, String> entry : deepspeedContainerConfig.getEggrollCustomizedEnvironments().entrySet()) {
             mutableEnv.put(entry.getKey(), entry.getValue());
         }
+        for (Map.Entry<String, String> entry : deepspeedContainerConfig.getEggrollContainerResourceEnvironments().entrySet()) {
+            mutableEnv.put(entry.getKey(), entry.getValue());
+        }
         mutableEnv.putAll(containerEnvs);
 
         String eggrollHome = System.getenv("EGGROLL_HOME");
