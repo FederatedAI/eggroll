@@ -175,7 +175,7 @@ def download(ctx, **kwargs):
 )
 @click.pass_context
 def get_log(ctx, **kwargs):
-    # config = Config().load_default()
+    config = Config().load_default()
     client: EggrollClient = ctx.obj["client"]
     client._session_id = kwargs.get("session_id")
     response = client.get_log(
