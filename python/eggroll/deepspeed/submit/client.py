@@ -37,8 +37,8 @@ class ContentType(enum.Enum):
             return containers_pb2.MODELS
         if self == ContentType.LOGS:
             return containers_pb2.LOGS
-        # if self == ContentType.RESULT:
-        #     return containers_pb2.RESULT
+        if self == ContentType.RESULT:
+            return containers_pb2.RESULT
         raise NotImplementedError(f"{self}")
 
 
