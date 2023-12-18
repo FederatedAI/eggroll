@@ -115,12 +115,15 @@ class DsDownloadSplitResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     DATA_FIELD_NUMBER: builtins.int
+    RANK_FIELD_NUMBER: builtins.int
     data: builtins.bytes
+    rank: builtins.int
     def __init__(
         self,
         *,
         data: builtins.bytes = ...,
+        rank: builtins.int = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["data", b"data"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["data", b"data", "rank", b"rank"]) -> None: ...
 
 global___DsDownloadSplitResponse = DsDownloadSplitResponse
