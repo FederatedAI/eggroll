@@ -21,6 +21,7 @@ import click
 import time
 
 from eggroll.deepspeed.sdk_client import EggrollClient
+from eggroll.deepspeed.submit.client import ContentType
 from ..utils.cli_utils import prettify, unzip
 from eggroll.config import Config
 
@@ -147,7 +148,7 @@ def download(ctx, **kwargs):
         rank_to_path = lambda rank: f"{temp_dir}/{rank}.zip"
         client.download_job_to(
             rank_to_path=rank_to_path,
-            content_type=kwargs.get("content_type"),
+            content_type=ContentType(kwargs.get("content_type")),
             ranks=kwargs.get("ranks", None),
         )
         for file in os.listdir(temp_dir):
