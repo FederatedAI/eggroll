@@ -1,4 +1,4 @@
-package com.webank.eggroll.webapp.utils;
+package org.fedai.eggroll.webapp.utils;
 
 import lombok.Data;
 import org.apache.commons.codec.binary.Base64;

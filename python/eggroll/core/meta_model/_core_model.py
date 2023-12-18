@@ -216,6 +216,18 @@ class ErProcessor(RpcMessage):
         self._tag = tag
 
     @property
+    def name(self):
+        return self._name
+
+    @property
+    def pid(self):
+        return self._pid
+
+    @property
+    def id(self):
+        return self._id
+
+    @property
     def processor_type(self):
         return self._processor_type
 
@@ -672,6 +684,10 @@ class ErStore(RpcMessage):
         self._store_locator = store_locator
         self._partitions = partitions
         self._options = options
+
+    @property
+    def options(self):
+        return self._options
 
     def create_partition(self, i):
         processor = self.get_partition(i).processor

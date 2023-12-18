@@ -1,10 +1,13 @@
 import configparser
+import logging
 import pprint
 import typing
 
 import omegaconf
 
 from eggroll.config.defaults import DefaultConfig
+
+logger = logging.getLogger(__name__)
 
 
 class Config(object):
@@ -27,16 +30,16 @@ class Config(object):
     def load_properties(self, config_file):
         c = configparser.ConfigParser()
         c.read(config_file)
-        dot_list = [f"{k}={v}" for k, v in c.items("eggroll") if v != ""]
-        dot_list_config = omegaconf.OmegaConf.from_dotlist(dot_list)
-        self.config = omegaconf.OmegaConf.merge(self.config, dot_list_config)
+        for k, v in c.items("eggroll"):
+            if v == "":
+                continue
+            ConfigUtils.maybe_update(self.config, k, v)
         self.loaded_history.append(f"load_properties: {config_file}")
         return self
 
     def load_options(self, options: dict):
-        dot_list = [f"{k}={v}" for k, v in options.items()]
-        dot_list_config = omegaconf.OmegaConf.from_dotlist(dot_list)
-        self.config = omegaconf.OmegaConf.merge(self.config, dot_list_config)
+        for k, v in options.items():
+            ConfigUtils.maybe_update(self.config, k, v)
         self.loaded_history.append(f"load_options: {options}")
         return self
 
@@ -46,10 +49,10 @@ class Config(object):
         accept_envs = []
         for k, v in os.environ.items():
             if k.lower().startswith("eggroll."):
+                if v == "":
+                    continue
+                ConfigUtils.maybe_update(self.config, k.lower(), v.lower())
                 accept_envs.append(f"{k.lower()}={v.lower()}")
-
-        env_config = omegaconf.OmegaConf.from_dotlist(accept_envs)
-        self.config = omegaconf.OmegaConf.merge(self.config, env_config)
         self.loaded_history.append(f"load_env:\n      " + "\n      ".join(accept_envs))
         return self
 
@@ -91,6 +94,13 @@ class ConfigUtils:
             config[key.key] = value
         else:
             raise ValueError(f"config type={type(config)} not supported")
+
+    @staticmethod
+    def maybe_update(c: omegaconf.Container, k, v):
+        try:
+            omegaconf.OmegaConf.update(c, k, v)
+        except omegaconf.errors.OmegaConfBaseException as e:
+            logger.warning(f"update `{k}` to `{v}` failed, skip:\n{e}")
 
     @staticmethod
     def get_option(config: Config, option: dict, key: typing.Any):

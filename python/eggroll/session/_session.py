@@ -12,7 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import logging
-import os
+import typing
 from concurrent.futures import wait, FIRST_EXCEPTION
 
 from eggroll.config import Config, ConfigKey, ConfigUtils
@@ -20,8 +20,7 @@ from eggroll.core.command import command_utils
 from eggroll.core.command.command_client import ClusterManagerClient
 from eggroll.core.command.command_status import SessionStatus
 from eggroll.core.datastructure.threadpool import ErThreadUnpooledExecutor
-from eggroll.core.meta_model import ErSessionMeta, ErPartition, ErStore
-
+from eggroll.core.meta_model import ErSessionMeta, ErPartition, ErStore, ErProcessor
 from ._utils import get_stack, time_now, get_self_ip
 
 L = logging.getLogger(__name__)
@@ -71,12 +70,9 @@ class ErSession(object):
         if options is None:
             options = {}
         if not session_id:
-            self.__session_id = f"er_session_py_{time_now()}_{get_self_ip()}"
+            self.__session_id = f"session_{get_self_ip()}_{time_now()}_py"
         else:
             self.__session_id = session_id
-
-        if "EGGROLL_DEBUG" not in os.environ:
-            os.environ["EGGROLL_DEBUG"] = "0"
 
         self.__options = options.copy()
         ConfigUtils.set(self.__options, ConfigKey.eggroll.session.id, self.__session_id)
@@ -128,7 +124,7 @@ class ErSession(object):
             or self.__session_meta.status == SessionStatus.KILLED
         )
         self._rolls = list()
-        self._eggs = dict()
+        self._eggs: typing.Dict[int, typing.List[ErProcessor]] = dict()
 
         for processor in self.__session_meta.processors:
             if processor.is_egg_pair():
@@ -142,6 +138,38 @@ class ErSession(object):
                 raise ValueError(
                     f"processor type {processor.processor_type} not supported in roll pair"
                 )
+
+    def info(self, level=0):
+        if level == 0:
+            return f"ErSession<session_id={self.__session_id}, total_processors={len(self.__processors)}>"
+        return {
+            "session_id": self.__session_id,
+            "processors": {
+                "total_eggs": len(self.__processors),
+                "details": {
+                    node_id: {
+                        "num_egg_in_node": len(egg_list),
+                        "details": [
+                            {
+                                "id": egg.id,
+                                "pid": egg.pid,
+                                "server_node_id": egg.server_node_id,
+                                "command_endpoint": {
+                                    "host": egg.command_endpoint.host,
+                                    "port": egg.command_endpoint.port,
+                                },
+                                "transfer_endpoint": {
+                                    "host": egg.transfer_endpoint.host,
+                                    "port": egg.transfer_endpoint.port,
+                                },
+                            }
+                            for egg in egg_list
+                        ],
+                    }
+                    for node_id, egg_list in self._eggs.items()
+                },
+            },
+        }
 
     @property
     def eggs(self):
@@ -168,11 +196,11 @@ class ErSession(object):
         return rank_in_node
 
     def route_to_egg(self, partition: ErPartition):
-        server_node_id = partition.processor._server_node_id
-        rank_in_node = partition._rank_in_node
-        if partition._rank_in_node is None or rank_in_node < 0:
+        server_node_id = partition.processor.server_node_id
+        rank_in_node = partition.rank_in_node
+        if partition.rank_in_node is None or rank_in_node < 0:
             rank_in_node = self.get_rank_in_node(
-                partition_id=partition._id, server_node_id=server_node_id
+                partition_id=partition.id, server_node_id=server_node_id
             )
 
         result = self.route_to_egg_by_rank(server_node_id, rank_in_node)
@@ -181,7 +209,7 @@ class ErSession(object):
 
     def route_to_egg_by_rank(self, server_node_id, rank_in_node):
         result = self._eggs[server_node_id][rank_in_node]
-        if not result._command_endpoint._host or result._command_endpoint._port <= 0:
+        if not result.command_endpoint.host or result.command_endpoint.port <= 0:
             raise ValueError(
                 f"error routing to egg: {result} in session: {self.__session_id}"
             )
@@ -190,9 +218,9 @@ class ErSession(object):
 
     def populate_processor(self, store: ErStore):
         populated_partitions = list()
-        for p in store._partitions:
-            server_node_id = p._processor._server_node_id
-            rank_in_node = self.get_rank_in_node(p.id, p.processor._server_node_id)
+        for p in store.partitions:
+            server_node_id = p._processor.server_node_id
+            rank_in_node = self.get_rank_in_node(p.id, p.processor.server_node_id)
             pp = ErPartition(
                 id=p.id,
                 store_locator=p.store_locator,
@@ -203,7 +231,7 @@ class ErSession(object):
         return ErStore(
             store_locator=store.store_locator,
             partitions=populated_partitions,
-            options=store._options,
+            options=store.options,
         )
 
     def get_or_create_store(self, store: ErStore):
@@ -212,20 +240,28 @@ class ErSession(object):
 
     def stop(self):
         L.info(f"stopping session (gracefully): {self.__session_id}")
-        L.debug(f"stopping session (gracefully), details: {self.__session_meta}")
-        L.debug(f"stopping (gracefully) for {self.__session_id} from: {get_stack()}")
+        if L.isEnabledFor(logging.DEBUG):
+            L.debug(
+                f"stopping session (gracefully) from: {get_stack()}. \ndetails: {self.__session_meta}"
+            )
         self.run_exit_tasks()
         self.stopped = True
         return self._cluster_manager_client.stop_session(self.__session_meta)
 
     def kill(self):
         L.info(f"killing session (forcefully): {self.__session_id}")
-        L.debug(f"killing session (forcefully), details: {self.__session_meta}")
-        L.debug(f"killing (forcefully) for {self.__session_id} from: {get_stack()}")
+        if L.isEnabledFor(logging.DEBUG):
+            L.debug(
+                f"killing session (forcefully) from: {get_stack()}. \ndetails: {self.__session_meta}"
+            )
         self.stopped = True
 
         future = self.executor.submit(self.stop)
-        done = wait([future], timeout=1, return_when=FIRST_EXCEPTION).done
+        done = wait(
+            [future],
+            timeout=self.config.eggroll.session.kill.gracefully_wait.sec,
+            return_when=FIRST_EXCEPTION,
+        ).done
         if done:
             L.info(f"stopped successfully before kill session: {self.__session_id}")
         else:
@@ -239,7 +275,6 @@ class ErSession(object):
     def get_session_meta(self):
         return self.__session_meta
 
-    # todo:1: add_exit_task? not necessarily a cleanup semantic
     def add_exit_task(self, func):
         self.__exit_tasks.append(func)
 

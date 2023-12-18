@@ -144,7 +144,7 @@ class TransferPair(object):
                         max_workers=_max_workers,
                         thread_name_prefix="transferpair_pool",
                     )
-                    L.info(f"transfer pair _executor_pool max_workers={_max_workers}")
+                    L.debug(f"transfer pair _executor_pool max_workers={_max_workers}")
 
     def __generate_tag(self, partition_id):
         return job_util.generate_task_id(

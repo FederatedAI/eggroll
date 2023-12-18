@@ -1,7 +1,7 @@
 import logging
 import os
 import queue
-from threading import Thread
+from threading import Thread, Lock
 
 from eggroll.computing.tasks.store import StoreTypes
 from eggroll.core.datastructure import create_simple_queue
@@ -9,133 +9,125 @@ from eggroll.core.meta_model import ErStore
 
 L = logging.getLogger(__name__)
 
-
-class WrappedDict:
-    def __init__(self, d):
-        self.d = d
-
-    def __getitem__(self, key):
-        return self.d[key]
-
-    def __setitem__(self, key, value):
-        self.d[key] = value
-
-    def __contains__(self, key):
-        return key in self.d
-
-    def get(self, key, default=None):
-        return self.d.get(key, default)
-
-    def items(self):
-        return self.d.items()
-
-    def pop(self, key, default=None):
-        return self.d.pop(key, default)
-
-    def __len__(self):
-        return len(self.d)
-
-    def __iter__(self):
-        return iter(self.d)
-
-    def __str__(self):
-        return str(self.d)
-
-    def __repr__(self):
-        return repr(self.d)
-
-    def __eq__(self, other):
-        return self.d == other
+ReferenceCountLock = Lock()
 
 
 class GcRecorder(object):
     def __init__(self, rpc):
-        super(GcRecorder, self).__init__()
-        self.should_stop = False
-        self.record_rpc = rpc
-        self._gc_recorder = dict()
-        self.leveldb_recorder = set()
-        self.gc_queue = create_simple_queue()
+        self._record_rpc = rpc
+        self._gc_recorder = {}
+        self._gc_worker_queue = create_simple_queue()
+        self._runtime_gc_stopped = False
         if (
             "EGGROLL_GC_DISABLE" in os.environ
             and os.environ["EGGROLL_GC_DISABLE"] == "1"
         ):
-            L.info(
+            L.warning(
                 "global GC disabled, "
                 "will not execute gc but only record temporary RollPair during the whole session"
             )
         else:
-            L.info("global GC enabled. starting GC thread")
-            self.gc_thread = Thread(target=self.run, daemon=True)
+            L.debug("global GC enabled. starting GC thread")
+            self.gc_thread = Thread(target=self._runtime_gc_worker, daemon=True)
             self.gc_thread.start()
 
-    @property
-    def gc_recorder(self):
-        return WrappedDict(self._gc_recorder)
+    def runtime_gc_stop(self):
+        L.debug("stop runtime gc thread")
+        self._runtime_gc_stopped = True
 
-    def stop(self):
-        self.should_stop = True
-        L.info("GC: gc_util.stop called")
+    def _runtime_gc_worker(self):
+        """
+        Infinite loop to retrieve store represented by namespace and name
+        from gc_queue that is expected to be destroyed, and destroy it.
 
-    def run(self):
+        This method is expected to be called in a thread and won't return until
+        self.should_stop is set to True.
+        """
         if (
             "EGGROLL_GC_DISABLE" in os.environ
             and os.environ["EGGROLL_GC_DISABLE"] == "1"
         ):
-            L.info(
+            L.warning(
                 "global GC disabled, "
                 "will not execute gc but only record temporary RollPair during the whole session"
             )
             return
-        while not self.should_stop:
+        while not self._runtime_gc_stopped:
             try:
-                rp_namespace_name = self.gc_queue.get(block=True, timeout=0.5)
+                namespace_name_tuple = self._gc_worker_queue.get(
+                    block=True, timeout=0.5
+                )
             except queue.Empty:
                 continue
-            if not rp_namespace_name:
+            if not namespace_name_tuple:
                 continue
-            L.debug(f"GC thread destroying rp={rp_namespace_name}")
-            self.record_rpc.create_rp(
-                id=-1,
-                namespace=rp_namespace_name[0],
-                name=rp_namespace_name[1],
-                total_partitions=1,
+
+            if L.isEnabledFor(logging.DEBUG):
+                L.debug(
+                    f"GC thread destroying store: namespace={namespace_name_tuple[0]}, name={namespace_name_tuple[1]}"
+                )
+
+            self._record_rpc.destroy_store(
+                name=namespace_name_tuple[1],
+                namespace=namespace_name_tuple[0],
                 store_type=StoreTypes.ROLLPAIR_IN_MEMORY,
-                key_serdes_type=0,
-                value_serdes_type=0,
-                partitioner_type=0,
-                options={},
-                no_gc=True,
-            ).destroy()
+            )
+        L.info("GC thread stopped")
 
-        L.info(f"GC should_stop={self.should_stop}, stopping GC thread")
-
-    def record(self, er_store: ErStore):
-        store_type = er_store._store_locator._store_type
-        name = er_store._store_locator._name
-        namespace = er_store._store_locator._namespace
+    def increase_ref_count(self, er_store: ErStore):
+        store_type = er_store.store_locator.store_type
+        name = er_store.store_locator.name
+        namespace = er_store.store_locator.namespace
         if store_type != StoreTypes.ROLLPAIR_IN_MEMORY:
             return
         else:
-            L.debug(
-                "GC recording in memory table namespace={}, name={}".format(
-                    namespace, name
+            with ReferenceCountLock:
+                count = self._gc_recorder.get((namespace, name))
+                if count is None:
+                    count = 0
+                count += 1
+                self._gc_recorder[(namespace, name)] = count
+            if L.isEnabledFor(logging.DEBUG):
+                L.debug(
+                    f"GC increase ref count. namespace={namespace}, name={name}, count={count}"
                 )
-            )
-            count = self.gc_recorder.get((namespace, name))
-            if count is None:
-                count = 0
-            self.gc_recorder[(namespace, name)] = count + 1
-            L.debug(f"GC recorded count={len(self.gc_recorder)}")
+                L.debug(f"GC recorded count={len(self._gc_recorder)}")
 
     def decrease_ref_count(self, er_store):
-        if er_store._store_locator._store_type != StoreTypes.ROLLPAIR_IN_MEMORY:
+        if er_store.store_locator.store_type != StoreTypes.ROLLPAIR_IN_MEMORY:
             return
-        t_ns_n = (er_store._store_locator._namespace, er_store._store_locator._name)
-        ref_count = self.gc_recorder.get(t_ns_n)
-        record_count = 0 if ref_count is None or ref_count == 0 else (ref_count - 1)
-        self.gc_recorder[t_ns_n] = record_count
-        if record_count == 0 and t_ns_n in self.gc_recorder:
-            L.debug(f"GC put in queue. namespace={t_ns_n[0]}, name={t_ns_n[1]}")
-            self.gc_queue.put(t_ns_n)
-            self.gc_recorder.pop(t_ns_n)
+        name = er_store.store_locator.name
+        namespace = er_store.store_locator.namespace
+        with ReferenceCountLock:
+            ref_count = self._gc_recorder.get((namespace, name))
+            if ref_count is None:
+                ref_count = 0
+            else:
+                ref_count -= 1
+            self._gc_recorder[(namespace, name)] = ref_count
+            if L.isEnabledFor(logging.DEBUG):
+                L.debug(
+                    f"GC decrease ref count. namespace={namespace}, name={name}, count={ref_count}"
+                )
+            if ref_count == 0:
+                self._gc_worker_queue.put((namespace, name))
+                self._gc_recorder.pop((namespace, name))
+
+    def flush(self):
+        # stop gc thread
+        self.runtime_gc_stop()
+
+        if self._gc_recorder is None or len(self._gc_recorder) == 0:
+            return
+
+        for (namespace, name), v in dict(self._gc_recorder.items()).items():
+            try:
+                self._record_rpc.destroy_store(
+                    name=name,
+                    namespace=namespace,
+                    store_type=StoreTypes.ROLLPAIR_IN_MEMORY,
+                )
+            except Exception as e:
+                raise RuntimeError(
+                    f"fail to destroy store with name={name}, namespace={namespace}"
+                ) from e
