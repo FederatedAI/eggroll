@@ -46,9 +46,6 @@ public class MetaInfo {
     @Config(confKey = "eggroll.security.encrypt.private_key")
     public static String ENCRYPT_PRIVATE_KEY = "";
 
-    @Config(confKey = "eggroll.security.encrypt.public_key")
-    public static String ENCRYPT_PUBLIC_KEY = "";
-
     @Config(confKey = "eggroll.security.encrypt.enable")
     public static String ENCRYPT_ENABLE = "false";
 

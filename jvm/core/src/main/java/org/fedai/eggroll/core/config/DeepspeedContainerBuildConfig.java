@@ -57,7 +57,6 @@ public class DeepspeedContainerBuildConfig {
         this.workingDir = containerWorkspace.toAbsolutePath();
 
         Map<String, byte[]> updatedFiles = new HashMap<>(files);
-        updatedFiles.put(scriptPath, runScript);
         this.workingDirectoryPreparer = new WorkingDirectoryPreparer();
         this.workingDirectoryPreparer.setFiles(updatedFiles);
         this.workingDirectoryPreparer.setZippedFiles(zippedFiles);
@@ -75,6 +74,9 @@ public class DeepspeedContainerBuildConfig {
             mutableEnv.put(entry.getKey(), entry.getValue());
         }
         for (Map.Entry<String, String> entry : deepspeedContainerConfig.getEggrollCustomizedEnvironments().entrySet()) {
+            mutableEnv.put(entry.getKey(), entry.getValue());
+        }
+        for (Map.Entry<String, String> entry : deepspeedContainerConfig.getEggrollContainerResourceEnvironments().entrySet()) {
             mutableEnv.put(entry.getKey(), entry.getValue());
         }
         mutableEnv.putAll(containerEnvs);
@@ -97,5 +99,6 @@ public class DeepspeedContainerBuildConfig {
                 "main(\"%s\")\n" +
                 "\n",this.options.get(Dict.DEEPSPEED_SCRIPT_PATH)).getBytes();
         this.scriptPath = "_boost.py";
+        updatedFiles.put(scriptPath, runScript);
     }
 }

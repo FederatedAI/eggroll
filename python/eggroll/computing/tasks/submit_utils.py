@@ -27,7 +27,7 @@ def _process_key_request(
 ) -> T:
     partition_id = partitioner(k, rp.num_partitions)
     partition = rp.get_store().get_partition(partition_id)
-    job_id = generate_job_id(rp.session_id, job_name)
+    job_id = generate_job_id(session_id=rp.session_id, tag=job_name)
     task = ErTask(
         id=generate_task_id(job_id, partition_id),
         name=job_name,
