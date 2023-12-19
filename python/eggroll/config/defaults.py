@@ -408,11 +408,8 @@ class DefaultConfig:
         class ContainerConfig:
             @dataclass
             class PythonConfig:
-                @dataclass
-                class ExecConfig:
-                    path: str = MISSING
+                exec: str = MISSING
 
-                exec: ExecConfig = ExecConfig()
             @dataclass
             class DeepspeedConfig:
                 @dataclass
