@@ -17,12 +17,12 @@ class EggrollClient(DeepspeedJob):
     def query_status(self):
         result = super().query_status()
         if not result.status:
-            return {"code": 0, "message": f"session_id:{self._session_id} is not exists"}
+            return {"code": 110, "message": f"session_id:{self._session_id} is not exists"}
         return {"status": result.status}
 
     def execute_action(self, action):
         result = self.query_status()
-        if not result.get("status"):
+        if result.get("code"):
             return result
         getattr(super(), action)()
         result = self.query_status()
@@ -73,7 +73,7 @@ class EggrollClient(DeepspeedJob):
     def get_log(self, sessionId: str, rank: str = None, path: str = None, startLine: int = None,
                 logType: str = None):
         response = self.query_status()
-        if response.get('code'):
+        if response.get("code"):
             return response
         kwargs = locals()
         params = filter_invalid_params(**kwargs)
