@@ -237,7 +237,7 @@ class DeepspeedJob:
                     compress_level=compress_level,
                     compress_method=compress_method,
                     ranks=ranks,
-                    content_type=content_type,
+                    content_type=content_type.to_proto(),
                     session_id=self.session_id,
                 )
                 response = eggpair_client.do_download_stream(request)
