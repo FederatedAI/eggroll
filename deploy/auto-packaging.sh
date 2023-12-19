@@ -25,15 +25,15 @@ cd ..
 if [[ ! -d "lib" ]]; then
     mkdir lib
 fi
-rm -r lib/*.jar
-cp -r jvm/core/target/core-${version}.jar lib
-cp -r jvm/core/target/lib/* ./lib
-cp -r jvm/cluster_manager/target/cluster_manager-${version}.jar lib
-cp -r jvm/cluster_manager/target/lib/* lib
-cp -r jvm/node_manager/target/node_manager-${version}.jar lib
-cp -r jvm/node_manager/target/lib/* lib
-cp -r jvm/cluster_dashboard/target/cluster_dashboard-${version}.jar lib
-cp -r jvm/cluster_dashboard/target/lib/* lib
+rm lib/*.jar
+cp  jvm/core/target/core-${version}.jar lib
+cp  jvm/core/target/lib/* ./lib
+cp  jvm/cluster_manager/target/cluster_manager-${version}.jar lib
+cp  jvm/cluster_manager/target/lib/* lib
+cp  jvm/node_manager/target/node_manager-${version}.jar lib
+cp  jvm/node_manager/target/lib/* lib
+cp  jvm/cluster_dashboard/target/cluster_dashboard-${version}.jar lib
+cp  jvm/cluster_dashboard/target/lib/* lib
 
-tar -czf eggroll.tar.gz lib bin conf data python deploy
+tar -czf eggroll.tar.gz lib bin conf python deploy
 cd $pwd

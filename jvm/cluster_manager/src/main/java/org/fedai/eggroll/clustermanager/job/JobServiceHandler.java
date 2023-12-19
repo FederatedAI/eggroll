@@ -596,6 +596,9 @@ public class JobServiceHandler {
 
         ErSessionMeta newErSessionMeta = clusterResourceManager.submitJodDownload(resourceApplication);
 
+        if(newErSessionMeta == null){
+            throw new ErSessionException("submitJodDownload failed ,sessionId = {}", resourceApplication.getSessionId());
+        }
         if (!SessionStatus.ACTIVE.name().equals(newErSessionMeta.getStatus())) {
             throw new ErSessionException("session status is {}", newErSessionMeta.getStatus());
         }

@@ -78,7 +78,7 @@ class EggrollClient(DeepspeedJob):
         flag = [0]
         channel = self._get_client().channel_factory
         stub = extend_pb2_grpc.ExtendTransferServerStub(
-            channel.create_channel(config=None, endpoint=self._get_client().endpoint)
+            channel.create_channel(config=self._config, endpoint=self._get_client().endpoint)
         )
         builds = self.generator_yields(build, flag)
         stream = stub.getLog(builds)
