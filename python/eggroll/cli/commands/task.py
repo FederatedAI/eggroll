@@ -140,7 +140,7 @@ def download(ctx, **kwargs):
     download_dir = kwargs.get("download_dir")
     client._session_id = kwargs.get("session_id")
     response = client.query_status()
-    if response.get("message", None):
+    if response.get("code", None):
         return prettify(response)
 
     os.makedirs(download_dir, exist_ok=True)
