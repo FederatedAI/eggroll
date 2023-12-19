@@ -130,7 +130,7 @@ def stop(ctx, **kwargs):
     type=click.INT,
     default=0,
     required=False,
-    help="ALL:0, MODELS: 1, LOGS: 2",
+    help="ALL:0, MODELS: 1, LOGS: 2, RESULT: 3",
 )
 @click.option("--download-dir", type=click.STRING, required=True, help="download dir")
 @click.option("--ranks", type=click.STRING, required=False, help="0,1,2..")
