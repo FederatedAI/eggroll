@@ -72,10 +72,10 @@ class EggrollClient(DeepspeedJob):
 
     def get_log(self, sessionId: str, rank: str = None, path: str = None, startLine: int = None,
                 logType: str = None):
+        kwargs = locals()
         response = self.query_status()
         if response.get("code"):
             return response
-        kwargs = locals()
         params = filter_invalid_params(**kwargs)
         build = extend_pb2.GetLogRequest(**params)
         flag = [0]
