@@ -130,7 +130,7 @@ def stop(ctx, **kwargs):
     type=click.INT,
     default=0,
     required=False,
-    help="ALL:0, MODELS: 1, LOGS: 2",
+    help="ALL:0, MODELS: 1, LOGS: 2, RESULT: 3",
 )
 @click.option("--download-dir", type=click.STRING, required=True, help="download dir")
 @click.option("--ranks", type=click.STRING, required=False, help="0,1,2..")
@@ -140,7 +140,7 @@ def download(ctx, **kwargs):
     download_dir = kwargs.get("download_dir")
     client._session_id = kwargs.get("session_id")
     response = client.query_status()
-    if response.get("message", None):
+    if response.get("code", None):
         return prettify(response)
 
     os.makedirs(download_dir, exist_ok=True)
