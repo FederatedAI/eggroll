@@ -63,7 +63,7 @@ print_info "EGGROLL_HOME=${EGGROLL_HOME}"
 
 eval action=\$$#
 start_mode=1
-modules=(clustermanager nodemanager dashboard)
+modules=(nodemanager clustermanager  dashboard)
 
 if [ $action = starting ];then
 	action=start
