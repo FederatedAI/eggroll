@@ -88,7 +88,7 @@ def submit(ctx, **kwargs):
             break
     log_type = kwargs.get("log_type") if not kwargs.get("log_type") else "stdout"
     response = client.get_log(sessionId=session_id, logType=log_type)
-    if response["status"] != 'faild':
+    if response["status"] != 'failed':
         response = client.query_status()
     prettify(response)
 
