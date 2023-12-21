@@ -174,8 +174,33 @@ sh bin/eggroll.sh nodemanager stop
 
 ```
 
-###常见问题
+##5 常见问题
+###5.1任务启动后快速失败
+####5.1.1服务不可用类
+#####关键字：cluster is not ready,waitting next try | no healthy node
+![](images/no_healthy_node.png)
+问题原因:没有存活的nodemanager节点
+解决方案：检查nodemanager服务是否正常启动或者启动之后注册的clustermanager的ip和port是否正确
 
+#####关键字：list index out of range
+![](images/node_loss.png)
+问题原因：所要查询的节点不再存活节点List中
+解决方案：检查nodemanager服务是否正常启动或者启动之后注册的clustermanager的ip和port是否正确
 
+####5.1.2数据部分缺失
+#####关键字：'NoneType' object has no attribute '_store_locator'
+![](images/data_partition_missing.png)
+问题原因：使用的数据所在的nodemanager数据被清理掉
+解决方案：重新上传该数据进行覆盖
 
+###5.2任务运行一段时间后失败
+####5.2.1
+#####关键字：RPC CANCELLED
+可能原因:可能是服务器资源不足，导致部分进程在任务运行过程中被杀死
 
+###5.3数据上传失败
+####5.3.1 部分数据存储节点已下线
+#####关键字：store node xx has been lost
+![](images/data_node_loss.png)
+问题原因：使用的数据所在的nodemanager已下线
+解决方案：更换数据名称后重新上传
