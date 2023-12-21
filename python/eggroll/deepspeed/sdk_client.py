@@ -51,10 +51,10 @@ class EggrollClient(DeepspeedJob):
                     for log_info in res.datas:
                         print(log_info)
                 elif str(res.code) == "110":
-                    ret = {"code": res.code, "message": f"file is not exists sessionId: {self._session_id}"}
+                    ret = {"code": res.code, "status": "faild", "message": f"file is not exists sessionId: {self._session_id}"}
                     result_queue.put(ret)
                 else:
-                    ret = {"code": res.code, "message": f"info error"}
+                    ret = {"code": res.code, "status": "faild", "message": f"info error"}
                     result_queue.put(ret)
         except Exception as e:
             ret = self.query_status()
