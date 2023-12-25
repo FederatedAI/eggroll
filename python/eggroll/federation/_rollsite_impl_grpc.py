@@ -419,7 +419,7 @@ class RollSiteGrpc(RollSiteImplBase):
                 header_response is None
                 or not isinstance(header_response[0], ErRollSiteHeader)
             ):
-                header_response = self.ctx.rp_ctx.create_rp(
+                rp = self.ctx.rp_ctx.create_rp(
                     id=-1,
                     name=STATUS_TABLE_NAME,
                     namespace=rp_namespace,
@@ -429,7 +429,9 @@ class RollSiteGrpc(RollSiteImplBase):
                     value_serdes_type=0,
                     partitioner_type=0,
                     options={},
-                ).pull_get_header(
+                    gc_enabled=False,
+                )
+                header_response = rp.pull_get_header(
                     tag=transfer_tag_prefix + "0", timeout=self.pull_header_timeout
                 )
 
@@ -456,17 +458,18 @@ class RollSiteGrpc(RollSiteImplBase):
             pull_status = {}
             for cur_retry in range(self.pull_max_retry):
                 pull_attempts = cur_retry
-                store = self.ctx.rp_ctx.load_rp(
+                rp = self.ctx.rp_ctx.load_rp(
                     name=rp_name,
                     namespace=rp_namespace,
-                    store_type=StoreTypes.ROLLPAIR_LMDB,
+                    store_type=StoreTypes.ROLLPAIR_IN_MEMORY,
+                    gc_enabled=False,
                 )
                 (
                     pull_status,
                     all_finished,
                     total_batches,
                     cur_pairs,
-                ) = store.pull_get_partition_status(
+                ) = rp.pull_get_partition_status(
                     tag=transfer_tag_prefix, timeout=self.pull_interval
                 )
 
@@ -494,7 +497,8 @@ class RollSiteGrpc(RollSiteImplBase):
                     rp = self.ctx.rp_ctx.load_rp(
                         name=rp_name,
                         namespace=rp_namespace,
-                        store_type=StoreTypes.ROLLPAIR_LMDB,
+                        store_type=StoreTypes.ROLLPAIR_IN_MEMORY,
+                        gc_enabled=False,
                     )
 
                     clear_future = self._receive_executor_pool.submit(
@@ -517,6 +521,7 @@ class RollSiteGrpc(RollSiteImplBase):
                         )
                     else:
                         result = rp
+                        rp.register_gc()
 
                         if L.isEnabledFor(logging.DEBUG):
                             L.debug(

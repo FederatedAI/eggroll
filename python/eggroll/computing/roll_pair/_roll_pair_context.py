@@ -118,6 +118,7 @@ class RollPairContext(object):
         value_serdes_type: int,
         partitioner_type: int,
         options: dict,
+        gc_enabled: bool = None,
     ):
         store = self.create_store(
             id=id,
@@ -130,7 +131,7 @@ class RollPairContext(object):
             partitioner_type=partitioner_type,
             options=options,
         )
-        return RollPair(store, self)
+        return RollPair(store, self, gc_enabled=gc_enabled)
 
     def create_store(
         self,
@@ -184,13 +185,14 @@ class RollPairContext(object):
         name: str,
         namespace: str,
         store_type: str,
+        gc_enabled: bool = None,
     ):
         store = self.load_store(
             name=name,
             namespace=namespace,
             store_type=store_type,
         )
-        return RollPair(store, self)
+        return RollPair(store, self, gc_enabled=gc_enabled)
 
     def parallelize(
         self,
