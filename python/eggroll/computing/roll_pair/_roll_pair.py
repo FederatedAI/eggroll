@@ -45,14 +45,20 @@ class RollPair(object):
         self._session_id = self.ctx.session_id
         self._command_client = CommandClient(config=self.ctx.session.config)
 
-        # increase gc count only for in-memory store
-        if self._store.store_locator.store_type == StoreTypes.ROLLPAIR_IN_MEMORY:
-            rp_ctx.increase_store_gc_count(er_store)
-
-        self._is_destroyed = False
         if gc_enabled is None:
             gc_enabled = rp_ctx.is_rpc_gc_enabled
         self._is_gc_enabled = gc_enabled
+        if self._store.store_locator.store_type != StoreTypes.ROLLPAIR_IN_MEMORY:
+            self._is_gc_enabled = False
+
+        if self._is_gc_enabled:
+            rp_ctx.increase_store_gc_count(er_store)
+
+        self._is_destroyed = False
+
+    def register_gc(self):
+        self._is_gc_enabled = True
+        self.ctx.increase_store_gc_count(self._store)
 
     @property
     def is_destroyed(self):
