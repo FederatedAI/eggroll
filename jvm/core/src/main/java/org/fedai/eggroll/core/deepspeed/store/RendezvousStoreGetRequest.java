@@ -20,7 +20,6 @@ public class RendezvousStoreGetRequest implements RpcMessage {
     @Override
     public byte[] serialize() {
 
-        log.info("=>>>>>>>>>>>> serialize's timeout = {} ",timeout);
         Deepspeed.StoreGetRequest.Builder builder = Deepspeed.StoreGetRequest.newBuilder()
                 .setPrefix(this.getPrefix())
                 .setKey(ByteString.copyFrom(JsonUtil.convertToByteArray(this.getKey())))
@@ -38,7 +37,6 @@ public class RendezvousStoreGetRequest implements RpcMessage {
             this.prefix = proto.getPrefix();
             this.key = proto.getKey().toByteArray();
             this.timeout = (int)(proto.getTimeout().getSeconds()*1000 + proto.getTimeout().getNanos()/1000000);
-            log.info("=>>>>>>>>>>>> deserialize's timeout = {} ",this.timeout);
         } catch (InvalidProtocolBufferException e) {
             e.printStackTrace();
         }

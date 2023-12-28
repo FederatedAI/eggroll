@@ -214,7 +214,7 @@ public class MetaInfo {
     @Config(confKey = "eggroll.resourcemanager.clustermanager.jdbc.password")
     public static String CONFKEY_CLUSTER_MANAGER_JDBC_PASSWORD;
     @Config(confKey = "eggroll.resourcemanager.clustermanager.jdbc.connection.timeout")
-    public static Integer CONFKEY_CLUSTER_MANAGER_JDBC_CONNECTION_CONNECTION = 10000;
+    public static Integer CONFKEY_CLUSTER_MANAGER_JDBC_CONNECTION_CONNECTION = 30000;
     @Config(confKey = "eggroll.resourcemanager.clustermanager.jdbc.initialization.retry.time")
     public static Integer CONFKEY_CLUSTER_MANAGER_JDBC_INITIALIZATION_RETRY_TIME = 1;
     @Config(confKey = "eggroll.resourcemanager.clustermanager.jdbc.hikaricp.maxPoolSize")
