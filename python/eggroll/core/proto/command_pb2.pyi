@@ -80,19 +80,25 @@ class CommandResponse(google.protobuf.message.Message):
     ID_FIELD_NUMBER: builtins.int
     REQUEST_FIELD_NUMBER: builtins.int
     RESULTS_FIELD_NUMBER: builtins.int
+    CODE_FIELD_NUMBER: builtins.int
+    MSG_FIELD_NUMBER: builtins.int
     id: builtins.str
     @property
     def request(self) -> global___CommandRequest: ...
     @property
     def results(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.bytes]: ...
+    code: builtins.str
+    msg: builtins.str
     def __init__(
         self,
         *,
         id: builtins.str = ...,
         request: global___CommandRequest | None = ...,
         results: collections.abc.Iterable[builtins.bytes] | None = ...,
+        code: builtins.str = ...,
+        msg: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["request", b"request"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "request", b"request", "results", b"results"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["code", b"code", "id", b"id", "msg", b"msg", "request", b"request", "results", b"results"]) -> None: ...
 
 global___CommandResponse = CommandResponse

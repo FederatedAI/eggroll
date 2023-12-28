@@ -59,8 +59,8 @@ public class ProcessContainer implements ContainerTrait {
                 }
                 processBuilder.redirectOutput(logFile);
             }
-            if (stdOutFile != null) {
-                File logFile = cwd.resolve(stdOutFile).toFile();
+            if (stdErrFile != null) {
+                File logFile = cwd.resolve(stdErrFile).toFile();
                 logFile.getParentFile().mkdirs();
                 if (!logFile.exists()) {
                     logFile.createNewFile();

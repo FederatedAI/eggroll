@@ -160,6 +160,20 @@ class DeepspeedJob:
         )
         return kill_response
 
+    def stop(self):
+        status = self.query_status()
+        if not status.get("status"):
+            return status
+        stop_job_request = deepspeed_pb2.StopJobRequest(session_id=self._session_id)
+        response = self._get_client().do_sync_request(
+            stop_job_request,
+            output_type=deepspeed_pb2.StopJobResponse,
+            command_uri=JobCommands.STOP_JOB,
+        )
+        status = self.query_status()
+        response = {"session_id": response.session_id, "status": status.get("status")}
+        return response
+
     def await_finished(self, timeout: int = 0, poll_interval: int = 1):
         deadline = time.time() + timeout
         query_response = self.query_status()
@@ -200,7 +214,6 @@ class DeepspeedJob:
             command_uri=JobCommands.PREPARE_DOWNLOAD_JOB,
         )
 
-        print(prepare_download_job_response)
         download_session_id = prepare_download_job_response.session_id
         download_meta: dict = json.loads(prepare_download_job_response.content)
         # zipped_container_content = []
@@ -215,20 +228,16 @@ class DeepspeedJob:
 
             # element_data = download_meta[address]
             def inner_handle_download(address):
-                print(address)
                 element_data = download_meta[address]
-                print(element_data)
                 ranks = list(map(lambda d: d[2], element_data))
-                print(ranks)
                 indexes = list(map(lambda d: d[4], element_data))
-                print(indexes)
                 ipport = address.split(":")
                 eggpair_client = self._get_clientv2(ipport[0], int(ipport[1]))
                 request = deepspeed_download_pb2.DsDownloadRequest(
                     compress_level=compress_level,
                     compress_method=compress_method,
                     ranks=ranks,
-                    content_type=content_type.to_proto(),
+                    content_type=content_type,
                     session_id=self.session_id,
                 )
                 response = eggpair_client.do_download_stream(request)
@@ -383,6 +392,7 @@ class DeepspeedJob:
         rank: str = "0",
         start_line: int = 0,
         log_type: str = "INFO",
+        path: str = None,
         logging: object = None,
     ):
         flag = [0]
@@ -390,6 +400,7 @@ class DeepspeedJob:
             extend_pb2.GetLogRequest(
                 sessionId=self.session_id,
                 rank=rank,
+                path=path,
                 startLine=start_line,
                 logType=log_type,
             ),
