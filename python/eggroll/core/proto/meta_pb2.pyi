@@ -668,11 +668,17 @@ class NodeHeartbeat(google.protobuf.message.Message):
     NODE_FIELD_NUMBER: builtins.int
     CODE_FIELD_NUMBER: builtins.int
     MSG_FIELD_NUMBER: builtins.int
+    GPUPROCESSORS_FIELD_NUMBER: builtins.int
+    CPUPROCESSORS_FIELD_NUMBER: builtins.int
     id: builtins.int
     @property
     def node(self) -> global___ServerNode: ...
     code: builtins.str
     msg: builtins.str
+    @property
+    def gpuProcessors(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.int]: ...
+    @property
+    def cpuProcessors(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.int]: ...
     def __init__(
         self,
         *,
@@ -680,8 +686,155 @@ class NodeHeartbeat(google.protobuf.message.Message):
         node: global___ServerNode | None = ...,
         code: builtins.str = ...,
         msg: builtins.str = ...,
+        gpuProcessors: collections.abc.Iterable[builtins.int] | None = ...,
+        cpuProcessors: collections.abc.Iterable[builtins.int] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["node", b"node"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["code", b"code", "id", b"id", "msg", b"msg", "node", b"node"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["code", b"code", "cpuProcessors", b"cpuProcessors", "gpuProcessors", b"gpuProcessors", "id", b"id", "msg", b"msg", "node", b"node"]) -> None: ...
 
 global___NodeHeartbeat = NodeHeartbeat
+
+@typing_extensions.final
+class MetaInfoResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing_extensions.final
+    class MetaMapEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.str
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    METAMAP_FIELD_NUMBER: builtins.int
+    @property
+    def metaMap(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]: ...
+    def __init__(
+        self,
+        *,
+        metaMap: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["metaMap", b"metaMap"]) -> None: ...
+
+global___MetaInfoResponse = MetaInfoResponse
+
+@typing_extensions.final
+class MetaInfoRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    KEY_FIELD_NUMBER: builtins.int
+    key: builtins.str
+    def __init__(
+        self,
+        *,
+        key: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["key", b"key"]) -> None: ...
+
+global___MetaInfoRequest = MetaInfoRequest
+
+@typing_extensions.final
+class QueueViewResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    QUEUESIZE_FIELD_NUMBER: builtins.int
+    queueSize: builtins.int
+    def __init__(
+        self,
+        *,
+        queueSize: builtins.int = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["queueSize", b"queueSize"]) -> None: ...
+
+global___QueueViewResponse = QueueViewResponse
+
+@typing_extensions.final
+class QueueViewRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    KEY_FIELD_NUMBER: builtins.int
+    key: builtins.str
+    def __init__(
+        self,
+        *,
+        key: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["key", b"key"]) -> None: ...
+
+global___QueueViewRequest = QueueViewRequest
+
+@typing_extensions.final
+class CheckResourceEnoughRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    RESOURCE_TYPE_FIELD_NUMBER: builtins.int
+    REQUIRED_RESOURCE_COUNT_FIELD_NUMBER: builtins.int
+    CHECK_TYPE_FIELD_NUMBER: builtins.int
+    resource_type: builtins.str
+    required_resource_count: builtins.int
+    check_type: builtins.str
+    def __init__(
+        self,
+        *,
+        resource_type: builtins.str = ...,
+        required_resource_count: builtins.int = ...,
+        check_type: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["check_type", b"check_type", "required_resource_count", b"required_resource_count", "resource_type", b"resource_type"]) -> None: ...
+
+global___CheckResourceEnoughRequest = CheckResourceEnoughRequest
+
+@typing_extensions.final
+class CheckResourceEnoughResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    IS_ENOUGH_FIELD_NUMBER: builtins.int
+    CLUSTERINFO_FIELD_NUMBER: builtins.int
+    is_enough: builtins.bool
+    @property
+    def clusterInfo(self) -> global___ServerCluster: ...
+    def __init__(
+        self,
+        *,
+        is_enough: builtins.bool = ...,
+        clusterInfo: global___ServerCluster | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["clusterInfo", b"clusterInfo"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["clusterInfo", b"clusterInfo", "is_enough", b"is_enough"]) -> None: ...
+
+global___CheckResourceEnoughResponse = CheckResourceEnoughResponse
+
+@typing_extensions.final
+class queryClusterInfoRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(
+        self,
+    ) -> None: ...
+
+global___queryClusterInfoRequest = queryClusterInfoRequest
+
+@typing_extensions.final
+class queryClusterInfoResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    CLUSTERINFO_FIELD_NUMBER: builtins.int
+    @property
+    def clusterInfo(self) -> global___ServerCluster: ...
+    def __init__(
+        self,
+        *,
+        clusterInfo: global___ServerCluster | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["clusterInfo", b"clusterInfo"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["clusterInfo", b"clusterInfo"]) -> None: ...
+
+global___queryClusterInfoResponse = queryClusterInfoResponse
