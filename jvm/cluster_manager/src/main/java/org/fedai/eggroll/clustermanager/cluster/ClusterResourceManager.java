@@ -627,7 +627,8 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
                 }
                 log.info("register session over");
             } catch (Exception e) {
-                throw new ErSessionException("session is already created");
+                log.error("register session error :",e);
+                throw new ErSessionException("session is already created ");
             }
 
             ErSessionMeta erSessionInDb = sessionMainService.getSession(sessionId);
@@ -690,11 +691,11 @@ public class ClusterResourceManager implements ApplicationStartedRunner {
             });
             return sessionMainService.getSession(sessionId);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("submitJodDownload failed , Exception = ",e);
+            throw new ErSessionException("submitJodDownload failed , ", resourceApplication.getSessionId());
         } finally {
             unlockSession(sessionId);
         }
-        return null;
     }
 
 
