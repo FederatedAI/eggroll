@@ -10,22 +10,7 @@ Building and Deploying Eggroll
 ---
 You can check the deploy document here:
 
-[English](doc/upgrade_helper_guide.md) [简体中文](doc/Eggroll部署文档说明.md)
-
-
-
-Running Tests
----
-Testing requires Eggroll having been built and deployed. Once it is completed, you can try the example test cases:
-```bash
-
-# standalone mode
-python -m unittest eggroll.roll_pair.test.test_roll_pair.TestRollPairStandalone
-
-# cluster mode
-python -m unittest eggroll.roll_pair.test.test_roll_pair.TestRollPairCluster
-
-``` 
+ [简体中文](doc/Eggroll部署文档说明.md)
 
 
 Special thanks to:
