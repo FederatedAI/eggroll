@@ -44,7 +44,7 @@
 
 ## 命令
 
-### 任务提交
+### 提交任务
 submit a deepspeed task
 ```bash
 eggroll task submit [OPTIONS]
@@ -64,7 +64,7 @@ eggroll task submit [OPTIONS]
 eggroll task submit --num-gpus nums --script-path xxx --conf checkpoint=/xxx/xxx --conf data_path=/xxx/xxx --conf model_checkpoint_save_path=/xxx/xxx
 ```
 
-### 任务查询
+### 查询任务
 
 ```bash
 eggroll task  query [OPTIONS]
@@ -80,7 +80,7 @@ eggroll task  query [OPTIONS]
 eggroll task  query --session-id xxx
 ```
 
-### 任务杀掉
+### 杀掉任务
 ```bash
 eggroll task kill [OPTIONS]
 ```
@@ -95,7 +95,7 @@ eggroll task kill [OPTIONS]
 eggroll task  kill --session-id xxx
 ```
 
-### 任务停止
+### 停止任务
 ```bash
 eggroll task stop [OPTIONS]
 ```
@@ -130,7 +130,7 @@ eggroll task  download --session-id xxx --content-type xxx --download-dir xxx --
 ```
 
 
-### 日志获取
+### 获取日志
 ```bash
 eggroll task get-log [OPTIONS]
 ```
