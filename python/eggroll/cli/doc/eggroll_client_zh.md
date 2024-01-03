@@ -80,7 +80,7 @@ eggroll task  query [OPTIONS]
 eggroll task  query --session-id xxx
 ```
 
-### 杀掉任务
+### 终止任务
 ```bash
 eggroll task kill [OPTIONS]
 ```
