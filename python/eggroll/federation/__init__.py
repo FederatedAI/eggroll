@@ -16,6 +16,5 @@
 
 
 from ._rollsite_context import RollSiteContext
-from ._rollsite import RollSite
 
-__all__ = ["RollSiteContext", "RollSite"]
+__all__ = ["RollSiteContext"]

@@ -17,7 +17,7 @@
 import typing
 
 if typing.TYPE_CHECKING:
-    from eggroll.federation import RollSite
+    from eggroll.federation._rollsite import RollSite
     from ._wrap_rollpair import WrappedRpc
 
 
@@ -59,7 +59,7 @@ class WrappedRollSiteContext:
             options = {}
         final_options = self._options.copy()
         final_options.update(options)
-        from eggroll.federation import RollSite
+        from eggroll.federation._rollsite import RollSite
 
         return WrappedRollSite(
             RollSite(name=name, tag=tag, rs_ctx=self._rsc, options=final_options)
@@ -80,7 +80,33 @@ class WrappedRollSite:
             return self._roll_site.push_bytes(Serdes.serialize(obj), parties, options)
 
     def pull(self, parties: list = None, options: dict = None):
-        return self._roll_site.pull_with_lift(lifter=_lifter, parties=parties)
+        return _pull_with_lift(self._roll_site, parties=parties)
+
+
+def _pull_with_lift(
+    rs: "RollSite",
+    parties: list = None,
+):
+    from eggroll.federation._rollsite import ErRollSiteHeader
+
+    futures = []
+    for src_role, src_party_id in parties:
+        src_party_id = str(src_party_id)
+        rs_header = ErRollSiteHeader(
+            roll_site_session_id=rs.roll_site_session_id,
+            name=rs.name,
+            tag=rs.tag,
+            src_role=src_role,
+            src_party_id=src_party_id,
+            dst_role=rs.local_role,
+            dst_party_id=rs.party_id,
+        )
+        futures.append(
+            rs._receive_executor_pool.submit(
+                _lifter(rs._impl_instance._pull_one), rs_header
+            )
+        )
+    return futures
 
 
 def _lifter(func):
