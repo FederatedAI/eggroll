@@ -333,7 +333,7 @@ class WrappedRp:
         if options is None:
             options = {}
         return self._map_reduce_partitions_with_index(
-            lambda i, x: ((k, v) for k, v in x if func(v)),
+            lambda i, x: ((k, v) for k, v in x if func(k, v)),
             shuffle=False,
         )
 
