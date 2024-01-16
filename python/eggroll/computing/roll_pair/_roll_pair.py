@@ -35,9 +35,10 @@ T = typing.TypeVar("T")
 
 class RollPair(object):
     def __getstate__(self):
-        raise NotImplementedError(
-            "pickling RollPair is not expected behavior, if you really need it, please create an issue at"
-        )
+        return None
+        # raise NotImplementedError(
+        #     "pickling RollPair is not expected behavior, if you really need it, please create an issue at"
+        # )
 
     def __init__(self, er_store: ErStore, rp_ctx: "RollPairContext", gc_enabled=None):
         self._ctx = rp_ctx

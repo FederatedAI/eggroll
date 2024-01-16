@@ -14,8 +14,8 @@
 #
 #
 
+import mmh3
 
-from ._rollsite_context import RollSiteContext
-from ._rollsite import RollSite
 
-__all__ = ["RollSiteContext", "RollSite"]
+def mmh3_partitioner(key: bytes, total_partitions):
+    return mmh3.hash(key) % total_partitions

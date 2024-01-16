@@ -14,8 +14,18 @@
 #
 #
 
+from pickle import dumps as p_dumps
+from pickle import loads as p_loads
 
-from ._rollsite_context import RollSiteContext
-from ._rollsite import RollSite
 
-__all__ = ["RollSiteContext", "RollSite"]
+class UnrestrictedSerdes:
+    @staticmethod
+    def serialize(obj) -> bytes:
+        return p_dumps(obj)
+
+    @staticmethod
+    def deserialize(bytes) -> object:
+        return p_loads(bytes)
+
+
+Serdes = UnrestrictedSerdes

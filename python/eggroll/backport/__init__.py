@@ -14,8 +14,13 @@
 #
 #
 
+import sys
 
-from ._rollsite_context import RollSiteContext
-from ._rollsite import RollSite
 
-__all__ = ["RollSiteContext", "RollSite"]
+def backport_patch():
+    from ._package_loader_patch import Eggroll2xPackageFinder
+    sys.meta_path.append(Eggroll2xPackageFinder())
+
+
+if __name__ == "__main__":
+    backport_patch()
