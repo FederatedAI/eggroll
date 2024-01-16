@@ -15,3 +15,10 @@
 #
 
 __version__ = "3.0.0"
+
+import os
+
+if os.environ.get("EGGROLL_2X_BACKPORT"):
+    from .backport import backport_patch
+
+    backport_patch()
