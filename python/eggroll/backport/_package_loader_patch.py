@@ -21,9 +21,10 @@ import importlib.machinery
 class Eggroll2xPackageFinder(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path, target=None):
         if (
-                fullname.startswith("eggroll.core.session")
-                or fullname.startswith("eggroll.roll_pair")
-                or fullname.startswith("eggroll.roll_site")
+            fullname.startswith("eggroll.core.session")
+            or fullname.startswith("eggroll.roll_pair")
+            or fullname.startswith("eggroll.roll_site")
+            or fullname == "eggroll.core.proto"
         ):
             return importlib.machinery.ModuleSpec(
                 fullname,
@@ -33,6 +34,11 @@ class Eggroll2xPackageFinder(importlib.abc.MetaPathFinder):
 
 class Eggroll2xLoader(importlib.abc.Loader):
     def create_module(self, spec):
+        if spec.name == "eggroll.core.proto":
+            from . import proto
+
+            return proto
+
         if spec.name == "eggroll.core.session":
             from . import _module_session_patch
 
