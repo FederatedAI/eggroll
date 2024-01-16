@@ -33,8 +33,13 @@ def runtime_init(session: "WrappedSession") -> "WrappedRpc":
 
 
 class WrappedRpc:
-    def __init__(self, rpc: "RollPairContext"):
-        self._rpc = rpc
+    def __init__(self, rpc: "RollPairContext" = None, session: "WrappedSession" = None):
+        if rpc is not None:
+            self._rpc = rpc
+        if session is not None:
+            from eggroll.computing import runtime_init as _runtime_init
+
+            self._rpc = _runtime_init(session=session._session)
 
     @property
     def session_id(self):
@@ -44,7 +49,19 @@ class WrappedRpc:
         from eggroll.computing.tasks.store import StoreTypes
 
         store_type = options.get("store_type", StoreTypes.ROLLPAIR_LMDB)
-        return self._rpc.load_rp(namespace=namespace, name=name, store_type=store_type)
+        return WrappedRp(
+            self._rpc.create_rp(
+                id=-1,
+                name=name,
+                namespace=namespace,
+                total_partitions=1,
+                store_type=store_type,
+                key_serdes_type=0,
+                value_serdes_type=0,
+                partitioner_type=0,
+                options=options,
+            )
+        )
 
     def parallelize(self, data, options: dict = None):
         from eggroll.computing.tasks.store import StoreTypes
@@ -150,6 +167,7 @@ class WrappedRp:
         if include_key:
             self._rp.put_all(
                 ((Serdes.serialize(k), Serdes.serialize(v)) for k, v in items),
+                partitioner=mmh3_partitioner,
             )
         else:
             self._rp.put_all(
@@ -157,6 +175,7 @@ class WrappedRp:
                     (Serdes.serialize(i), Serdes.serialize(v))
                     for i, v in enumerate(items)
                 ),
+                partitioner=mmh3_partitioner,
             )
 
     def take(self, n: int, options: dict = None):

@@ -14,6 +14,10 @@
 #
 #
 
-from ._wrap_rollpair import WrappedRp as RollPair, runtime_init
+from ._wrap_rollpair import (
+    WrappedRp as RollPair,
+    WrappedRpc as RollPairContext,
+    runtime_init,
+)
 
-__all__ = ["RollPair", "runtime_init"]
+__all__ = ["RollPair", "RollPairContext", "runtime_init"]
