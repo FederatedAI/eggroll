@@ -27,7 +27,6 @@ from eggroll.trace import roll_pair_method_trace
 if typing.TYPE_CHECKING:
     from ._roll_pair_context import RollPairContext
 
-
 L = logging.getLogger(__name__)
 
 T = typing.TypeVar("T")
@@ -35,10 +34,12 @@ T = typing.TypeVar("T")
 
 class RollPair(object):
     def __getstate__(self):
-        return None
-        # raise NotImplementedError(
-        #     "pickling RollPair is not expected behavior, if you really need it, please create an issue at"
-        # )
+        if self._ctx._allow_rp_serialize:
+            return None
+        else:
+            raise NotImplementedError(
+                "pickling RollPair is not expected behavior, if you really need it, please create an issue at"
+            )
 
     def __init__(self, er_store: ErStore, rp_ctx: "RollPairContext", gc_enabled=None):
         self._ctx = rp_ctx
