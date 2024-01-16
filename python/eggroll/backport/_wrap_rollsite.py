@@ -22,7 +22,7 @@ if typing.TYPE_CHECKING:
 
 
 def _init_roll_site_context(
-        roll_site_session_id, rp_ctx: "WrappedRpc", options: dict = None
+    roll_site_session_id, rp_ctx: "WrappedRpc", options: dict = None
 ):
     from eggroll.federation import RollSiteContext as _RollSiteContext
 
@@ -47,7 +47,7 @@ def _init_roll_site_context(
 
 class WrappedRollSiteContext:
     def __init__(
-            self, roll_site_session_id, rp_ctx: "WrappedRpc", options: dict = None
+        self, roll_site_session_id, rp_ctx: "WrappedRpc", options: dict = None
     ):
         if options is None:
             options = {}

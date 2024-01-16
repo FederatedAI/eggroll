@@ -1,4 +1,5 @@
-#  Copyright (c) 2019 - now, Eggroll Authors. All Rights Reserved.
+#
+#  Copyright 2019 The Eggroll Authors. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -12,16 +13,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-#
 
 import sys
+import os
 
-
-def backport_patch():
-    from ._package_loader_patch import Eggroll2xPackageFinder
-
-    sys.meta_path.insert(0, Eggroll2xPackageFinder())
-
-
-if __name__ == "__main__":
-    backport_patch()
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))

@@ -69,8 +69,7 @@ class WrappedRpc:
         # generate data
         if include_key:
             data = (
-                (Serdes.serialize(key), Serdes.serialize(value))
-                for key, value in data
+                (Serdes.serialize(key), Serdes.serialize(value)) for key, value in data
             )
         else:
             data = (
@@ -117,9 +116,7 @@ class WrappedRp:
     def get(self, k, options: dict = None):
         if options is None:
             options = {}
-        value = self._rp.get(
-            k=Serdes.serialize(k), partitioner=mmh3_partitioner
-        )
+        value = self._rp.get(k=Serdes.serialize(k), partitioner=mmh3_partitioner)
         if value is None:
             return None
         else:
@@ -152,10 +149,7 @@ class WrappedRp:
         include_key = options.get("include_key", True)
         if include_key:
             self._rp.put_all(
-                (
-                    (Serdes.serialize(k), Serdes.serialize(v))
-                    for k, v in items
-                ),
+                ((Serdes.serialize(k), Serdes.serialize(v)) for k, v in items),
             )
         else:
             self._rp.put_all(
@@ -168,10 +162,7 @@ class WrappedRp:
     def take(self, n: int, options: dict = None):
         keys_only = options.get("keys_only", False)
         if keys_only:
-            return [
-                Serdes.deserialize(k)
-                for k in self._rp.take(n=n, options=options)
-            ]
+            return [Serdes.deserialize(k) for k in self._rp.take(n=n, options=options)]
         else:
             return [
                 (Serdes.deserialize(k), Serdes.deserialize(v))
@@ -189,11 +180,11 @@ class WrappedRp:
         self._rp.destroy()
 
     def _map_reduce_partitions_with_index(
-            self,
-            map_partition_op: Callable[[int, Iterable], Iterable],
-            reduce_partition_op: Callable[[Any, Any], Any] = None,
-            shuffle=True,
-            output_num_partitions=None,
+        self,
+        map_partition_op: Callable[[int, Iterable], Iterable],
+        reduce_partition_op: Callable[[Any, Any], Any] = None,
+        shuffle=True,
+        output_num_partitions=None,
     ):
         if not shuffle and reduce_partition_op is not None:
             raise ValueError(
@@ -349,11 +340,11 @@ class WrappedRp:
             return self.repartition(other.num_partitions), other
 
     def binarySortedMapPartitionsWithIndex(
-            self,
-            other: "WrappedRp",
-            binary_sorted_map_partitions_with_index_op: Callable[
-                [int, Iterable, Iterable], Iterable
-            ],
+        self,
+        other: "WrappedRp",
+        binary_sorted_map_partitions_with_index_op: Callable[
+            [int, Iterable, Iterable], Iterable
+        ],
     ):
         first, second = self.repartition_with(other)
 
@@ -410,12 +401,12 @@ class WrappedRp:
 
 
 def _lifted_map_to_io_serdes(
-        _f, input_key_serdes, input_value_serdes, output_key_serdes, output_value_serdes
+    _f, input_key_serdes, input_value_serdes, output_key_serdes, output_value_serdes
 ):
     def _lifted(_index, _iter):
         for out_k, out_v in _f(
-                _index,
-                _serdes_wrapped_generator(_iter, input_key_serdes, input_value_serdes),
+            _index,
+            _serdes_wrapped_generator(_iter, input_key_serdes, input_value_serdes),
         ):
             yield output_key_serdes.serialize(out_k), output_value_serdes.serialize(
                 out_v
@@ -435,12 +426,12 @@ def _value_serdes_wrapped_generator(_iter, value_serdes):
 
 
 def _lifted_mpwi_map_to_serdes(
-        _f, input_key_serdes, input_value_serdes, output_key_serdes, output_value_serdes
+    _f, input_key_serdes, input_value_serdes, output_key_serdes, output_value_serdes
 ):
     def _lifted(_index, _iter):
         for out_k, out_v in _f(
-                _index,
-                _serdes_wrapped_generator(_iter, input_key_serdes, input_value_serdes),
+            _index,
+            _serdes_wrapped_generator(_iter, input_key_serdes, input_value_serdes),
         ):
             yield output_key_serdes.serialize(out_k), output_value_serdes.serialize(
                 out_v
@@ -481,7 +472,7 @@ def _lifted_map_to_mpwi(map_op: Callable[[Any, Any], Tuple[Any, Any]]):
 
 
 def _lifted_map_reduce_partitions_to_mpwi(
-        map_partition_op: Callable[[Iterable], Iterable]
+    map_partition_op: Callable[[Iterable], Iterable]
 ):
     def _lifted(_index, _iter):
         return map_partition_op(_iter)
@@ -520,7 +511,7 @@ def _lifted_map_partitions_to_mpwi(map_partition_op: Callable[[Iterable], Iterab
 
 
 def _lifted_flat_map_to_mpwi(
-        flat_map_op: Callable[[Any, Any], Iterable[Tuple[Any, Any]]]
+    flat_map_op: Callable[[Any, Any], Iterable[Tuple[Any, Any]]]
 ):
     def _lifted(_index, _iter):
         for _k, _v in _iter:
@@ -532,6 +523,7 @@ def _lifted_flat_map_to_mpwi(
 def _lifted_sample_to_mpwi(fraction, seed=None):
     def _lifted(_index, _iter):
         import random
+
         # TODO: should we use the same seed for all partitions?
         random_state = random.Random(seed)
         for _k, _v in _iter:
@@ -554,13 +546,13 @@ def _lifted_reduce_to_serdes(reduce_op, value_serdes):
 
 
 def _lifted_sorted_binary_map_partitions_with_index_to_serdes(
-        _f, left_value_serdes, right_value_serdes, output_value_serdes
+    _f, left_value_serdes, right_value_serdes, output_value_serdes
 ):
     def _lifted(_index, left_iter, right_iter):
         for out_k_bytes, out_v in _f(
-                _index,
-                _value_serdes_wrapped_generator(left_iter, left_value_serdes),
-                _value_serdes_wrapped_generator(right_iter, right_value_serdes),
+            _index,
+            _value_serdes_wrapped_generator(left_iter, left_value_serdes),
+            _value_serdes_wrapped_generator(right_iter, right_value_serdes),
         ):
             yield out_k_bytes, output_value_serdes.serialize(out_v)
 
