@@ -110,3 +110,23 @@ class RollSite(RollSiteBase):
                 )
             )
         return futures
+
+    def pull_with_lift(self, lifter: typing.Callable[[typing.Callable], typing.Callable], parties: list = None):
+        futures = []
+        for src_role, src_party_id in parties:
+            src_party_id = str(src_party_id)
+            rs_header = ErRollSiteHeader(
+                roll_site_session_id=self.roll_site_session_id,
+                name=self.name,
+                tag=self.tag,
+                src_role=src_role,
+                src_party_id=src_party_id,
+                dst_role=self.local_role,
+                dst_party_id=self.party_id,
+            )
+            futures.append(
+                self._receive_executor_pool.submit(
+                    lifter(self._impl_instance._pull_one), rs_header
+                )
+            )
+        return futures
