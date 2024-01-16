@@ -34,7 +34,7 @@ T = typing.TypeVar("T")
 
 class RollPair(object):
     def __getstate__(self):
-        if self._ctx._allow_rp_serialize:
+        if not hasattr(self, "_ctx") or self._ctx._allow_rp_serialize:
             return None
         else:
             raise NotImplementedError(
