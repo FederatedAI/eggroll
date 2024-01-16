@@ -42,3 +42,9 @@ class WrappedSession:
 
     def get_session_id(self):
         return self._session.get_session_id()
+
+    def kill(self):
+        return self._session.kill()
+
+    def stop(self):
+        return self._session.stop()
