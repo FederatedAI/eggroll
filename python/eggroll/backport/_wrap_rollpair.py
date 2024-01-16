@@ -49,12 +49,13 @@ class WrappedRpc:
         from eggroll.computing.tasks.store import StoreTypes
 
         store_type = options.get("store_type", StoreTypes.ROLLPAIR_LMDB)
+        total_partitions = options.get("total_partitions", 1)
         return WrappedRp(
             self._rpc.create_rp(
                 id=-1,
                 name=name,
                 namespace=namespace,
-                total_partitions=1,
+                total_partitions=total_partitions,
                 store_type=store_type,
                 key_serdes_type=0,
                 value_serdes_type=0,
@@ -130,6 +131,21 @@ class WrappedRp:
     def get_partitions(self):
         return self._rp.get_partitions()
 
+    def save_as(self, name, namespace, partition=None, options: dict = None):
+        if partition is not None and partition <= 0:
+            raise ValueError('partition cannot <= 0')
+
+        if partition is not None and partition != self.num_partitions:
+            repartitioned = self.repartition(num_partitions=partition)
+            return repartitioned.save_as(name, namespace, options=options)
+
+        if options is None:
+            options = {}
+
+        from eggroll.computing.tasks.store import StoreTypes
+        store_type = options.get("store_type", StoreTypes.ROLLPAIR_LMDB)
+        return WrappedRp(self._rp.copy_as(name=name, namespace=namespace, store_type=store_type))
+
     def get(self, k, options: dict = None):
         if options is None:
             options = {}
@@ -185,7 +201,7 @@ class WrappedRp:
         else:
             return [
                 (Serdes.deserialize(k), Serdes.deserialize(v))
-                for k, v in self._rp.take(n=n, options=options)
+                for k, v in self._rp.take(num=n, options=options)
             ]
 
     def first(self, options: dict = None):
@@ -199,11 +215,11 @@ class WrappedRp:
         self._rp.destroy()
 
     def _map_reduce_partitions_with_index(
-        self,
-        map_partition_op: Callable[[int, Iterable], Iterable],
-        reduce_partition_op: Callable[[Any, Any], Any] = None,
-        shuffle=True,
-        output_num_partitions=None,
+            self,
+            map_partition_op: Callable[[int, Iterable], Iterable],
+            reduce_partition_op: Callable[[Any, Any], Any] = None,
+            shuffle=True,
+            output_num_partitions=None,
     ):
         if not shuffle and reduce_partition_op is not None:
             raise ValueError(
@@ -359,11 +375,11 @@ class WrappedRp:
             return self.repartition(other.num_partitions), other
 
     def binarySortedMapPartitionsWithIndex(
-        self,
-        other: "WrappedRp",
-        binary_sorted_map_partitions_with_index_op: Callable[
-            [int, Iterable, Iterable], Iterable
-        ],
+            self,
+            other: "WrappedRp",
+            binary_sorted_map_partitions_with_index_op: Callable[
+                [int, Iterable, Iterable], Iterable
+            ],
     ):
         first, second = self.repartition_with(other)
 
@@ -420,12 +436,12 @@ class WrappedRp:
 
 
 def _lifted_map_to_io_serdes(
-    _f, input_key_serdes, input_value_serdes, output_key_serdes, output_value_serdes
+        _f, input_key_serdes, input_value_serdes, output_key_serdes, output_value_serdes
 ):
     def _lifted(_index, _iter):
         for out_k, out_v in _f(
-            _index,
-            _serdes_wrapped_generator(_iter, input_key_serdes, input_value_serdes),
+                _index,
+                _serdes_wrapped_generator(_iter, input_key_serdes, input_value_serdes),
         ):
             yield output_key_serdes.serialize(out_k), output_value_serdes.serialize(
                 out_v
@@ -445,12 +461,12 @@ def _value_serdes_wrapped_generator(_iter, value_serdes):
 
 
 def _lifted_mpwi_map_to_serdes(
-    _f, input_key_serdes, input_value_serdes, output_key_serdes, output_value_serdes
+        _f, input_key_serdes, input_value_serdes, output_key_serdes, output_value_serdes
 ):
     def _lifted(_index, _iter):
         for out_k, out_v in _f(
-            _index,
-            _serdes_wrapped_generator(_iter, input_key_serdes, input_value_serdes),
+                _index,
+                _serdes_wrapped_generator(_iter, input_key_serdes, input_value_serdes),
         ):
             yield output_key_serdes.serialize(out_k), output_value_serdes.serialize(
                 out_v
@@ -491,7 +507,7 @@ def _lifted_map_to_mpwi(map_op: Callable[[Any, Any], Tuple[Any, Any]]):
 
 
 def _lifted_map_reduce_partitions_to_mpwi(
-    map_partition_op: Callable[[Iterable], Iterable]
+        map_partition_op: Callable[[Iterable], Iterable]
 ):
     def _lifted(_index, _iter):
         return map_partition_op(_iter)
@@ -530,7 +546,7 @@ def _lifted_map_partitions_to_mpwi(map_partition_op: Callable[[Iterable], Iterab
 
 
 def _lifted_flat_map_to_mpwi(
-    flat_map_op: Callable[[Any, Any], Iterable[Tuple[Any, Any]]]
+        flat_map_op: Callable[[Any, Any], Iterable[Tuple[Any, Any]]]
 ):
     def _lifted(_index, _iter):
         for _k, _v in _iter:
@@ -565,13 +581,13 @@ def _lifted_reduce_to_serdes(reduce_op, value_serdes):
 
 
 def _lifted_sorted_binary_map_partitions_with_index_to_serdes(
-    _f, left_value_serdes, right_value_serdes, output_value_serdes
+        _f, left_value_serdes, right_value_serdes, output_value_serdes
 ):
     def _lifted(_index, left_iter, right_iter):
         for out_k_bytes, out_v in _f(
-            _index,
-            _value_serdes_wrapped_generator(left_iter, left_value_serdes),
-            _value_serdes_wrapped_generator(right_iter, right_value_serdes),
+                _index,
+                _value_serdes_wrapped_generator(left_iter, left_value_serdes),
+                _value_serdes_wrapped_generator(right_iter, right_value_serdes),
         ):
             yield out_k_bytes, output_value_serdes.serialize(out_v)
 
