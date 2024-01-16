@@ -14,14 +14,9 @@
 #
 #
 
-import sys
-
 
 def backport_patch():
+    import sys
     from ._package_loader_patch import Eggroll2xPackageFinder
 
     sys.meta_path.insert(0, Eggroll2xPackageFinder())
-
-
-if __name__ == "__main__":
-    backport_patch()
