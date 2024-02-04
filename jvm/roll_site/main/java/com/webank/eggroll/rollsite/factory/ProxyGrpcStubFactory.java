@@ -200,7 +200,7 @@ public class ProxyGrpcStubFactory {
                 .enableRetry()
                 .retryBufferSize(16 << 20)
                 .maxRetryAttempts(20);      // todo:1: configurable
-
+//
         if (proxyServerConf.isCompatibleEnabled()) {
             builder.intercept(new RedirectClientInterceptor("com.webank.ai.eggroll.api.rollstation.DataTransferService",
                     "com.webank.ai.fate.api.rollstation.DataTransferService"),
