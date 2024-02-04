@@ -294,13 +294,13 @@ class DownloadContainersRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     SESSION_ID_FIELD_NUMBER: builtins.int
-    CONTAINER_IDS_FIELD_NUMBER: builtins.int
+    RANKS_FIELD_NUMBER: builtins.int
     COMPRESS_METHOD_FIELD_NUMBER: builtins.int
     COMPRESS_LEVEL_FIELD_NUMBER: builtins.int
     CONTENT_TYPE_FIELD_NUMBER: builtins.int
     session_id: builtins.str
     @property
-    def container_ids(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.int]: ...
+    def ranks(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.int]: ...
     compress_method: builtins.str
     compress_level: builtins.int
     content_type: global___ContentType.ValueType
@@ -308,12 +308,12 @@ class DownloadContainersRequest(google.protobuf.message.Message):
         self,
         *,
         session_id: builtins.str = ...,
-        container_ids: collections.abc.Iterable[builtins.int] | None = ...,
+        ranks: collections.abc.Iterable[builtins.int] | None = ...,
         compress_method: builtins.str = ...,
         compress_level: builtins.int = ...,
         content_type: global___ContentType.ValueType = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["compress_level", b"compress_level", "compress_method", b"compress_method", "container_ids", b"container_ids", "content_type", b"content_type", "session_id", b"session_id"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["compress_level", b"compress_level", "compress_method", b"compress_method", "content_type", b"content_type", "ranks", b"ranks", "session_id", b"session_id"]) -> None: ...
 
 global___DownloadContainersRequest = DownloadContainersRequest
 
@@ -340,19 +340,19 @@ global___DownloadContainersResponse = DownloadContainersResponse
 class ContainerContent(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    CONTAINER_ID_FIELD_NUMBER: builtins.int
+    RANK_FIELD_NUMBER: builtins.int
     CONTENT_FIELD_NUMBER: builtins.int
     COMPRESS_METHOD_FIELD_NUMBER: builtins.int
-    container_id: builtins.int
+    rank: builtins.int
     content: builtins.bytes
     compress_method: builtins.str
     def __init__(
         self,
         *,
-        container_id: builtins.int = ...,
+        rank: builtins.int = ...,
         content: builtins.bytes = ...,
         compress_method: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["compress_method", b"compress_method", "container_id", b"container_id", "content", b"content"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["compress_method", b"compress_method", "content", b"content", "rank", b"rank"]) -> None: ...
 
 global___ContainerContent = ContainerContent
