@@ -795,6 +795,7 @@ def serve(args):
              int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED.get())),
             ('grpc.per_rpc_retry_buffer_size',
              int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_RETRY_BUFFER_SIZE.get())),
+            ("grpc.http2.max_ping_strikes", 0),
             ('grpc.so_reuseport', False)])
 
     command_servicer = CommandServicer()
