@@ -23,11 +23,11 @@ filtered_packages = [pkg for pkg in packages if pkg.startswith("client")]
 package_data = {"": ["*"]}
 install_requires = [
     "click",
-    "requests<2.26.0",
-    "grpcio==1.46.3",
+    "requests",
+    "grpcio",
     "numba==0.53.0",
     "numpy==1.23.1",
-    "protobuf==3.19.6",
+    "protobuf",
     "ruamel.yaml==0.16.10"
 ]
 
