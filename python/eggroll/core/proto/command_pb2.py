@@ -4,9 +4,8 @@
 """Generated protocol buffer code."""
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import descriptor_pool as _descriptor_pool
-from google.protobuf import message as _message
-from google.protobuf import reflection as _reflection
 from google.protobuf import symbol_database as _symbol_database
+from google.protobuf.internal import builder as _builder
 # @@protoc_insertion_point(imports)
 
 _sym_db = _symbol_database.Default()
@@ -16,45 +15,20 @@ _sym_db = _symbol_database.Default()
 
 DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rcommand.proto\x12\x1f\x63om.webank.eggroll.core.command\"\xb3\x01\n\x0e\x43ommandRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0b\n\x03uri\x18\x02 \x01(\t\x12\x0c\n\x04\x61rgs\x18\x03 \x03(\x0c\x12K\n\x06kwargs\x18\x04 \x03(\x0b\x32;.com.webank.eggroll.core.command.CommandRequest.KwargsEntry\x1a-\n\x0bKwargsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\"p\n\x0f\x43ommandResponse\x12\n\n\x02id\x18\x01 \x01(\t\x12@\n\x07request\x18\x02 \x01(\x0b\x32/.com.webank.eggroll.core.command.CommandRequest\x12\x0f\n\x07results\x18\x03 \x03(\x0c\x32\xf0\x01\n\x0e\x43ommandService\x12i\n\x04\x63\x61ll\x12/.com.webank.eggroll.core.command.CommandRequest\x1a\x30.com.webank.eggroll.core.command.CommandResponse\x12s\n\ncallStream\x12/.com.webank.eggroll.core.command.CommandRequest\x1a\x30.com.webank.eggroll.core.command.CommandResponse(\x01\x30\x01\x62\x06proto3')
 
-
-
-_COMMANDREQUEST = DESCRIPTOR.message_types_by_name['CommandRequest']
-_COMMANDREQUEST_KWARGSENTRY = _COMMANDREQUEST.nested_types_by_name['KwargsEntry']
-_COMMANDRESPONSE = DESCRIPTOR.message_types_by_name['CommandResponse']
-CommandRequest = _reflection.GeneratedProtocolMessageType('CommandRequest', (_message.Message,), {
-
-  'KwargsEntry' : _reflection.GeneratedProtocolMessageType('KwargsEntry', (_message.Message,), {
-    'DESCRIPTOR' : _COMMANDREQUEST_KWARGSENTRY,
-    '__module__' : 'command_pb2'
-    # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.command.CommandRequest.KwargsEntry)
-    })
-  ,
-  'DESCRIPTOR' : _COMMANDREQUEST,
-  '__module__' : 'command_pb2'
-  # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.command.CommandRequest)
-  })
-_sym_db.RegisterMessage(CommandRequest)
-_sym_db.RegisterMessage(CommandRequest.KwargsEntry)
-
-CommandResponse = _reflection.GeneratedProtocolMessageType('CommandResponse', (_message.Message,), {
-  'DESCRIPTOR' : _COMMANDRESPONSE,
-  '__module__' : 'command_pb2'
-  # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.command.CommandResponse)
-  })
-_sym_db.RegisterMessage(CommandResponse)
-
-_COMMANDSERVICE = DESCRIPTOR.services_by_name['CommandService']
+_globals = globals()
+_builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
+_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'command_pb2', _globals)
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
   _COMMANDREQUEST_KWARGSENTRY._options = None
   _COMMANDREQUEST_KWARGSENTRY._serialized_options = b'8\001'
-  _COMMANDREQUEST._serialized_start=51
-  _COMMANDREQUEST._serialized_end=230
-  _COMMANDREQUEST_KWARGSENTRY._serialized_start=185
-  _COMMANDREQUEST_KWARGSENTRY._serialized_end=230
-  _COMMANDRESPONSE._serialized_start=232
-  _COMMANDRESPONSE._serialized_end=344
-  _COMMANDSERVICE._serialized_start=347
-  _COMMANDSERVICE._serialized_end=587
+  _globals['_COMMANDREQUEST']._serialized_start=51
+  _globals['_COMMANDREQUEST']._serialized_end=230
+  _globals['_COMMANDREQUEST_KWARGSENTRY']._serialized_start=185
+  _globals['_COMMANDREQUEST_KWARGSENTRY']._serialized_end=230
+  _globals['_COMMANDRESPONSE']._serialized_start=232
+  _globals['_COMMANDRESPONSE']._serialized_end=344
+  _globals['_COMMANDSERVICE']._serialized_start=347
+  _globals['_COMMANDSERVICE']._serialized_end=587
 # @@protoc_insertion_point(module_scope)
