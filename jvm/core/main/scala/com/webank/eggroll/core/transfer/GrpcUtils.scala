@@ -228,7 +228,7 @@ object GrpcClientUtils extends Logging {
         .negotiationType(NegotiationType.PLAINTEXT)
         .usePlaintext
     }
-    builder.build
+    builder.build()
   }
 
   private def getChannelInternal(endpoint: ErEndpoint, isSecureChannel: Boolean, options: Map[String, String] = Map.empty): ManagedChannel = {

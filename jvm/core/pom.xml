@@ -79,7 +79,7 @@
       <dependency>
           <groupId>io.grpc</groupId>
           <artifactId>grpc-stub</artifactId>
-          <version>1.55.1</version>
+          <version>${grpc.version}</version>
           <scope>compile</scope>
       </dependency>
 
