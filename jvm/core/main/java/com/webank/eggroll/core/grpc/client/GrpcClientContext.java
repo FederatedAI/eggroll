@@ -268,7 +268,7 @@ public class GrpcClientContext<S extends AbstractStub, R extends Message, E exte
 
       stub = (S) grpcStubFactory.createGrpcStub(true, grpcClass, serverEndpoint, isSecureRequest);
       if (grpcMetadata != null) {
-        stub = (S) MetadataUtils.attachHeaders(stub, grpcMetadata);
+        //stub = (S) MetadataUtils.attachHeaders(stub, grpcMetadata);
       }
     }
 
