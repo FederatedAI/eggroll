@@ -22,7 +22,6 @@ _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'deepspeed_download_pb2', _globals)
 if _descriptor._USE_C_DESCRIPTORS == False:
-
   DESCRIPTOR._options = None
   _globals['_PREPAREDOWNLOADREQUEST']._serialized_start=121
   _globals['_PREPAREDOWNLOADREQUEST']._serialized_end=294
