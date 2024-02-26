@@ -4,3 +4,4 @@ protobuf==4.24.4
 grpcio==1.59.3
 grpcio-tools==1.59.3
 psutil>=5.7.0
+pynvml==11.5.0
