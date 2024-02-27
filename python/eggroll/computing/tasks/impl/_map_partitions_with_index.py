@@ -89,7 +89,7 @@ class MapReducePartitionsWithIndex(Task):
             session_id=rp.session_id, tag=consts.MAP_REDUCE_PARTITIONS_WITH_INDEX
         )
         output_store = rp.ctx.create_store(
-            id=rp.get_store().store_locator.id,
+            id=-1,
             name=output_name,
             namespace=output_namespace,
             total_partitions=output_num_partitions,
@@ -99,7 +99,6 @@ class MapReducePartitionsWithIndex(Task):
             partitioner_type=output_partitioner_type,
             options={},
         )
-        output_store = rp.ctx.session.get_or_create_store(output_store)
         job = ErJob(
             id=job_id,
             name=consts.MAP_REDUCE_PARTITIONS_WITH_INDEX,

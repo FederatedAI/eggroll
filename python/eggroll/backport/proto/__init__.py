@@ -14,11 +14,7 @@
 #  limitations under the License.
 #
 
-__version__ = "3.0.0"
-
+import sys
 import os
 
-if os.environ.get("EGGROLL_2X_BACKPORT"):
-    from .backport import backport_patch
-
-    backport_patch()
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
