@@ -89,7 +89,7 @@ ${MYSQL_HOME_PATH}/bin/mysqldump -h <mysql-host> -u <username> -p<passwd> -P <po
 
 > 获取升级脚本
 
-[升级脚本](https://github.com/WeBankFinTech/eggroll/blob/dev-3.0.0-rc/deploy/upgrade_helper.py)
+[升级脚本](https://github.com/WeBankFinTech/eggroll/blob/dev-3.1.0/deploy/upgrade_helper.py)
 
 ```
 export PKG_BASE_PATH={your upgrade eggroll version eggroll home dir}
