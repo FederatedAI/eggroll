@@ -1,3 +1,3 @@
-result=$(nvidia-smi --query-gpu=name --format=csv, noheader|grep 'NVIDIA'|wc -l)
+result=$(python $EGGROLL_HOME/python/eggroll/deepspeed/utils/gpu_count.py)
 echo  $result
 

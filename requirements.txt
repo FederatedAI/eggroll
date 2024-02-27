@@ -8,4 +8,4 @@ opentelemetry-api
 opentelemetry-sdk
 omegaconf
 requests
-
+pynvml==11.5.0
