@@ -21,7 +21,7 @@
 从github拉取Eggroll项目，通过执行auto-packaging.sh自动打包脚本在同目录下生成eggroll.tar.gz
 
 ```shell
-git clone -b v3.0.0 https://github.com/FederatedAI/eggroll.git
+git clone -b v3.1.0 https://github.com/FederatedAI/eggroll.git
 cd eggroll/deploy
 windows : auto-packaging.bat
 linux : sh auto-packaging.sh
