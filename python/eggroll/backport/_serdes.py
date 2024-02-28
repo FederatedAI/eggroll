@@ -16,7 +16,9 @@
 
 import importlib
 from pickle import Unpickler, UnpicklingError
-# from pickle import dumps as p_dumps
+from pickle import dumps as p_dumps
+
+
 # from pickle import loads as p_loads
 
 
@@ -28,6 +30,15 @@ from pickle import Unpickler, UnpicklingError
 #     @staticmethod
 #     def deserialize(bytes) -> object:
 #         return p_loads(bytes)
+
+class RestrictedSerdes:
+    @staticmethod
+    def serialize(obj) -> bytes:
+        return p_dumps(obj)
+
+    @staticmethod
+    def deserialize(bytes) -> object:
+        return RestrictedUnpickler(bytes).load()
 
 
 class RestrictedUnpickler(Unpickler):
@@ -93,4 +104,4 @@ class _DeserializeWhitelist:
         cls.loaded = True
 
 
-Serdes = RestrictedUnpickler
+Serdes = RestrictedSerdes
