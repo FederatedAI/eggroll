@@ -14,6 +14,7 @@
 #
 #
 
+import io
 import importlib
 from pickle import Unpickler, UnpicklingError
 from pickle import dumps as p_dumps
@@ -38,7 +39,8 @@ class RestrictedSerdes:
 
     @staticmethod
     def deserialize(bytes) -> object:
-        return RestrictedUnpickler(bytes).load()
+        file = io.BytesIO(bytes)
+        return RestrictedUnpickler(file).load()
 
 
 class RestrictedUnpickler(Unpickler):
