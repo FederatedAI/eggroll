@@ -33,7 +33,7 @@ L = logging.getLogger(__name__)
 
 
 class RollPairContext(object):
-    def __init__(self, session: ErSession):
+    def __init__(self, session: ErSession, allow_rp_serialize=False):
         if not session.is_active():
             raise Exception(
                 f"session_id={session.get_session_id()} is not ACTIVE. current status={session.get_session_meta().status}"
@@ -43,6 +43,7 @@ class RollPairContext(object):
         self._rpc_gc_enable = True
         self._command_client = CommandClient(config=session.config)
         self._session.add_exit_task(self._gc_recorder.flush)
+        self._allow_rp_serialize = allow_rp_serialize
 
     def info(self, level=0):
         if level == 0:
