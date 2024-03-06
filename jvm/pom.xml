@@ -23,7 +23,7 @@
 
     <groupId>org.fedai.eggroll</groupId>
     <artifactId>eggroll-all</artifactId>
-    <version>3.0.0</version>
+    <version>3.1.0</version>
     <name>Eggroll Project</name>
 
     <licenses>
@@ -145,7 +145,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <properties>
-        <eggroll.version>3.0.0</eggroll.version>
+        <eggroll.version>3.1.0</eggroll.version>
 
         <!-- Languages -->
         <code.cache.size>512m</code.cache.size>

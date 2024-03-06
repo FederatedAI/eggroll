@@ -6,7 +6,7 @@
         <artifactId>eggroll-all</artifactId>
         <groupId>org.fedai.eggroll</groupId>
         <relativePath>../pom.xml</relativePath>
-        <version>3.0.0</version>
+        <version>3.1.0</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>node_manager</artifactId>
