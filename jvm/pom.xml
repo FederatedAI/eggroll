@@ -179,7 +179,7 @@
         <HikariCP.version>3.4.5</HikariCP.version>
         <mybatis-guice.version>3.18</mybatis-guice.version>
         <curator.version>2.13.0</curator.version>
-        <zookeeper.version>3.9.1</zookeeper.version>
+        <zookeeper.version>3.9.2</zookeeper.version>
         <caffeine.version>2.9.3</caffeine.version>
         <disruptor.version>3.4.4</disruptor.version>
         <jna.version>5.10.0</jna.version>
