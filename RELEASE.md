@@ -1,3 +1,12 @@
+## Release 3.2.0
+1. Upgrade from Python 3.8 to Python 3.10
+
+
+## Release 3.1.0
+1. add 2.x api backport support
+2. some bug fix
+
+
 ## Release 3.0.0
 
 **Enhancements in the JVM Part:**
