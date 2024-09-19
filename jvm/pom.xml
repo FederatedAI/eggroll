@@ -186,7 +186,7 @@
         <inject.version>1</inject.version>
         <reflections.version>0.10.2</reflections.version>
         <!--    <protobuf.version>3.16.1</protobuf.version>-->
-        <protobuf.version>3.24.2</protobuf.version>
+        <protobuf.version>3.25.5</protobuf.version>
         <rocksdb.version>6.8.1</rocksdb.version>
         <scalatest.version>3.0.8</scalatest.version>
         <spark.version>2.4.8</spark.version>
