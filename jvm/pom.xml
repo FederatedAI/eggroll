@@ -192,7 +192,7 @@
         <spark.version>2.4.8</spark.version>
         <pagehelper.version>5.3.1</pagehelper.version>
         <jna.version>5.10.0</jna.version>
-        <jetty.version>9.4.52.v20230823</jetty.version>
+        <jetty.version>9.4.55.v20240627</jetty.version>
         <commons-codec.version>1.15</commons-codec.version>
         <guice-servlet.version>4.2.3</guice-servlet.version>
         <javax.servlet-api.version>4.0.1</javax.servlet-api.version>
